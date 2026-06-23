@@ -1,0 +1,124 @@
+import { useListExams } from "@workspace/api-client-react";
+import InstructorLayout from "@/components/layout/instructor-layout";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { Plus, MoreHorizontal, Settings, FileBarChart, Users } from "lucide-react";
+import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+
+export default function ExamsList() {
+  const { data: exams, isLoading } = useListExams();
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "published": return <Badge className="bg-green-600 hover:bg-green-700">Published</Badge>;
+      case "draft": return <Badge variant="secondary">Draft</Badge>;
+      case "archived": return <Badge variant="outline">Archived</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  return (
+    <InstructorLayout>
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">Exams</h1>
+            <p className="text-muted-foreground mt-1">Manage your assessments and question banks.</p>
+          </div>
+          <Button asChild>
+            <Link href="/exams/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Exam
+            </Link>
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-12 text-center text-muted-foreground">Loading exams...</div>
+        ) : !exams?.length ? (
+          <div className="text-center py-24 border border-dashed rounded-lg bg-slate-50">
+            <h3 className="text-lg font-medium text-foreground mb-2">No exams created</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">Create your first exam to build questions and generate access codes for your students.</p>
+            <Button asChild>
+              <Link href="/exams/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Exam
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="border rounded-md bg-white overflow-hidden shadow-sm">
+            <div className="grid grid-cols-12 gap-4 p-4 border-b bg-slate-50/80 font-medium text-sm text-muted-foreground">
+              <div className="col-span-4">Exam</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Questions</div>
+              <div className="col-span-2">Sessions</div>
+              <div className="col-span-2 text-right">Actions</div>
+            </div>
+            <div className="divide-y">
+              {exams.map((exam) => (
+                <div key={exam.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-50 transition-colors">
+                  <div className="col-span-4">
+                    <Link href={`/exams/${exam.id}/build`} className="font-bold text-foreground hover:text-primary transition-colors block mb-1">
+                      {exam.title}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">
+                      {exam.subject && <span className="mr-2">{exam.subject} •</span>}
+                      {exam.durationMinutes} min
+                    </div>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    {getStatusBadge(exam.status)}
+                  </div>
+                  <div className="col-span-2 text-sm">
+                    {exam.questionCount || 0} questions
+                  </div>
+                  <div className="col-span-2 text-sm flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    {exam.sessionCount || 0}
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/exams/${exam.id}/build`} className="cursor-pointer">
+                            <Settings className="mr-2 h-4 w-4" /> Edit Exam
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/exams/${exam.id}/results`} className="cursor-pointer">
+                            <FileBarChart className="mr-2 h-4 w-4" /> View Results
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </InstructorLayout>
+  );
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Shield outline -->
+  <path d="M100 20 L20 50 L20 100 C20 150 60 180 100 190 C140 180 180 150 180 100 L180 50 Z" fill="none" stroke="currentColor" stroke-width="16" stroke-linejoin="round"/>
+  <!-- Camera Aperture inner -->
+  <circle cx="100" cy="105" r="40" fill="none" stroke="currentColor" stroke-width="12"/>
+  <path d="M100 65 L125 90 M140 105 L115 130 M100 145 L75 120 M60 105 L85 80" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="100" cy="105" r="12" fill="currentColor"/>
+</svg>
