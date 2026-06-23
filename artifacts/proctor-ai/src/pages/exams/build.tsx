@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
 import { useGetExam, useListQuestions, useUpdateExam, useGenerateQuestions, usePublishExam, getGetExamQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -35,6 +35,8 @@ export default function ExamBuilder() {
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [studentEmails, setStudentEmails] = useState("");
+  const [accessCodes, setAccessCodes] = useState<{ code: string; studentEmail: string }[]>([]);
+  const [codesOpen, setCodesOpen] = useState(false);
 
   const handleGenerate = () => {
     if (!aiPrompt) return;
@@ -71,9 +73,10 @@ export default function ExamBuilder() {
       examId,
       data: { studentEmails: emails }
     }, {
-      onSuccess: () => {
-        toast({ title: "Exam Published", description: "Access codes have been generated." });
+      onSuccess: (data) => {
         setPublishOpen(false);
+        setAccessCodes(data.accessCodes ?? []);
+        setCodesOpen(true);
         queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
       }
     });
@@ -255,6 +258,60 @@ export default function ExamBuilder() {
           </div>
         )}
       </div>
+
+      {/* Access Codes Dialog */}
+      <Dialog open={codesOpen} onOpenChange={setCodesOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <CheckCheck className="h-5 w-5" /> Exam Published — Access Codes
+            </DialogTitle>
+            <DialogDescription>
+              Share each student's unique code with them. They'll use it to join the exam.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 my-2 max-h-80 overflow-y-auto pr-1">
+            {accessCodes.map(({ code, studentEmail }) => (
+              <AccessCodeRow key={code} code={code} studentEmail={studentEmail} />
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              const text = accessCodes.map(({ studentEmail, code }) => `${studentEmail}: ${code}`).join("\n");
+              navigator.clipboard.writeText(text);
+              toast({ title: "All codes copied to clipboard" });
+            }}>
+              <Copy className="h-4 w-4 mr-2" /> Copy All
+            </Button>
+            <Button onClick={() => setCodesOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </InstructorLayout>
+  );
+}
+
+function AccessCodeRow({ code, studentEmail }: { code: string; studentEmail: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [code]);
+
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded-md border bg-slate-50">
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground truncate">{studentEmail}</p>
+        <p className="font-mono font-bold tracking-widest text-primary text-lg leading-tight">{code}</p>
+      </div>
+      <button
+        onClick={copy}
+        className="shrink-0 p-2 rounded hover:bg-slate-200 transition-colors text-muted-foreground hover:text-foreground"
+        title="Copy code"
+      >
+        {copied ? <CheckCheck className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
