@@ -79,9 +79,8 @@ router.post("/join", requireAuth, async (req: any, res) => {
 
     // If unclaimed (studentClerkId is null), claim it
     if (!session.studentClerkId) {
-      const auth = req.clerkAuth ?? getAuth(req);
       const [updated] = await db.update(examSessionsTable)
-        .set({ studentClerkId: clerkId, updatedAt: new Date() })
+        .set({ studentClerkId: clerkId })
         .where(eq(examSessionsTable.id, session.id))
         .returning();
       session = updated;
