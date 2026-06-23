@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useGetMe, useUpdateMe } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -18,15 +19,17 @@ export default function Onboarding() {
     });
   };
 
+  useEffect(() => {
+    if (!isLoadingMe && me?.role) {
+      setLocation(me.role === "instructor" ? "/dashboard" : "/student");
+    }
+  }, [me, isLoadingMe, setLocation]);
+
   if (isLoadingMe) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  // If role is already set, redirect
-  if (me?.role) {
-    setLocation(me.role === "instructor" ? "/dashboard" : "/student");
-    return null;
-  }
+  if (me?.role) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">

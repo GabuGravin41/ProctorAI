@@ -150,8 +150,24 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
 
     const accessCodes = [];
     for (const email of studentEmails) {
-      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-      accessCodes.push({ code, studentEmail: email });
+      // Generate a unique 8-char code, retry if collision
+      let code: string;
+      let attempts = 0;
+      while (true) {
+        code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const existing = await db.select({ id: examSessionsTable.id }).from(examSessionsTable).where(eq(examSessionsTable.accessCode, code));
+        if (existing.length === 0 || attempts > 5) break;
+        attempts++;
+      }
+      // Pre-allocate a session row (studentClerkId null until student claims it)
+      await db.insert(examSessionsTable).values({
+        examId,
+        studentClerkId: null,
+        studentEmail: email,
+        accessCode: code!,
+        status: "pending",
+      });
+      accessCodes.push({ code: code!, studentEmail: email });
     }
 
     res.json({

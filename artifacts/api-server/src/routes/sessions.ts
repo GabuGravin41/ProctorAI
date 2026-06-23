@@ -64,25 +64,30 @@ router.post("/join", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
     const { accessCode } = req.body;
+    const normalizedCode = accessCode.trim().toUpperCase();
 
-    // Try to find existing session with this access code for this student
-    let [session] = await db.select().from(examSessionsTable).where(
-      and(eq(examSessionsTable.accessCode, accessCode.toUpperCase()), eq(examSessionsTable.studentClerkId, clerkId))
+    // Look up the pre-allocated session by access code
+    const [preAllocated] = await db.select().from(examSessionsTable).where(
+      eq(examSessionsTable.accessCode, normalizedCode)
     );
 
-    // If no session exists, create one with the access code
-    if (!session) {
-      // Find an exam to attach this to (simplified: access code is exam ID encoded)
-      // In a real system this would look up a pre-created access code
-      // For now, create a new session with this code
-      const exams = await db.select().from(examsTable).where(eq(examsTable.status, "published"));
-      if (exams.length === 0) return res.status(404).json({ error: "No published exam found for this code" });
+    if (!preAllocated) {
+      return res.status(404).json({ error: "Invalid access code. Please check with your instructor." });
+    }
 
-      const exam = exams[0];
-      [session] = await db
-        .insert(examSessionsTable)
-        .values({ examId: exam.id, studentClerkId: clerkId, accessCode: accessCode.toUpperCase(), status: "pending" })
+    let session = preAllocated;
+
+    // If unclaimed (studentClerkId is null), claim it
+    if (!session.studentClerkId) {
+      const auth = req.clerkAuth ?? getAuth(req);
+      const [updated] = await db.update(examSessionsTable)
+        .set({ studentClerkId: clerkId, updatedAt: new Date() })
+        .where(eq(examSessionsTable.id, session.id))
         .returning();
+      session = updated;
+    } else if (session.studentClerkId !== clerkId) {
+      // Code already claimed by someone else
+      return res.status(403).json({ error: "This access code has already been used by another student." });
     }
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
@@ -108,7 +113,7 @@ router.post("/join", requireAuth, async (req: any, res) => {
           type: q.type,
           text: q.text,
           options: q.options ?? null,
-          correctAnswer: null, // hide from student
+          correctAnswer: null,
           points: q.points,
           orderIndex: q.orderIndex,
         })),

@@ -19,9 +19,9 @@ export default function JoinExam() {
     if (!accessCode.trim()) return;
 
     joinExam.mutate({ data: { accessCode: accessCode.trim() } }, {
-      onSuccess: (session) => {
+      onSuccess: (data) => {
         toast({ title: "Successfully joined exam" });
-        setLocation(`/exam/${session.id}`);
+        setLocation(`/exam/${data.session.id}`);
       },
       onError: (err: any) => {
         toast({ 

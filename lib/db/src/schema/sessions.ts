@@ -6,7 +6,7 @@ import { examsTable } from "./exams";
 export const examSessionsTable = pgTable("exam_sessions", {
   id: serial("id").primaryKey(),
   examId: integer("exam_id").notNull().references(() => examsTable.id, { onDelete: "cascade" }),
-  studentClerkId: text("student_clerk_id").notNull(),
+  studentClerkId: text("student_clerk_id"),
   studentEmail: text("student_email"),
   studentName: text("student_name"),
   accessCode: text("access_code").notNull().unique(),

@@ -19,7 +19,7 @@ export default function ExamTaking() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: sessionWithExam, isLoading } = useGetSession(sessionId, { query: { enabled: !!sessionId } });
+  const { data: sessionWithExam, isLoading } = useGetSession(sessionId, { query: { enabled: !!sessionId && !isNaN(sessionId) } });
   const startSession = useStartSession();
   const submitSession = useSubmitSession();
   const reportFlag = useReportFlag();
@@ -148,13 +148,15 @@ export default function ExamTaking() {
     });
   };
 
+  useEffect(() => {
+    if (!isLoading && sessionWithExam?.session.status === 'submitted') {
+      setLocation(`/exam/${sessionId}/results`);
+    }
+  }, [isLoading, sessionWithExam, sessionId, setLocation]);
+
   if (isLoading) return <StudentLayout><div className="flex h-screen items-center justify-center">Loading exam...</div></StudentLayout>;
-  
-  if (sessionWithExam?.session.status === 'submitted') {
-    // Already submitted
-    setLocation(`/exam/${sessionId}/results`);
-    return null;
-  }
+
+  if (sessionWithExam?.session.status === 'submitted') return null;
 
   if (!hasStarted) {
     return (
