@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   GenerateQuestionsInputDifficulty,
   GenerateQuestionsInputQuestionTypesItem
 } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
+import LatexRenderer from "@/components/latex-renderer";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 type QuestionType = "multiple_choice" | "true_false" | "short_answer" | "essay";
@@ -49,6 +51,13 @@ const DEFAULT_FORM: NewQuestionForm = {
   points: "1",
 };
 
+const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "multiple_choice", label: "Multiple Choice" },
+  { value: "true_false", label: "True/False" },
+  { value: "short_answer", label: "Short Answer" },
+  { value: "essay", label: "Essay/Proof" },
+];
+
 export default function ExamBuilder() {
   const params = useParams();
   const examId = Number(params.examId);
@@ -69,6 +78,7 @@ export default function ExamBuilder() {
   const [aiCount, setAiCount] = useState("5");
   const [aiDifficulty, setAiDifficulty] = useState<GenerateQuestionsInputDifficulty>("medium");
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<QuestionType[]>(["essay"]);
   const [publishOpen, setPublishOpen] = useState(false);
   const [studentEmails, setStudentEmails] = useState("");
   const [accessCodes, setAccessCodes] = useState<{ code: string; studentEmail: string }[]>([]);
@@ -77,9 +87,20 @@ export default function ExamBuilder() {
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [questionForm, setQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
+  const [regenerateTargetId, setRegenerateTargetId] = useState<number | null>(null);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiProvider, setAiProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
+  const [aiModel, setAiModel] = useState("deepseek/deepseek-chat");
+  const [customApiKey, setCustomApiKey] = useState("");
 
   const handleGenerate = () => {
     if (!aiPrompt) return;
+    if (selectedQuestionTypes.length === 0) {
+      toast({ title: "Select at least one question type", variant: "destructive" });
+      return;
+    }
     
     generateQuestions.mutate({
       examId,
@@ -87,7 +108,7 @@ export default function ExamBuilder() {
         topic: aiPrompt,
         count: parseInt(aiCount, 10),
         difficulty: aiDifficulty,
-        questionTypes: ["multiple_choice", "true_false", "short_answer", "essay"] as GenerateQuestionsInputQuestionTypesItem[],
+        questionTypes: selectedQuestionTypes as GenerateQuestionsInputQuestionTypesItem[],
       }
     }, {
       onSuccess: () => {
@@ -164,6 +185,132 @@ export default function ExamBuilder() {
     });
   };
 
+  const toggleQuestionType = (type: QuestionType) => {
+    setSelectedQuestionTypes(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const handleDeleteAll = () => {
+    if (!questions || questions.length === 0) return;
+    
+    const deletePromises = questions.map(q => 
+      new Promise((resolve, reject) => {
+        deleteQuestion.mutate({ examId, questionId: q.id }, {
+          onSuccess: resolve,
+          onError: reject
+        });
+      })
+    );
+
+    Promise.all(deletePromises)
+      .then(() => {
+        toast({ title: "All questions deleted" });
+        setDeleteAllOpen(false);
+        refetchQuestions();
+        queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+      })
+      .catch(() => {
+        toast({ title: "Failed to delete some questions", variant: "destructive" });
+      });
+  };
+
+  const handleRegenerateOne = (questionId: number) => {
+    const question = questions?.find(q => q.id === questionId);
+    if (!question) return;
+
+    // Delete the question first
+    deleteQuestion.mutate({ examId, questionId }, {
+      onSuccess: () => {
+        // Generate a replacement
+        generateQuestions.mutate({
+          examId,
+          data: {
+            topic: aiPrompt || question.text.substring(0, 100),
+            count: 1,
+            difficulty: aiDifficulty,
+            questionTypes: [question.type as GenerateQuestionsInputQuestionTypesItem],
+          }
+        }, {
+          onSuccess: () => {
+            toast({ title: "Question regenerated" });
+            setRegenerateOpen(false);
+            setRegenerateTargetId(null);
+            refetchQuestions();
+            queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+          },
+          onError: () => {
+            toast({ title: "Regeneration failed", variant: "destructive" });
+          }
+        });
+      },
+      onError: () => {
+        toast({ title: "Failed to delete question for regeneration", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleRegenerateAll = () => {
+    if (!questions || questions.length === 0) return;
+    
+    // Delete all questions first
+    handleDeleteAll();
+    
+    // Then regenerate
+    setTimeout(() => {
+      generateQuestions.mutate({
+        examId,
+        data: {
+          topic: aiPrompt || exam?.subject || "General",
+          count: questions.length,
+          difficulty: aiDifficulty,
+          questionTypes: selectedQuestionTypes as GenerateQuestionsInputQuestionTypesItem[],
+        }
+      }, {
+        onSuccess: () => {
+          toast({ title: "All questions regenerated" });
+          setRegenerateOpen(false);
+          refetchQuestions();
+          queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+        },
+        onError: () => {
+          toast({ title: "Regeneration failed", variant: "destructive" });
+        }
+      });
+    }, 500);
+  };
+
+  const handleUpdateAiSettings = () => {
+    updateExam.mutate({
+      examId,
+      data: {
+        aiConfig: {
+          provider: aiProvider,
+          model: aiModel,
+          customApiKey: customApiKey || undefined,
+        }
+      }
+    }, {
+      onSuccess: () => {
+        toast({ title: "AI settings updated" });
+        setAiSettingsOpen(false);
+        queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+      },
+      onError: () => {
+        toast({ title: "Failed to update AI settings", variant: "destructive" });
+      }
+    });
+  };
+
+  // Initialize AI settings from exam
+  if (exam?.aiConfig && !aiSettingsOpen) {
+    setAiProvider(exam.aiConfig.provider as any);
+    setAiModel(exam.aiConfig.model);
+    setCustomApiKey(exam.aiConfig.customApiKey || "");
+  }
+
   const handlePublish = () => {
     const emails = studentEmails.split(/[\n,]+/).map(e => e.trim()).filter(e => e);
     if (emails.length === 0) {
@@ -204,6 +351,34 @@ export default function ExamBuilder() {
             </div>
           </div>
           <div className="flex gap-2">
+            {exam.status === 'draft' && (
+              <>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setAiSettingsOpen(true)}
+                  disabled={updateExam.isPending}
+                >
+                  <Settings className="h-4 w-4" /> AI Settings
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 text-destructive hover:text-destructive"
+                  onClick={() => setDeleteAllOpen(true)}
+                  disabled={!questions || questions.length === 0}
+                >
+                  <Trash2 className="h-4 w-4" /> Delete All
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setRegenerateOpen(true)}
+                  disabled={!questions || questions.length === 0}
+                >
+                  <RefreshCw className="h-4 w-4" /> Regenerate All
+                </Button>
+              </>
+            )}
             {exam.status === 'published' && (
               <Button
                 variant="outline"
@@ -299,6 +474,26 @@ export default function ExamBuilder() {
                             <SelectItem value="hard">Hard</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Question Types (select all that apply)</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {QUESTION_TYPES.map((qt) => (
+                          <div key={qt.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`qt-${qt.value}`}
+                              checked={selectedQuestionTypes.includes(qt.value)}
+                              onCheckedChange={() => toggleQuestionType(qt.value)}
+                            />
+                            <label
+                              htmlFor={`qt-${qt.value}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {qt.label}
+                            </label>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -468,7 +663,7 @@ export default function ExamBuilder() {
                   <div className="space-y-1 flex-1 min-w-0 pr-4">
                     <CardTitle className="text-base flex items-center gap-2">
                       <span className="text-muted-foreground shrink-0">{index + 1}.</span> 
-                      <span className="leading-relaxed">{q.text}</span>
+                      <LatexRenderer text={q.text} className="leading-relaxed" />
                     </CardTitle>
                     <CardDescription className="capitalize flex items-center gap-2">
                       {q.type.replace(/_/g, ' ')}
@@ -491,7 +686,7 @@ export default function ExamBuilder() {
                     <div className="space-y-2 pl-6">
                       {q.options.map((opt, i) => (
                         <div key={i} className={`text-sm p-2 rounded border ${q.correctAnswer === opt ? 'bg-green-50 border-green-200 font-medium text-green-800' : 'bg-slate-50 border-transparent'}`}>
-                          {String.fromCharCode(65 + i)}. {opt}
+                          {String.fromCharCode(65 + i)}. <LatexRenderer text={opt} />
                           {q.correctAnswer === opt && <span className="ml-2 text-xs text-green-600">✓ Correct</span>}
                         </div>
                       ))}
@@ -501,7 +696,7 @@ export default function ExamBuilder() {
                 {q.type !== 'multiple_choice' && q.correctAnswer && (
                   <CardContent className="py-0 pb-4">
                     <div className="text-sm pl-6 text-muted-foreground">
-                      <span className="font-medium text-foreground">Answer: </span> {q.correctAnswer}
+                      <span className="font-medium text-foreground">Answer: </span> <LatexRenderer text={q.correctAnswer} />
                     </div>
                   </CardContent>
                 )}
@@ -509,8 +704,23 @@ export default function ExamBuilder() {
                   <CardContent className="py-0 pb-4 border-t pt-3 mt-1 bg-slate-50/50">
                     <div className="text-sm pl-6 text-muted-foreground space-y-1">
                       <span className="font-semibold text-foreground text-xs uppercase tracking-wider block">Reference Solution:</span>
-                      <div className="text-slate-800 italic leading-relaxed whitespace-pre-wrap font-mono">{q.referenceSolution}</div>
+                      <LatexRenderer text={q.referenceSolution} className="text-slate-800 italic leading-relaxed font-mono" />
                     </div>
+                  </CardContent>
+                )}
+                {exam.status === 'draft' && (
+                  <CardContent className="py-2 flex gap-2 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setRegenerateTargetId(q.id);
+                        setRegenerateOpen(true);
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                    </Button>
                   </CardContent>
                 )}
               </Card>

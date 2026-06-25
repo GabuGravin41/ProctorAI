@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
 import { LogOut, LayoutDashboard, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -15,6 +15,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const { user } = useUser();
   const { data: me, isLoading } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       enabled: !!isSignedIn
     }
   });

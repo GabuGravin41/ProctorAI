@@ -102,8 +102,6 @@ export default function Onboarding() {
     );
   }
 
-  if (me?.role) return null;
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-xl shadow-lg border-2 border-slate-100 bg-white">

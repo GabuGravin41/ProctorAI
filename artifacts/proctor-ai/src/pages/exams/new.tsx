@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateExam } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Sparkles, Key, Check, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Key, Cpu } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 
@@ -19,17 +20,32 @@ const formSchema = z.object({
   subject: z.string().optional(),
   description: z.string().optional(),
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
-  aiProvider: z.enum(["free", "custom_openrouter", "custom_gemini", "hosted"]),
+  examType: z.enum(["mixed", "proof_only"]),
+  aiProvider: z.enum(["free", "custom_openrouter", "custom_gemini"]),
   aiModel: z.string(),
   customApiKey: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface OpenRouterModel {
+  id: string;
+  name: string;
+  description: string;
+  pricing: {
+    prompt: number;
+    completion: number;
+  };
+  context_length: number;
+}
+
 export default function NewExam() {
   const [, setLocation] = useLocation();
   const createExam = useCreateExam();
-  const [selectedProvider, setSelectedProvider] = useState<"free" | "custom_openrouter" | "custom_gemini" | "hosted">("free");
+  const [selectedProvider, setSelectedProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
+  const [models, setModels] = useState<OpenRouterModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [examType, setExamType] = useState<"mixed" | "proof_only">("mixed");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -38,11 +54,30 @@ export default function NewExam() {
       subject: "",
       description: "",
       durationMinutes: 60,
+      examType: "mixed",
       aiProvider: "free",
-      aiModel: "google/gemma-2-9b-it:free",
+      aiModel: "deepseek/deepseek-chat",
       customApiKey: "",
     },
   });
+
+  // Fetch OpenRouter models
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (selectedProvider !== "custom_openrouter") return;
+      setLoadingModels(true);
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/models?sort=intelligence-high-to-low");
+        const data = await response.json();
+        setModels(data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+    fetchModels();
+  }, [selectedProvider]);
 
   const onSubmit = (data: FormValues) => {
     const payload = {
@@ -50,11 +85,11 @@ export default function NewExam() {
       subject: data.subject || "",
       description: data.description || "",
       durationMinutes: data.durationMinutes,
+      examType: data.examType,
       aiConfig: {
         provider: data.aiProvider,
         model: data.aiModel,
         customApiKey: data.customApiKey || undefined,
-        hostedPaid: data.aiProvider === "hosted" ? true : undefined,
       }
     };
 
@@ -65,17 +100,15 @@ export default function NewExam() {
     });
   };
 
-  const handleProviderSelect = (provider: "free" | "custom_openrouter" | "custom_gemini" | "hosted") => {
+  const handleProviderSelect = (provider: "free" | "custom_openrouter" | "custom_gemini") => {
     setSelectedProvider(provider);
     form.setValue("aiProvider", provider);
     if (provider === "free") {
-      form.setValue("aiModel", "google/gemma-2-9b-it:free");
+      form.setValue("aiModel", "deepseek/deepseek-chat");
     } else if (provider === "custom_openrouter") {
-      form.setValue("aiModel", "google/gemma-2-9b-it:free");
+      form.setValue("aiModel", "deepseek/deepseek-chat");
     } else if (provider === "custom_gemini") {
       form.setValue("aiModel", "gemini-2.5-flash");
-    } else if (provider === "hosted") {
-      form.setValue("aiModel", "deepseek/deepseek-chat");
     }
   };
 
@@ -146,6 +179,33 @@ export default function NewExam() {
 
                 <FormField
                   control={form.control}
+                    name="examType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Exam Type</FormLabel>
+                        <FormControl>
+                          <Select value={field.value} onValueChange={(value) => { field.onChange(value); setExamType(value as "mixed" | "proof_only"); }}>
+                            <SelectTrigger className="bg-slate-50/50 focus:bg-white">
+                              <SelectValue placeholder="Select exam type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mixed">Mixed (MCQ + Short Answer + Essay)</SelectItem>
+                              <SelectItem value="proof_only">Proof-Only (Olympiad Style - No MCQs)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          {examType === "proof_only" 
+                            ? "Olympiad-style exams with only proof-based questions. Suitable for IMO, Putnam, etc."
+                            : "Standard exam with multiple choice, short answer, and essay questions."}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -169,115 +229,70 @@ export default function NewExam() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <CardTitle>AI Settings</CardTitle>
+                  <CardTitle>AI Model Selection</CardTitle>
                 </div>
-                <CardDescription>Select the AI configuration for Olympiad proof evaluation and question generation.</CardDescription>
+                <CardDescription>Select the AI model for question generation and evaluation.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Free Default */}
-                  <div 
-                    onClick={() => handleProviderSelect("free")}
-                    className={`cursor-pointer p-5 rounded-xl border-2 transition-all relative flex flex-col justify-between h-40 ${
-                      selectedProvider === "free" 
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5" 
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    {selectedProvider === "free" && <Check className="absolute top-3 right-3 text-primary h-5 w-5" />}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Default Free</Badge>
-                      </div>
-                      <h4 className="font-bold text-lg mt-2">Gemma 9B (Free)</h4>
-                      <p className="text-xs text-muted-foreground mt-1">Excellent for fast, standard proof checks and question generation at zero cost.</p>
-                    </div>
-                  </div>
+                <FormField
+                  control={form.control}
+                  name="aiProvider"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Provider</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={(value) => handleProviderSelect(value as any)}>
+                          <SelectTrigger className="bg-slate-50/50 focus:bg-white">
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">
+                              <div className="flex items-center gap-2">
+                                <Cpu className="h-4 w-4" />
+                                <div>
+                                  <div className="font-medium">ProctorAI Hosted</div>
+                                  <div className="text-xs text-muted-foreground">Using our API credits - Recommended for Olympiad</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="custom_openrouter">
+                              <div className="flex items-center gap-2">
+                                <Key className="h-4 w-4" />
+                                <div>
+                                  <div className="font-medium">OpenRouter (Your Key)</div>
+                                  <div className="text-xs text-muted-foreground">Bring your own OpenRouter API key</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="custom_gemini">
+                              <div className="flex items-center gap-2">
+                                <Key className="h-4 w-4" />
+                                <div>
+                                  <div className="font-medium">Google Gemini (Your Key)</div>
+                                  <div className="text-xs text-muted-foreground">Bring your own Google AI Studio key</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  {/* Hosted Paid */}
-                  <div 
-                    onClick={() => handleProviderSelect("hosted")}
-                    className={`cursor-pointer p-5 rounded-xl border-2 transition-all relative flex flex-col justify-between h-40 ${
-                      selectedProvider === "hosted" 
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5" 
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    {selectedProvider === "hosted" && <Check className="absolute top-3 right-3 text-primary h-5 w-5" />}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">Premium Hosted</Badge>
-                        <span className="text-xs font-semibold text-primary">$10 Setup Fee</span>
-                      </div>
-                      <h4 className="font-bold text-lg mt-2">DeepSeek V3 / Gemini Pro</h4>
-                      <p className="text-xs text-muted-foreground mt-1">Advanced Olympiad proofs support. Fully managed, with billing and setups automated by us.</p>
-                    </div>
-                  </div>
-
-                  {/* Custom OpenRouter */}
-                  <div 
-                    onClick={() => handleProviderSelect("custom_openrouter")}
-                    className={`cursor-pointer p-5 rounded-xl border-2 transition-all relative flex flex-col justify-between h-40 ${
-                      selectedProvider === "custom_openrouter" 
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5" 
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    {selectedProvider === "custom_openrouter" && <Check className="absolute top-3 right-3 text-primary h-5 w-5" />}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Key className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs font-medium">Custom API</span>
-                      </div>
-                      <h4 className="font-bold text-lg mt-2">OpenRouter API</h4>
-                      <p className="text-xs text-muted-foreground mt-1">Bring your own key. Choose Gemma, DeepSeek, ChatGPT, or Llama and pay for tokens directly.</p>
-                    </div>
-                  </div>
-
-                  {/* Custom Gemini */}
-                  <div 
-                    onClick={() => handleProviderSelect("custom_gemini")}
-                    className={`cursor-pointer p-5 rounded-xl border-2 transition-all relative flex flex-col justify-between h-40 ${
-                      selectedProvider === "custom_gemini" 
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5" 
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    {selectedProvider === "custom_gemini" && <Check className="absolute top-3 right-3 text-primary h-5 w-5" />}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Key className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs font-medium">Custom API</span>
-                      </div>
-                      <h4 className="font-bold text-lg mt-2">Google Gemini API</h4>
-                      <p className="text-xs text-muted-foreground mt-1">Bring your own Google AI Studio key. Call Gemini 2.5 Flash / Pro models directly.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Conditional Fields based on selection */}
-                {selectedProvider === "hosted" && (
-                  <div className="p-4 rounded-lg bg-indigo-50/50 border border-indigo-100 flex gap-3 items-start">
-                    <Shield className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <h5 className="font-semibold text-indigo-900 text-sm">One-Click Setup</h5>
-                      <p className="text-xs text-indigo-700 mt-0.5">We will host and configure the system using DeepSeek V3 and Gemini 2.5. By proceeding, a $10 setup configuration fee is simulated (un-enforced in testing phase).</p>
-                    </div>
-                  </div>
-                )}
-
-                {selectedProvider !== "free" && selectedProvider !== "hosted" && (
+                {selectedProvider === "custom_openrouter" && (
                   <div className="space-y-4 p-4 border rounded-xl bg-slate-50/50">
                     <FormField
                       control={form.control}
                       name="customApiKey"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Custom API Key</FormLabel>
+                          <FormLabel>OpenRouter API Key</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="sk-..." {...field} className="bg-white font-mono" />
+                            <Input type="password" placeholder="sk-or-..." {...field} className="bg-white font-mono" />
                           </FormControl>
-                          <FormDescription>This key is saved securely and is only called to evaluate proofs for this exam.</FormDescription>
+                          <FormDescription>Your OpenRouter API key for model access</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -288,15 +303,90 @@ export default function NewExam() {
                       name="aiModel"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>LLM Model Identifier</FormLabel>
+                          <FormLabel>Model</FormLabel>
                           <FormControl>
-                            <Input placeholder={selectedProvider === "custom_gemini" ? "gemini-2.5-flash" : "google/gemma-2-9b-it:free"} {...field} className="bg-white font-mono" />
+                            {loadingModels ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading models...
+                              </div>
+                            ) : (
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger className="bg-white font-mono">
+                                  <SelectValue placeholder="Select a model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {models.slice(0, 20).map((model) => (
+                                    <SelectItem key={model.id} value={model.id}>
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{model.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ${model.pricing.prompt}/M prompt • ${model.pricing.completion}/M completion
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </FormControl>
-                          <FormDescription>Choose any valid model name supported by the api provider.</FormDescription>
+                          <FormDescription>Choose from top models by intelligence</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
+                )}
+
+                {selectedProvider === "custom_gemini" && (
+                  <div className="space-y-4 p-4 border rounded-xl bg-slate-50/50">
+                    <FormField
+                      control={form.control}
+                      name="customApiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gemini API Key</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="AIza..." {...field} className="bg-white font-mono" />
+                          </FormControl>
+                          <FormDescription>Your Google AI Studio API key</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="aiModel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger className="bg-white font-mono">
+                                <SelectValue placeholder="Select a model" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Fast)</SelectItem>
+                                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>Choose Gemini model version</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {selectedProvider === "free" && (
+                  <div className="p-4 rounded-lg bg-green-50/50 border border-green-100 flex gap-3 items-start">
+                    <Cpu className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-semibold text-green-900 text-sm">ProctorAI Hosted</h5>
+                      <p className="text-xs text-green-700 mt-0.5">Using DeepSeek V3 for Olympiad-level question generation. No API key required.</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
