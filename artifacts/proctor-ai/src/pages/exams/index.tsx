@@ -1,8 +1,10 @@
-import { useListExams } from "@workspace/api-client-react";
+import { useListExams, useUpdateExam, getListExamsQueryKey } from "@workspace/api-client-react";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Plus, MoreHorizontal, Settings, FileBarChart, Users } from "lucide-react";
+import { Plus, MoreHorizontal, Settings, FileBarChart, Users, Archive } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   DropdownMenu,
@@ -16,6 +18,22 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ExamsList() {
   const { data: exams, isLoading } = useListExams();
+  const updateExam = useUpdateExam();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleArchive = (examId: number) => {
+    updateExam.mutate(
+      { examId, data: { status: "archived" } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
+          toast({ title: "Exam archived", description: "The exam is now closed to new sessions." });
+        },
+        onError: () => toast({ title: "Failed to archive exam", variant: "destructive" }),
+      }
+    );
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -106,10 +124,18 @@ export default function ExamsList() {
                             <FileBarChart className="mr-2 h-4 w-4" /> View Results
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
-                          Delete
-                        </DropdownMenuItem>
+                        {exam.status === "published" && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-muted-foreground"
+                              onClick={() => handleArchive(exam.id)}
+                              disabled={updateExam.isPending}
+                            >
+                              <Archive className="mr-2 h-4 w-4" /> Archive Exam
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

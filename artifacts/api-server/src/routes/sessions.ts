@@ -91,6 +91,9 @@ router.post("/join", requireAuth, async (req: any, res) => {
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.status === "archived") {
+      return res.status(403).json({ error: "This exam has been archived and is no longer accepting submissions." });
+    }
 
     const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
 

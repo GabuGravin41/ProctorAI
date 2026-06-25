@@ -3,7 +3,8 @@ import { useLocation, useParams } from "wouter";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
 import { useGetExam, useListQuestions, useUpdateExam, useGenerateQuestions, usePublishExam, getGetExamQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -37,6 +38,8 @@ export default function ExamBuilder() {
   const [studentEmails, setStudentEmails] = useState("");
   const [accessCodes, setAccessCodes] = useState<{ code: string; studentEmail: string }[]>([]);
   const [codesOpen, setCodesOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const updateExam = useUpdateExam();
 
   const handleGenerate = () => {
     if (!aiPrompt) return;
@@ -96,12 +99,22 @@ export default function ExamBuilder() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">{exam.title}</h1>
-                <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>{exam.status}</Badge>
+                <Badge variant={exam.status === 'published' ? 'default' : exam.status === 'archived' ? 'outline' : 'secondary'} className="capitalize">{exam.status}</Badge>
               </div>
               <p className="text-muted-foreground mt-1">{exam.subject} • {exam.durationMinutes} min</p>
             </div>
           </div>
           <div className="flex gap-2">
+            {exam.status === 'published' && (
+              <Button
+                variant="outline"
+                className="gap-2 text-muted-foreground"
+                onClick={() => setArchiveOpen(true)}
+                disabled={updateExam.isPending}
+              >
+                <Archive className="h-4 w-4" /> Archive
+              </Button>
+            )}
             {exam.status === 'draft' && (
               <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
                 <DialogTrigger asChild>
@@ -137,7 +150,7 @@ export default function ExamBuilder() {
                 </DialogContent>
               </Dialog>
             )}
-            {exam.status === 'published' && (
+            {(exam.status === 'published' || exam.status === 'archived') && (
               <Button variant="secondary" asChild>
                 <Link href={`/exams/${exam.id}/results`}>View Results</Link>
               </Button>
@@ -258,6 +271,45 @@ export default function ExamBuilder() {
           </div>
         )}
       </div>
+
+      {/* Archive Confirmation */}
+      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive this exam?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Archiving will close the exam immediately. Students with existing sessions can still submit,
+              but no new sessions can be started with any access code. This cannot be undone from the UI.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                updateExam.mutate(
+                  { examId, data: { status: "archived" } },
+                  {
+                    onSuccess: () => {
+                      setArchiveOpen(false);
+                      toast({ title: "Exam archived", description: "No new sessions can be started." });
+                      queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+                    },
+                    onError: () => {
+                      toast({ title: "Failed to archive", variant: "destructive" });
+                      setArchiveOpen(false);
+                    },
+                  }
+                );
+              }}
+              disabled={updateExam.isPending}
+            >
+              {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Archive Exam
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Access Codes Dialog */}
       <Dialog open={codesOpen} onOpenChange={setCodesOpen}>
