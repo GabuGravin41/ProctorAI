@@ -8,9 +8,20 @@
 
 export interface AnswerResult {
   questionId: number;
-  answer: string;
+  /** @nullable */
+  answer?: string | null;
+  /** @nullable */
+  questionText?: string | null;
+  /** @nullable */
+  questionType?: string | null;
+  /** @nullable */
+  studentAnswer?: string | null;
   isCorrect: boolean;
   points: number;
   /** @nullable */
+  maxPoints?: number | null;
+  /** @nullable */
   correctAnswer?: string | null;
+  /** @nullable */
+  options?: string[] | null;
 }

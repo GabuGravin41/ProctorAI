@@ -86,7 +86,7 @@ export default function StudentHome() {
                         <CheckCircle2 className="h-4 w-4 mr-1.5" /> Completed
                       </div>
                       <div className="font-bold text-lg">
-                        {item.session.score !== null && item.session.maxScore ? (
+                        {item.session.score != null && item.session.maxScore ? (
                           `${Math.round((item.session.score / item.session.maxScore) * 100)}%`
                         ) : (
                           "Pending"

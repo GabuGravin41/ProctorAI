@@ -283,6 +283,7 @@ export const ListSessionsQueryParams = zod.object({
 })
 
 export const ListSessionsResponseItem = zod.object({
+  "session": zod.object({
   "id": zod.number(),
   "examId": zod.number(),
   "studentClerkId": zod.string(),
@@ -296,6 +297,14 @@ export const ListSessionsResponseItem = zod.object({
   "startedAt": zod.string().nullish(),
   "submittedAt": zod.string().nullish(),
   "createdAt": zod.string()
+}),
+  "exam": zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "subject": zod.string().nullish(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['draft', 'published', 'archived'])
+})
 })
 export const ListSessionsResponse = zod.array(ListSessionsResponseItem)
 
@@ -343,7 +352,19 @@ export const JoinExamResponse = zod.object({
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 }))
-})
+}),
+  "answers": zod.array(zod.object({
+  "questionId": zod.number(),
+  "answer": zod.string().nullish(),
+  "questionText": zod.string().nullish(),
+  "questionType": zod.string().nullish(),
+  "studentAnswer": zod.string().nullish(),
+  "isCorrect": zod.boolean(),
+  "points": zod.number(),
+  "maxPoints": zod.number().nullish(),
+  "correctAnswer": zod.string().nullish(),
+  "options": zod.array(zod.string()).nullish()
+})).optional()
 })
 
 
@@ -390,7 +411,19 @@ export const GetSessionResponse = zod.object({
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 }))
-})
+}),
+  "answers": zod.array(zod.object({
+  "questionId": zod.number(),
+  "answer": zod.string().nullish(),
+  "questionText": zod.string().nullish(),
+  "questionType": zod.string().nullish(),
+  "studentAnswer": zod.string().nullish(),
+  "isCorrect": zod.boolean(),
+  "points": zod.number(),
+  "maxPoints": zod.number().nullish(),
+  "correctAnswer": zod.string().nullish(),
+  "options": zod.array(zod.string()).nullish()
+})).optional()
 })
 
 
@@ -453,10 +486,15 @@ export const SubmitSessionResponse = zod.object({
   "percentage": zod.number(),
   "answers": zod.array(zod.object({
   "questionId": zod.number(),
-  "answer": zod.string(),
+  "answer": zod.string().nullish(),
+  "questionText": zod.string().nullish(),
+  "questionType": zod.string().nullish(),
+  "studentAnswer": zod.string().nullish(),
   "isCorrect": zod.boolean(),
   "points": zod.number(),
-  "correctAnswer": zod.string().nullish()
+  "maxPoints": zod.number().nullish(),
+  "correctAnswer": zod.string().nullish(),
+  "options": zod.array(zod.string()).nullish()
 })).optional()
 })
 

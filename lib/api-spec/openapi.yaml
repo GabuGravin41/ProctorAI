@@ -299,7 +299,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ExamSession"
+                  $ref: "#/components/schemas/StudentSessionItem"
 
   /sessions/join:
     post:
@@ -798,6 +798,35 @@ components:
           $ref: "#/components/schemas/ExamSession"
         exam:
           $ref: "#/components/schemas/ExamWithQuestions"
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerResult"
+
+    ExamSummary:
+      type: object
+      required: [id, title, durationMinutes, status]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        durationMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published, archived]
+
+    StudentSessionItem:
+      type: object
+      required: [session, exam]
+      properties:
+        session:
+          $ref: "#/components/schemas/ExamSession"
+        exam:
+          $ref: "#/components/schemas/ExamSummary"
 
     JoinExamInput:
       type: object
@@ -843,18 +872,30 @@ components:
 
     AnswerResult:
       type: object
-      required: [questionId, answer, isCorrect, points]
+      required: [questionId, isCorrect, points]
       properties:
         questionId:
           type: integer
         answer:
-          type: string
+          type: ["string", "null"]
+        questionText:
+          type: ["string", "null"]
+        questionType:
+          type: ["string", "null"]
+        studentAnswer:
+          type: ["string", "null"]
         isCorrect:
           type: boolean
         points:
           type: number
+        maxPoints:
+          type: ["integer", "null"]
         correctAnswer:
           type: ["string", "null"]
+        options:
+          type: ["array", "null"]
+          items:
+            type: string
 
     # ── Flag ──────────────────────────────────────────────────────────────────
     CheatingFlag:

@@ -5,12 +5,10 @@
  * ProctorAI - Online proctored exam platform
  * OpenAPI spec version: 0.1.0
  */
-import type { AnswerResult } from './answerResult';
 import type { ExamSession } from './examSession';
-import type { ExamWithQuestions } from './examWithQuestions';
+import type { ExamSummary } from './examSummary';
 
-export interface SessionWithExam {
+export interface StudentSessionItem {
   session: ExamSession;
-  exam: ExamWithQuestions;
-  answers?: AnswerResult[];
+  exam: ExamSummary;
 }

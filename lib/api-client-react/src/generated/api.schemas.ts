@@ -255,9 +255,53 @@ export interface ExamSession {
   createdAt: string;
 }
 
+export interface AnswerResult {
+  questionId: number;
+  /** @nullable */
+  answer?: string | null;
+  /** @nullable */
+  questionText?: string | null;
+  /** @nullable */
+  questionType?: string | null;
+  /** @nullable */
+  studentAnswer?: string | null;
+  isCorrect: boolean;
+  points: number;
+  /** @nullable */
+  maxPoints?: number | null;
+  /** @nullable */
+  correctAnswer?: string | null;
+  /** @nullable */
+  options?: string[] | null;
+}
+
 export interface SessionWithExam {
   session: ExamSession;
   exam: ExamWithQuestions;
+  answers?: AnswerResult[];
+}
+
+export type ExamSummaryStatus = typeof ExamSummaryStatus[keyof typeof ExamSummaryStatus];
+
+
+export const ExamSummaryStatus = {
+  draft: 'draft',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface ExamSummary {
+  id: number;
+  title: string;
+  /** @nullable */
+  subject?: string | null;
+  durationMinutes: number;
+  status: ExamSummaryStatus;
+}
+
+export interface StudentSessionItem {
+  session: ExamSession;
+  exam: ExamSummary;
 }
 
 export interface JoinExamInput {
@@ -271,15 +315,6 @@ export interface AnswerInput {
 
 export interface SubmitAnswersInput {
   answers: AnswerInput[];
-}
-
-export interface AnswerResult {
-  questionId: number;
-  answer: string;
-  isCorrect: boolean;
-  points: number;
-  /** @nullable */
-  correctAnswer?: string | null;
 }
 
 export interface SubmissionResult {

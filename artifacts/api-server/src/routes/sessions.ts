@@ -49,7 +49,23 @@ router.get("/", requireAuth, async (req: any, res) => {
     const result = await Promise.all(
       sessions.map(async (s) => {
         const flags = await db.select({ id: cheatingFlagsTable.id }).from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, s.id));
-        return formatSession(s, flags.length);
+        const [exam] = await db.select({
+          id: examsTable.id,
+          title: examsTable.title,
+          subject: examsTable.subject,
+          durationMinutes: examsTable.durationMinutes,
+          status: examsTable.status,
+        }).from(examsTable).where(eq(examsTable.id, s.examId));
+        return {
+          session: formatSession(s, flags.length),
+          exam: exam ? {
+            id: exam.id,
+            title: exam.title,
+            subject: exam.subject ?? null,
+            durationMinutes: exam.durationMinutes,
+            status: exam.status,
+          } : null,
+        };
       })
     );
     res.json(result);
@@ -127,6 +143,38 @@ router.post("/join", requireAuth, async (req: any, res) => {
   }
 });
 
+// GET /api/sessions/:sessionId/answers
+router.get("/:sessionId/answers", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId)).orderBy(questionsTable.orderIndex);
+    const answers = await db.select().from(answersTable).where(eq(answersTable.sessionId, sessionId));
+
+    const result = questions.map((q) => {
+      const answer = answers.find((a) => a.questionId === q.id);
+      return {
+        questionId: q.id,
+        questionText: q.text,
+        questionType: q.type,
+        studentAnswer: answer?.answer ?? null,
+        isCorrect: answer ? Boolean(answer.isCorrect) : false,
+        points: answer?.points ?? 0,
+        maxPoints: q.points,
+        correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
+        options: q.options ?? null,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "getSessionAnswers error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/sessions/:sessionId
 router.get("/:sessionId", requireAuth, async (req: any, res) => {
   try {
@@ -139,6 +187,25 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
 
     const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
     const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
+
+    let answerResults = undefined;
+    if (session.status === "submitted") {
+      const storedAnswers = await db.select().from(answersTable).where(eq(answersTable.sessionId, sessionId));
+      answerResults = questions.map((q) => {
+        const stored = storedAnswers.find((a) => a.questionId === q.id);
+        return {
+          questionId: q.id,
+          questionText: q.text,
+          questionType: q.type,
+          studentAnswer: stored?.answer ?? null,
+          isCorrect: stored ? Boolean(stored.isCorrect) : false,
+          points: stored?.points ?? 0,
+          maxPoints: q.points,
+          correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
+          options: q.options ?? null,
+        };
+      });
+    }
 
     res.json({
       session: formatSession(session, flags.length),
@@ -163,6 +230,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           orderIndex: q.orderIndex,
         })),
       },
+      ...(answerResults !== undefined ? { answers: answerResults } : {}),
     });
   } catch (err) {
     req.log.error({ err }, "getSession error");

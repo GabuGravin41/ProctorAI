@@ -41,6 +41,7 @@ import type {
   QuestionInput,
   QuestionUpdate,
   SessionWithExam,
+  StudentSessionItem,
   SubmissionResult,
   SubmitAnswersInput,
   UserProfile,
@@ -967,9 +968,9 @@ export const getListSessionsUrl = (params?: ListSessionsParams,) => {
 /**
  * @summary List exam sessions (for instructor or student)
  */
-export const listSessions = async (params?: ListSessionsParams, options?: RequestInit): Promise<ExamSession[]> => {
+export const listSessions = async (params?: ListSessionsParams, options?: RequestInit): Promise<StudentSessionItem[]> => {
 
-  return customFetch<ExamSession[]>(getListSessionsUrl(params),
+  return customFetch<StudentSessionItem[]>(getListSessionsUrl(params),
   {
     ...options,
     method: 'GET'
