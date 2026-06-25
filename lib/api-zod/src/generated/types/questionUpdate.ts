@@ -13,6 +13,7 @@ export interface QuestionUpdate {
   text?: string;
   options?: string[];
   correctAnswer?: string;
+  referenceSolution?: string;
   points?: number;
   orderIndex?: number;
 }

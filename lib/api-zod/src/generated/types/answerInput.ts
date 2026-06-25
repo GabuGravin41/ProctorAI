@@ -9,4 +9,5 @@
 export interface AnswerInput {
   questionId: number;
   answer: string;
+  attachments?: string[];
 }

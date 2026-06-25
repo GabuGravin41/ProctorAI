@@ -13,5 +13,6 @@ export interface QuestionInput {
   text: string;
   options?: string[];
   correctAnswer?: string;
+  referenceSolution?: string;
   points?: number;
 }

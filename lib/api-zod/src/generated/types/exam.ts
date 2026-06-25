@@ -5,6 +5,8 @@
  * ProctorAI - Online proctored exam platform
  * OpenAPI spec version: 0.1.0
  */
+import type { AIConfig } from './aIConfig';
+import type { ExamGradingMode } from './examGradingMode';
 import type { ExamStatus } from './examStatus';
 
 export interface Exam {
@@ -20,6 +22,8 @@ export interface Exam {
   questionCount?: number;
   sessionCount?: number;
   flagCount?: number;
+  gradingMode?: ExamGradingMode;
+  aiConfig?: AIConfig;
   createdAt: string;
   updatedAt?: string;
 }

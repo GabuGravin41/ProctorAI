@@ -16,6 +16,8 @@ export interface Question {
   options?: string[] | null;
   /** @nullable */
   correctAnswer?: string | null;
+  /** @nullable */
+  referenceSolution?: string | null;
   points?: number;
   orderIndex: number;
 }

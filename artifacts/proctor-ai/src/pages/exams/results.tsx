@@ -5,8 +5,9 @@ import {
   useGetExamResults,
   useListSessionFlags,
   useReviewFlag,
+  getGetExamResultsQueryKey,
+  CheatingFlag,
 } from "@workspace/api-client-react";
-import type { CheatingFlag } from "@workspace/api-client-react/src/generated/api.schemas";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, AlertTriangle, CheckCircle2, ShieldCheck, ShieldX,
@@ -146,6 +147,11 @@ function FlagPanel({ sessionId, onClose }: { sessionId: number; onClose: () => v
                 {flag.reviewNote && (
                   <p className="text-sm text-muted-foreground italic mt-1">"{flag.reviewNote}"</p>
                 )}
+                {flag.clipData && (
+                  <div className="rounded-md overflow-hidden bg-black aspect-video border my-2">
+                    <video src={flag.clipData} controls className="w-full h-full object-contain" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -182,6 +188,12 @@ function FlagCard({
 
       {flag.description && (
         <p className="text-sm text-muted-foreground">{flag.description}</p>
+      )}
+
+      {flag.clipData && (
+        <div className="rounded-md overflow-hidden bg-black aspect-video border my-2">
+          <video src={flag.clipData} controls className="w-full h-full object-contain" />
+        </div>
       )}
 
       <Textarea
@@ -223,7 +235,7 @@ export default function ExamResults() {
   const examId = Number(params.examId);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
 
-  const { data: results, isLoading } = useGetExamResults(examId, { query: { enabled: !!examId } });
+  const { data: results, isLoading } = useGetExamResults(examId, { query: { queryKey: getGetExamResultsQueryKey(examId), enabled: !!examId } });
 
   if (isLoading) return <InstructorLayout><div className="p-8">Loading results…</div></InstructorLayout>;
   if (!results) return <InstructorLayout><div className="p-8">Results not found</div></InstructorLayout>;
@@ -311,7 +323,7 @@ export default function ExamResults() {
                       )}
                     </div>
                     <div className="col-span-2 text-sm font-medium">
-                      {session.score !== null && session.maxScore
+                      {session.score !== null && session.score !== undefined && session.maxScore
                         ? `${Math.round((session.score / session.maxScore) * 100)}% (${session.score}/${session.maxScore})`
                         : "—"}
                     </div>

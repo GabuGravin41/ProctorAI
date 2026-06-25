@@ -16,4 +16,6 @@ export const FlagInputType = {
   phone_detected: 'phone_detected',
   suspicious_movement: 'suspicious_movement',
   audio_anomaly: 'audio_anomaly',
+  tab_switch: 'tab_switch',
+  fullscreen_exit: 'fullscreen_exit',
 } as const;

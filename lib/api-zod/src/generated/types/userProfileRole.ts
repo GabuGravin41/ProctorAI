@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type UserProfileRole = typeof UserProfileRole[keyof typeof UserProfileRole];
+/**
+ * @nullable
+ */
+export type UserProfileRole = typeof UserProfileRole[keyof typeof UserProfileRole] | null;
 
 
 export const UserProfileRole = {

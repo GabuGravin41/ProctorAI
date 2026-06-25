@@ -7,7 +7,7 @@ export const cheatingFlagsTable = pgTable("cheating_flags", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id").notNull().references(() => examSessionsTable.id, { onDelete: "cascade" }),
   type: text("type", {
-    enum: ["face_not_visible", "multiple_faces", "looking_away", "phone_detected", "suspicious_movement", "audio_anomaly"],
+    enum: ["face_not_visible", "multiple_faces", "looking_away", "phone_detected", "suspicious_movement", "audio_anomaly", "tab_switch", "fullscreen_exit"],
   }).notNull(),
   description: text("description"),
   clipData: text("clip_data"),

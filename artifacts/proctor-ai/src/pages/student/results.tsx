@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetSession } from "@workspace/api-client-react";
+import { useGetSession, getGetSessionQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ export default function StudentResults() {
   const sessionId = Number(params.sessionId);
 
   const { data: sessionData, isLoading } = useGetSession(sessionId, {
-    query: { enabled: !!sessionId },
+    query: { queryKey: getGetSessionQueryKey(sessionId), enabled: !!sessionId },
   });
 
   if (isLoading) {

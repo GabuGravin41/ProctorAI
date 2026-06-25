@@ -2,8 +2,20 @@ import { useState, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
-import { useGetExam, useListQuestions, useUpdateExam, useGenerateQuestions, usePublishExam, getGetExamQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive } from "lucide-react";
+import {
+  useGetExam,
+  useListQuestions,
+  useUpdateExam,
+  useGenerateQuestions,
+  usePublishExam,
+  useCreateQuestion,
+  useDeleteQuestion,
+  getGetExamQueryKey,
+  getListQuestionsQueryKey,
+  GenerateQuestionsInputDifficulty,
+  GenerateQuestionsInputQuestionTypesItem
+} from "@workspace/api-client-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -14,8 +26,28 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { GenerateQuestionsInputDifficulty, GenerateQuestionsInputQuestionTypesItem } from "@workspace/api-client-react/src/generated/api.schemas";
 import { useQueryClient } from "@tanstack/react-query";
+
+// ── Types ───────────────────────────────────────────────────────────────────
+type QuestionType = "multiple_choice" | "true_false" | "short_answer" | "essay";
+
+interface NewQuestionForm {
+  type: QuestionType;
+  text: string;
+  options: string[];
+  correctAnswer: string;
+  referenceSolution: string;
+  points: string;
+}
+
+const DEFAULT_FORM: NewQuestionForm = {
+  type: "multiple_choice",
+  text: "",
+  options: ["", "", "", ""],
+  correctAnswer: "",
+  referenceSolution: "",
+  points: "1",
+};
 
 export default function ExamBuilder() {
   const params = useParams();
@@ -25,10 +57,13 @@ export default function ExamBuilder() {
   const queryClient = useQueryClient();
 
   const { data: exam, isLoading: isLoadingExam } = useGetExam(examId, { query: { enabled: !!examId, queryKey: getGetExamQueryKey(examId) } });
-  const { data: questions, isLoading: isLoadingQuestions, refetch: refetchQuestions } = useListQuestions(examId, { query: { enabled: !!examId } });
+  const { data: questions, isLoading: isLoadingQuestions, refetch: refetchQuestions } = useListQuestions(examId, { query: { enabled: !!examId, queryKey: getListQuestionsQueryKey(examId) } });
 
   const publishExam = usePublishExam();
   const generateQuestions = useGenerateQuestions();
+  const createQuestion = useCreateQuestion();
+  const deleteQuestion = useDeleteQuestion();
+  const updateExam = useUpdateExam();
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiCount, setAiCount] = useState("5");
@@ -39,7 +74,9 @@ export default function ExamBuilder() {
   const [accessCodes, setAccessCodes] = useState<{ code: string; studentEmail: string }[]>([]);
   const [codesOpen, setCodesOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const updateExam = useUpdateExam();
+  const [addQuestionOpen, setAddQuestionOpen] = useState(false);
+  const [questionForm, setQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const handleGenerate = () => {
     if (!aiPrompt) return;
@@ -50,7 +87,7 @@ export default function ExamBuilder() {
         topic: aiPrompt,
         count: parseInt(aiCount, 10),
         difficulty: aiDifficulty,
-        questionTypes: ["multiple_choice", "true_false", "short_answer"],
+        questionTypes: ["multiple_choice", "true_false", "short_answer", "essay"] as GenerateQuestionsInputQuestionTypesItem[],
       }
     }, {
       onSuccess: () => {
@@ -61,6 +98,68 @@ export default function ExamBuilder() {
       },
       onError: () => {
         toast({ title: "Generation Failed", description: "Could not generate questions.", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleAddQuestion = () => {
+    const { type, text, options, correctAnswer, referenceSolution, points } = questionForm;
+    if (!text.trim()) {
+      toast({ title: "Question text is required", variant: "destructive" });
+      return;
+    }
+    if (type === "multiple_choice" && options.some(o => !o.trim())) {
+      toast({ title: "All 4 options are required for multiple choice", variant: "destructive" });
+      return;
+    }
+    if ((type === "multiple_choice" || type === "true_false") && !correctAnswer) {
+      toast({ title: "Please select the correct answer", variant: "destructive" });
+      return;
+    }
+
+    const payload: any = {
+      type,
+      text: text.trim(),
+      points: parseInt(points, 10) || 1,
+    };
+
+    if (type === "multiple_choice") {
+      payload.options = options.map(o => o.trim());
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "true_false") {
+      payload.options = ["True", "False"];
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "short_answer") {
+      payload.correctAnswer = correctAnswer || null;
+    } else if (type === "essay") {
+      payload.referenceSolution = referenceSolution.trim() || null;
+    }
+
+    createQuestion.mutate({ examId, data: payload }, {
+      onSuccess: () => {
+        toast({ title: "Question added" });
+        setAddQuestionOpen(false);
+        setQuestionForm(DEFAULT_FORM);
+        refetchQuestions();
+        queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+      },
+      onError: () => {
+        toast({ title: "Failed to add question", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleDeleteQuestion = (questionId: number) => {
+    deleteQuestion.mutate({ examId, questionId }, {
+      onSuccess: () => {
+        toast({ title: "Question deleted" });
+        setDeleteTargetId(null);
+        refetchQuestions();
+        queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+      },
+      onError: () => {
+        toast({ title: "Failed to delete question", variant: "destructive" });
+        setDeleteTargetId(null);
       }
     });
   };
@@ -213,9 +312,142 @@ export default function ExamBuilder() {
                 </DialogContent>
               </Dialog>
 
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" /> Add Question
-              </Button>
+              <Dialog open={addQuestionOpen} onOpenChange={(open) => { setAddQuestionOpen(open); if (!open) setQuestionForm(DEFAULT_FORM); }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Plus className="h-4 w-4" /> Add Question
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add Question Manually</DialogTitle>
+                    <DialogDescription>Create a custom question for your exam.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Question Type</Label>
+                        <Select
+                          value={questionForm.type}
+                          onValueChange={(v: QuestionType) => {
+                            const defaults: Partial<NewQuestionForm> = {};
+                            if (v === "multiple_choice") defaults.options = ["", "", "", ""];
+                            else if (v === "true_false") { defaults.options = ["True", "False"]; defaults.correctAnswer = "True"; }
+                            else { defaults.options = []; defaults.correctAnswer = ""; }
+                            setQuestionForm(f => ({ ...f, type: v, correctAnswer: "", referenceSolution: "", ...defaults }));
+                          }}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                            <SelectItem value="true_false">True / False</SelectItem>
+                            <SelectItem value="short_answer">Short Answer</SelectItem>
+                            <SelectItem value="essay">Essay / Proof</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Points</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={questionForm.points}
+                          onChange={(e) => setQuestionForm(f => ({ ...f, points: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Question Text</Label>
+                      <Textarea
+                        placeholder="Write your question here..."
+                        value={questionForm.text}
+                        onChange={(e) => setQuestionForm(f => ({ ...f, text: e.target.value }))}
+                        className="min-h-20"
+                      />
+                    </div>
+
+                    {questionForm.type === "multiple_choice" && (
+                      <div className="space-y-3">
+                        <Label>Answer Options</Label>
+                        {questionForm.options.map((opt, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="correctAnswer"
+                              id={`opt-${i}`}
+                              checked={questionForm.correctAnswer === opt && opt !== ""}
+                              onChange={() => setQuestionForm(f => ({ ...f, correctAnswer: f.options[i] }))}
+                              className="shrink-0"
+                            />
+                            <Input
+                              placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                              value={opt}
+                              onChange={(e) => {
+                                const newOpts = [...questionForm.options];
+                                newOpts[i] = e.target.value;
+                                setQuestionForm(f => ({
+                                  ...f,
+                                  options: newOpts,
+                                  correctAnswer: f.correctAnswer === f.options[i] ? e.target.value : f.correctAnswer,
+                                }));
+                              }}
+                            />
+                          </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground">Select the radio button next to the correct answer.</p>
+                      </div>
+                    )}
+
+                    {questionForm.type === "true_false" && (
+                      <div className="space-y-2">
+                        <Label>Correct Answer</Label>
+                        <Select
+                          value={questionForm.correctAnswer}
+                          onValueChange={(v) => setQuestionForm(f => ({ ...f, correctAnswer: v }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Select correct answer" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="True">True</SelectItem>
+                            <SelectItem value="False">False</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {questionForm.type === "short_answer" && (
+                      <div className="space-y-2">
+                        <Label>Expected Answer (optional)</Label>
+                        <Input
+                          placeholder="Model answer for grading reference..."
+                          value={questionForm.correctAnswer}
+                          onChange={(e) => setQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                        />
+                      </div>
+                    )}
+
+                    {questionForm.type === "essay" && (
+                      <div className="space-y-2">
+                        <Label>Reference Solution / Proof Rubric (LaTeX supported)</Label>
+                        <Textarea
+                          placeholder="Write the expected proof, mathematical derivations, or rubrics using LaTeX (e.g. $\sum_{i=1}^n i = \frac{n(n+1)}{2}$)..."
+                          value={questionForm.referenceSolution}
+                          onChange={(e) => setQuestionForm(f => ({ ...f, referenceSolution: e.target.value }))}
+                          className="min-h-32 font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setAddQuestionOpen(false)}>Cancel</Button>
+                    <Button onClick={handleAddQuestion} disabled={createQuestion.isPending}>
+                      {createQuestion.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Add Question
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
@@ -226,34 +458,41 @@ export default function ExamBuilder() {
           <Card className="border-dashed bg-slate-50">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <p className="text-muted-foreground mb-4">No questions added yet.</p>
-              {exam.status === 'draft' && (
-                <Button onClick={() => setAiGenerateOpen(true)} className="gap-2">
-                  <Sparkles className="h-4 w-4" /> Generate with AI
-                </Button>
-              )}
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {questions.map((q, index) => (
-              <Card key={q.id}>
+              <Card key={q.id} className="group relative">
                 <CardHeader className="py-4 flex flex-row items-start justify-between space-y-0">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1 min-w-0 pr-4">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <span className="text-muted-foreground">{index + 1}.</span> 
-                      {q.text}
+                      <span className="text-muted-foreground shrink-0">{index + 1}.</span> 
+                      <span className="leading-relaxed">{q.text}</span>
                     </CardTitle>
-                    <CardDescription className="capitalize">
-                      {q.type.replace(/_/g, ' ')} • {q.points || 1} pts
+                    <CardDescription className="capitalize flex items-center gap-2">
+                      {q.type.replace(/_/g, ' ')}
+                      <span className="text-xs bg-slate-100 rounded px-1.5 py-0.5">{q.points || 1} pt{(q.points || 1) !== 1 ? "s" : ""}</span>
                     </CardDescription>
                   </div>
+                  {exam.status === 'draft' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setDeleteTargetId(q.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </CardHeader>
                 {q.options && q.options.length > 0 && (
                   <CardContent className="py-0 pb-4">
                     <div className="space-y-2 pl-6">
                       {q.options.map((opt, i) => (
-                        <div key={i} className={`text-sm p-2 rounded border ${q.correctAnswer === opt ? 'bg-green-50 border-green-200 font-medium' : 'bg-slate-50 border-transparent'}`}>
+                        <div key={i} className={`text-sm p-2 rounded border ${q.correctAnswer === opt ? 'bg-green-50 border-green-200 font-medium text-green-800' : 'bg-slate-50 border-transparent'}`}>
                           {String.fromCharCode(65 + i)}. {opt}
+                          {q.correctAnswer === opt && <span className="ml-2 text-xs text-green-600">✓ Correct</span>}
                         </div>
                       ))}
                     </div>
@@ -261,8 +500,16 @@ export default function ExamBuilder() {
                 )}
                 {q.type !== 'multiple_choice' && q.correctAnswer && (
                   <CardContent className="py-0 pb-4">
-                    <div className="text-sm pl-6">
-                      <span className="font-medium">Answer: </span> {q.correctAnswer}
+                    <div className="text-sm pl-6 text-muted-foreground">
+                      <span className="font-medium text-foreground">Answer: </span> {q.correctAnswer}
+                    </div>
+                  </CardContent>
+                )}
+                {q.type === 'essay' && q.referenceSolution && (
+                  <CardContent className="py-0 pb-4 border-t pt-3 mt-1 bg-slate-50/50">
+                    <div className="text-sm pl-6 text-muted-foreground space-y-1">
+                      <span className="font-semibold text-foreground text-xs uppercase tracking-wider block">Reference Solution:</span>
+                      <div className="text-slate-800 italic leading-relaxed whitespace-pre-wrap font-mono">{q.referenceSolution}</div>
                     </div>
                   </CardContent>
                 )}
@@ -272,14 +519,34 @@ export default function ExamBuilder() {
         )}
       </div>
 
+      {/* Delete Question Confirmation */}
+      <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this question?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => deleteTargetId && handleDeleteQuestion(deleteTargetId)}
+              disabled={deleteQuestion.isPending}
+            >
+              {deleteQuestion.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Archive Confirmation */}
       <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive this exam?</AlertDialogTitle>
             <AlertDialogDescription>
-              Archiving will close the exam immediately. Students with existing sessions can still submit,
-              but no new sessions can be started with any access code. This cannot be undone from the UI.
+              Archiving will close the exam immediately. No new sessions can be started.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -292,12 +559,8 @@ export default function ExamBuilder() {
                   {
                     onSuccess: () => {
                       setArchiveOpen(false);
-                      toast({ title: "Exam archived", description: "No new sessions can be started." });
+                      toast({ title: "Exam archived" });
                       queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
-                    },
-                    onError: () => {
-                      toast({ title: "Failed to archive", variant: "destructive" });
-                      setArchiveOpen(false);
                     },
                   }
                 );
@@ -316,18 +579,15 @@ export default function ExamBuilder() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-700">
-              <CheckCheck className="h-5 w-5" /> Exam Published — Access Codes
+              <CheckCheck className="h-5 w-5" /> Student Access Codes
             </DialogTitle>
-            <DialogDescription>
-              Share each student's unique code with them. They'll use it to join the exam.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 my-2 max-h-80 overflow-y-auto pr-1">
             {accessCodes.map(({ code, studentEmail }) => (
               <AccessCodeRow key={code} code={code} studentEmail={studentEmail} />
             ))}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => {
               const text = accessCodes.map(({ studentEmail, code }) => `${studentEmail}: ${code}`).join("\n");
               navigator.clipboard.writeText(text);

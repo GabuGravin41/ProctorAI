@@ -7,6 +7,8 @@
  */
 
 export * from './accessCode';
+export * from './aIConfig';
+export * from './aIConfigProvider';
 export * from './answerInput';
 export * from './answerResult';
 export * from './cheatingFlag';
@@ -14,7 +16,9 @@ export * from './cheatingFlagReviewStatus';
 export * from './cheatingFlagType';
 export * from './dashboardStats';
 export * from './exam';
+export * from './examGradingMode';
 export * from './examInput';
+export * from './examInputGradingMode';
 export * from './examResults';
 export * from './examSession';
 export * from './examSessionStatus';
@@ -22,8 +26,10 @@ export * from './examStatus';
 export * from './examSummary';
 export * from './examSummaryStatus';
 export * from './examUpdate';
+export * from './examUpdateGradingMode';
 export * from './examUpdateStatus';
 export * from './examWithQuestions';
+export * from './examWithQuestionsGradingMode';
 export * from './examWithQuestionsStatus';
 export * from './flagInput';
 export * from './flagInputType';

@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetSession, useStartSession, useSubmitSession, useReportFlag } from "@workspace/api-client-react";
+import { useGetSession, useStartSession, useSubmitSession, useReportFlag, getGetSessionQueryKey, FlagInputType, customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle } from "lucide-react";
+import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FlagInputType } from "@workspace/api-client-react/src/generated/api.schemas";
+import LatexRenderer from "@/components/latex-renderer";
+
 
 export default function ExamTaking() {
   const params = useParams();
@@ -19,7 +20,7 @@ export default function ExamTaking() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: sessionWithExam, isLoading } = useGetSession(sessionId, { query: { enabled: !!sessionId && !isNaN(sessionId) } });
+  const { data: sessionWithExam, isLoading } = useGetSession(sessionId, { query: { queryKey: getGetSessionQueryKey(sessionId), enabled: !!sessionId && !isNaN(sessionId) } });
   const startSession = useStartSession();
   const submitSession = useSubmitSession();
   const reportFlag = useReportFlag();
@@ -29,14 +30,27 @@ export default function ExamTaking() {
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [liveFlags, setLiveFlags] = useState(0);
+  const [fullscreenWarning, setFullscreenWarning] = useState(false);
+
+  // Upload grace period state
+  const [isUploadWindow, setIsUploadWindow] = useState(false);
+  const [uploadTimeLeft, setUploadTimeLeft] = useState(300); // 5 minutes (300 seconds)
+  const [attachments, setAttachments] = useState<Record<number, string[]>>({});
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState("");
 
-  // Keep answers in a ref so auto-submit always sees the latest values
+  // Keep answers, attachments, and upload state in refs so callbacks always see the latest values
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  const attachmentsRef = useRef(attachments);
+  useEffect(() => { attachmentsRef.current = attachments; }, [attachments]);
+
+  const isUploadWindowRef = useRef(isUploadWindow);
+  useEffect(() => { isUploadWindowRef.current = isUploadWindow; }, [isUploadWindow]);
 
   // Keep track of which low-time toasts we've already shown
   const warned5Min = useRef(false);
@@ -45,6 +59,83 @@ export default function ExamTaking() {
   const exam = sessionWithExam?.exam;
   const session = sessionWithExam?.session;
   const questions = exam?.questions || [];
+
+  const questionsRef = useRef(questions);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+
+  // ── Media Recorder Buffer for clip captures ────────────────────────────────
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  // Initialize rolling recording buffer
+  useEffect(() => {
+    if (!stream) return;
+    try {
+      const options = { mimeType: "video/webm;codecs=vp8" };
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+          // Keep only the last 4 chunks (~12 seconds of video if timeslice is 3s)
+          if (recordedChunksRef.current.length > 4) {
+            recordedChunksRef.current.shift();
+          }
+        }
+      };
+
+      // Start recording with 3-second slices
+      recorder.start(3000);
+    } catch (e) {
+      console.warn("MediaRecorder not fully supported or failed to initialize:", e);
+    }
+
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [stream]);
+
+  const captureVideoClip = async (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!mediaRecorderRef.current || recordedChunksRef.current.length === 0) {
+        resolve(null);
+        return;
+      }
+      // Wait 5 seconds after flag is triggered to capture the post-cheating frame buffer
+      setTimeout(() => {
+        try {
+          const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+        } catch (err) {
+          resolve(null);
+        }
+      }, 5000);
+    });
+  };
+
+  // Helper helper to trigger flags with clips
+  const triggerFlag = async (type: FlagInputType, description: string) => {
+    setLiveFlags((n) => n + 1);
+    
+    // Asynchronously capture the clip and report
+    const clip = await captureVideoClip();
+    reportFlag.mutate({
+      sessionId,
+      data: {
+        type,
+        detectedAt: new Date().toISOString(),
+        description,
+        clipData: clip || undefined,
+      },
+    });
+  };
 
   // ── Camera ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -84,10 +175,14 @@ export default function ExamTaking() {
     if (auto) {
       toast({ title: "⏰ Time's up!", description: "Your exam has been submitted automatically." });
     }
-    const formatted = Object.entries(answersRef.current).map(([qId, ans]) => ({
-      questionId: Number(qId),
-      answer: ans,
-    }));
+    const formatted = Object.entries(answersRef.current).map(([qId, ans]) => {
+      const qNum = Number(qId);
+      return {
+        questionId: qNum,
+        answer: ans,
+        attachments: attachmentsRef.current[qNum] || [],
+      };
+    });
     submitSession.mutate({ sessionId, data: { answers: formatted } }, {
       onSuccess: () => {
         stream?.getTracks().forEach(t => t.stop());
@@ -127,7 +222,17 @@ export default function ExamTaking() {
 
         if (next <= 0) {
           clearInterval(interval);
-          doSubmitRef.current(true);
+          const hasEssays = questionsRef.current.some((q: any) => q.type === "essay");
+          if (hasEssays) {
+            setIsUploadWindow(true);
+            setTimerRunning(false);
+            toast({
+              title: "✍️ Exam Time Finished!",
+              description: "You now have 5 minutes to upload photos of your handwritten scratchpad proofs.",
+            });
+          } else {
+            doSubmitRef.current(true);
+          }
           return 0;
         }
 
@@ -138,21 +243,75 @@ export default function ExamTaking() {
     return () => clearInterval(interval);
   }, [timerRunning, toast]);
 
+  // ── Tab-switch detection ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    const handleVisibilityChange = () => {
+      if (isUploadWindowRef.current) return;
+      if (document.hidden) {
+        triggerFlag("tab_switch" as FlagInputType, "Student switched away from the exam tab");
+        toast({ title: "⚠ Tab Switch Detected", description: "Leaving the exam tab has been flagged.", variant: "destructive" });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [hasStarted, sessionId, reportFlag, toast]);
+
+  // ── Fullscreen enforcement ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    // Request fullscreen on exam start
+    try { document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+
+    const handleFullscreenChange = () => {
+      if (isUploadWindowRef.current) return;
+      if (!document.fullscreenElement) {
+        setFullscreenWarning(true);
+        triggerFlag("fullscreen_exit" as FlagInputType, "Student exited fullscreen mode");
+      } else {
+        setFullscreenWarning(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [hasStarted, sessionId, reportFlag]);
+
+  // ── Upload Window countdown ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isUploadWindow) return;
+
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch {}
+
+    const interval = setInterval(() => {
+      setUploadTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          doSubmitRef.current(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isUploadWindow]);
+
   // ── AI monitoring simulation ────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasStarted || !stream || cameraError) return;
+    if (!hasStarted || !stream || cameraError || isUploadWindow) return;
     const id = setInterval(() => {
-      if (Math.random() < 0.2) {
+      if (Math.random() < 0.15) {
         const types: FlagInputType[] = ["face_not_visible", "looking_away", "multiple_faces"];
         const type = types[Math.floor(Math.random() * types.length)];
-        reportFlag.mutate({
-          sessionId,
-          data: { type, detectedAt: new Date().toISOString(), description: `AI detected: ${type.replace(/_/g, " ")}` },
-        });
+        triggerFlag(type, `AI detected: ${type.replace(/_/g, " ")}`);
       }
     }, 30000);
     return () => clearInterval(id);
-  }, [hasStarted, stream, cameraError, sessionId, reportFlag]);
+  }, [hasStarted, stream, cameraError, sessionId, reportFlag, isUploadWindow]);
 
   // ── Redirect if already submitted ──────────────────────────────────────────
   useEffect(() => {
@@ -183,6 +342,144 @@ export default function ExamTaking() {
   if (isLoading) return <StudentLayout><div className="flex h-screen items-center justify-center">Loading exam…</div></StudentLayout>;
   if (session?.status === "submitted") return null;
 
+  // ── Upload Grace Period Screen ──────────────────────────────────────────────
+  if (isUploadWindow) {
+    const essayQuestions = questions.filter(q => q.type === "essay");
+
+    return (
+      <StudentLayout>
+        <div className="max-w-4xl mx-auto py-8 space-y-8 pb-32">
+          {/* Header Card */}
+          <Card className="border-amber-200 bg-amber-50/30 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl text-amber-900 font-bold flex items-center gap-2">
+                  <UploadCloud className="h-5 w-5 text-amber-600 animate-pulse" />
+                  Handwritten Proof Image Upload Window
+                </CardTitle>
+                <CardDescription className="text-amber-800/80 mt-1">
+                  Your text answers are frozen. You have a 5-minute window to upload images/photos of your handwritten math proofs.
+                  Exit fullscreen if needed. Proctoring webcam remains active.
+                </CardDescription>
+              </div>
+              <div className="shrink-0 font-mono text-2xl font-bold bg-amber-100 text-amber-900 border border-amber-300 px-4 py-2 rounded-lg flex items-center gap-2">
+                <Timer className="h-6 w-6 animate-pulse" />
+                {formatTime(uploadTimeLeft)}
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Essay Questions Dropzone List */}
+          <div className="space-y-6">
+            {essayQuestions.map((q, idx) => {
+              const qAttachments = attachments[q.id] || [];
+
+              const handleFileDrop = async (e: React.DragEvent) => {
+                e.preventDefault();
+                const files = Array.from(e.dataTransfer.files);
+                await uploadFiles(q.id, files);
+              };
+
+              const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                const files = e.target.files ? Array.from(e.target.files) : [];
+                await uploadFiles(q.id, files);
+              };
+
+              const uploadFiles = async (qId: number, files: File[]) => {
+                for (const file of files) {
+                  try {
+                    // Call the mock upload endpoint
+                    const res = await customFetch<{ url: string, filename: string }>(`/api/sessions/${sessionId}/upload`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ filename: file.name }),
+                    });
+                    setAttachments(prev => ({
+                      ...prev,
+                      [qId]: [...(prev[qId] || []), res.url]
+                    }));
+                    toast({ title: "File uploaded", description: `${file.name} attached successfully.` });
+                  } catch (err) {
+                    toast({ title: "Upload failed", description: "Could not attach file.", variant: "destructive" });
+                  }
+                }
+              };
+
+              return (
+                <Card key={q.id} className="border shadow-sm">
+                  <CardHeader className="bg-slate-50 border-b py-3 px-6 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-semibold text-slate-700">Question {idx + 1} Proof Attachments</CardTitle>
+                    <span className="text-xs font-semibold text-muted-foreground">{q.points} points</span>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="p-4 rounded-lg bg-slate-50 border">
+                      <div className="text-xs font-semibold text-muted-foreground mb-1">Your Written Answer:</div>
+                      <LatexRenderer text={answers[q.id] || "No response written."} />
+                    </div>
+
+                    {/* Dropzone */}
+                    <div 
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={handleFileDrop}
+                      className="border-2 border-dashed border-slate-300 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100/50 transition-all cursor-pointer relative"
+                    >
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept="image/*" 
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <UploadCloud className="h-10 w-10 text-slate-400 mb-3" />
+                      <p className="text-sm font-medium text-slate-700">Drag & drop your handwritten proof photos here</p>
+                      <p className="text-xs text-slate-500 mt-1">or click to browse files (PNG, JPG, JPEG)</p>
+                    </div>
+
+                    {/* Uploaded List */}
+                    {qAttachments.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-slate-500">Uploaded Attachments:</div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {qAttachments.map((url, i) => (
+                            <div key={i} className="flex items-center justify-between p-2 border rounded-md bg-white">
+                              <span className="text-xs truncate font-mono text-slate-600 flex items-center gap-1.5">
+                                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                                {url.split("_").pop()}
+                              </span>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7 text-red-500 hover:text-red-700"
+                                onClick={() => setAttachments(prev => ({
+                                  ...prev,
+                                  [q.id]: prev[q.id].filter(u => u !== url)
+                                }))}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Action Button */}
+          <div className="flex justify-center pt-4">
+            <Button size="lg" className="px-16 h-14 text-lg" onClick={() => doSubmit(false)} disabled={submitSession.isPending}>
+              {submitSession.isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              Finish &amp; Complete Submission
+            </Button>
+          </div>
+        </div>
+      </StudentLayout>
+    );
+  }
+
   // ── Pre-start screen ────────────────────────────────────────────────────────
   if (!hasStarted) {
     return (
@@ -199,10 +496,11 @@ export default function ExamTaking() {
                 <ShieldAlert className="text-primary" /> Proctoring Requirements
               </h3>
               <ul className="space-y-3 text-sm">
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" /> Camera and microphone access is strictly required.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure your face is clearly visible and well-lit.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" /> AI will monitor for looking away, other people, or using phones.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" /> Do not leave the browser tab; actions are recorded.</li>
+                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Camera and microphone access is strictly required throughout the exam.</li>
+                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Ensure your face is clearly visible and well-lit at all times.</li>
+                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />AI monitors for looking away, multiple faces, phones, and other violations.</li>
+                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />The exam runs in fullscreen — exiting fullscreen will be flagged.</li>
+                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Switching browser tabs will be flagged and reported to your instructor.</li>
               </ul>
             </div>
 
@@ -234,6 +532,20 @@ export default function ExamTaking() {
   return (
     <StudentLayout>
       <div className="relative">
+        {/* Fullscreen warning banner */}
+        {fullscreenWarning && (
+          <div className="fixed top-0 inset-x-0 z-[60] bg-red-600 text-white text-center py-3 text-sm font-semibold flex items-center justify-center gap-3 animate-pulse">
+            <AlertTriangle className="h-4 w-4" />
+            You exited fullscreen — this has been flagged!
+            <button
+              onClick={() => { try { document.documentElement.requestFullscreen(); } catch {} }}
+              className="underline ml-2 font-bold"
+            >
+              Return to Fullscreen
+            </button>
+          </div>
+        )}
+
         {/* Floating proctoring widget */}
         <div className="fixed bottom-6 right-6 z-50 bg-black rounded-lg shadow-2xl overflow-hidden border-2 border-border/20 w-64">
           <div className="bg-primary/90 text-white text-xs px-3 py-1.5 font-medium flex items-center justify-between">
@@ -248,6 +560,14 @@ export default function ExamTaking() {
           <div className="aspect-video bg-zinc-900 relative">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
           </div>
+
+          {/* Live flag counter */}
+          {liveFlags > 0 && (
+            <div className="px-3 py-2 bg-red-900/90 text-red-200 text-xs flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3 text-red-400" />
+              {liveFlags} flag{liveFlags > 1 ? "s" : ""} raised — instructor will review
+            </div>
+          )}
 
           {/* Timer inside the widget when low */}
           {(isUrgent || isWarning) && (
@@ -311,7 +631,7 @@ export default function ExamTaking() {
                 <span>{q.points || 1} point{(q.points || 1) !== 1 ? "s" : ""}</span>
               </div>
               <CardContent className="p-6">
-                <p className="text-lg mb-6 leading-relaxed">{q.text}</p>
+                <LatexRenderer text={q.text} className="text-lg mb-6 leading-relaxed text-slate-800" />
 
                 {q.type === "multiple_choice" || q.type === "true_false" ? (
                   <RadioGroup
@@ -336,12 +656,20 @@ export default function ExamTaking() {
                     className="max-w-md"
                   />
                 ) : (
-                  <Textarea
-                    placeholder="Write your essay here…"
-                    className="min-h-48"
-                    value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                  />
+                  <div className="space-y-4">
+                    <Textarea
+                      placeholder="Write your essay / proof here… You can use standard LaTeX (e.g. $\int x^2 \,dx = \frac{x^3}{3} + C$)"
+                      className="min-h-48 font-mono leading-relaxed"
+                      value={answers[q.id] || ""}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                    />
+                    {answers[q.id] && (
+                      <div className="p-4 rounded-lg border bg-slate-50/50">
+                        <div className="text-xs font-semibold text-muted-foreground mb-2">Real-time Mathematical Proof Preview:</div>
+                        <LatexRenderer text={answers[q.id]} />
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -373,7 +701,20 @@ export default function ExamTaking() {
             <AlertDialogFooter>
               <AlertDialogCancel>Keep Reviewing</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => doSubmit(false)}
+                onClick={() => {
+                  const hasEssays = questions.some(q => q.type === "essay");
+                  if (hasEssays) {
+                    setIsUploadWindow(true);
+                    setTimerRunning(false);
+                    setSubmitConfirmOpen(false);
+                    toast({
+                      title: "✍️ Exam Time Completed!",
+                      description: "You now have 5 minutes to upload photos of your handwritten scratchpad proofs.",
+                    });
+                  } else {
+                    doSubmit(false);
+                  }
+                }}
                 className="bg-primary text-white"
                 disabled={submitSession.isPending}
               >

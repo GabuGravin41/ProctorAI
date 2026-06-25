@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StudentLayout from "@/components/layout/student-layout";
-import { useJoinExam } from "@workspace/api-client-react";
+import { useJoinExam, customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, KeyRound } from "lucide-react";
+import { Loader2, KeyRound, Sparkles } from "lucide-react";
 
 export default function JoinExam() {
   const [accessCode, setAccessCode] = useState("");
@@ -35,7 +35,7 @@ export default function JoinExam() {
 
   return (
     <StudentLayout>
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] py-8 gap-8">
         <Card className="w-full max-w-md shadow-lg border-primary/20">
           <CardHeader className="text-center pb-6">
             <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -63,6 +63,7 @@ export default function JoinExam() {
             </CardFooter>
           </form>
         </Card>
+
       </div>
     </StudentLayout>
   );

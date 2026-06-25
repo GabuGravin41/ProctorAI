@@ -1,17 +1,48 @@
 import { Link, useLocation } from "wouter";
-import { useClerk, useUser } from "@clerk/react";
+import { useClerk, useUser, useAuth } from "@clerk/react";
 import { LogOut, LayoutDashboard, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGetMe } from "@workspace/api-client-react";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
 }
 
 export default function StudentLayout({ children }: StudentLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { signOut } = useClerk();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { user } = useUser();
+  const { data: me, isLoading } = useGetMe({
+    query: {
+      enabled: !!isSignedIn
+    }
+  });
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  if (isAuthLoaded && !isSignedIn) {
+    setLocation("/");
+    return null;
+  }
+
+  // Route-guard: Redirect to onboarding if profile is incomplete, or instructor dashboard if role is instructor
+  if (!isLoading && me) {
+    const isProfileComplete = 
+      me.name && 
+      me.role && 
+      me.institutionName && 
+      me.subjectArea && 
+      me.trafficSource;
+
+    if (!isProfileComplete) {
+      setLocation("/onboarding");
+      return null;
+    }
+    if (me.role !== "student") {
+      setLocation("/dashboard");
+      return null;
+    }
+  }
 
   // Don't show nav if actively taking an exam
   const isTakingExam = location.startsWith("/exam/") && !location.endsWith("/results");

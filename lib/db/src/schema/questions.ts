@@ -10,6 +10,7 @@ export const questionsTable = pgTable("questions", {
   text: text("text").notNull(),
   options: json("options").$type<string[]>(),
   correctAnswer: text("correct_answer"),
+  referenceSolution: text("reference_solution"),
   points: integer("points").notNull().default(1),
   orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

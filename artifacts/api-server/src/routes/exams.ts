@@ -20,6 +20,8 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     description: exam.description ?? null,
     status: exam.status,
     durationMinutes: exam.durationMinutes,
+    gradingMode: exam.gradingMode,
+    aiConfig: exam.aiConfig,
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
     questionCount,
@@ -63,10 +65,18 @@ router.get("/", requireAuth, async (req: any, res) => {
 router.post("/", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
-    const { title, description, subject, durationMinutes } = req.body;
+    const { title, description, subject, durationMinutes, gradingMode, aiConfig } = req.body;
     const [exam] = await db
       .insert(examsTable)
-      .values({ title, description, subject, durationMinutes: durationMinutes ?? 60, instructorClerkId: clerkId })
+      .values({ 
+        title, 
+        description, 
+        subject, 
+        durationMinutes: durationMinutes ?? 60, 
+        gradingMode: gradingMode ?? "review_release", 
+        aiConfig: aiConfig ?? { provider: "free", model: "google/gemma-2-9b-it:free" },
+        instructorClerkId: clerkId 
+      })
       .returning();
     res.status(201).json(formatExam(exam));
   } catch (err) {
@@ -93,6 +103,7 @@ router.get("/:examId", requireAuth, async (req: any, res) => {
         text: q.text,
         options: q.options ?? null,
         correctAnswer: q.correctAnswer ?? null,
+        referenceSolution: q.referenceSolution ?? null,
         points: q.points,
         orderIndex: q.orderIndex,
       })),
@@ -108,13 +119,15 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { title, description, subject, durationMinutes, status } = req.body;
+    const { title, description, subject, durationMinutes, gradingMode, status, aiConfig } = req.body;
     const updates: any = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (subject !== undefined) updates.subject = subject;
     if (durationMinutes !== undefined) updates.durationMinutes = durationMinutes;
+    if (gradingMode !== undefined) updates.gradingMode = gradingMode;
     if (status !== undefined) updates.status = status;
+    if (aiConfig !== undefined) updates.aiConfig = aiConfig;
 
     const [exam] = await db.update(examsTable).set(updates).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
     if (!exam) return res.status(404).json({ error: "Exam not found" });
@@ -228,6 +241,36 @@ router.get("/:examId/results", requireAuth, async (req: any, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "getExamResults error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/exams/:examId/access-codes
+router.get("/:examId/access-codes", requireAuth, async (req: any, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden" });
+
+    const sessions = await db
+      .select({
+        accessCode: examSessionsTable.accessCode,
+        studentEmail: examSessionsTable.studentEmail,
+        status: examSessionsTable.status,
+      })
+      .from(examSessionsTable)
+      .where(eq(examSessionsTable.examId, examId));
+
+    res.json(sessions.map((s) => ({
+      code: s.accessCode,
+      studentEmail: s.studentEmail ?? "",
+      status: s.status,
+    })));
+  } catch (err) {
+    req.log.error({ err }, "getAccessCodes error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

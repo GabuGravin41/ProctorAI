@@ -44,6 +44,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@types/katex": "^0.16.8",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -76,6 +77,8 @@
   },
   "dependencies": {
     "@clerk/react": "^6.10.4",
-    "@clerk/themes": "^2.4.57"
+    "@clerk/themes": "^2.4.57",
+    "katex": "^0.17.0",
+    "react-katex": "^3.1.0"
   }
 }

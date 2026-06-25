@@ -7,7 +7,10 @@ export const usersTable = pgTable("users", {
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull(),
   name: text("name"),
-  role: text("role", { enum: ["instructor", "student"] }).notNull().default("student"),
+  role: text("role", { enum: ["instructor", "student"] }),
+  institutionName: text("institution_name"),
+  subjectArea: text("subject_area"),
+  trafficSource: text("traffic_source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

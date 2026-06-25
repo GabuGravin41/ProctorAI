@@ -10,4 +10,7 @@ import type { UserProfileUpdateRole } from './userProfileUpdateRole';
 export interface UserProfileUpdate {
   name?: string;
   role?: UserProfileUpdateRole;
+  institutionName?: string;
+  subjectArea?: string;
+  trafficSource?: string;
 }

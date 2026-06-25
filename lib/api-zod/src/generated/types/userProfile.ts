@@ -13,6 +13,13 @@ export interface UserProfile {
   email: string;
   /** @nullable */
   name?: string | null;
-  role: UserProfileRole;
+  /** @nullable */
+  role?: UserProfileRole;
+  /** @nullable */
+  institutionName?: string | null;
+  /** @nullable */
+  subjectArea?: string | null;
+  /** @nullable */
+  trafficSource?: string | null;
   createdAt?: string;
 }

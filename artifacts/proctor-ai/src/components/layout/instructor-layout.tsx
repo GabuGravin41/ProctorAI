@@ -1,17 +1,49 @@
 import { Link, useLocation } from "wouter";
-import { useClerk, useUser } from "@clerk/react";
+import { useClerk, useUser, useAuth } from "@clerk/react";
 import { LayoutDashboard, FileText, Settings, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 
 interface InstructorLayoutProps {
   children: React.ReactNode;
 }
 
 export default function InstructorLayout({ children }: InstructorLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { signOut } = useClerk();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { user } = useUser();
+  const { data: me, isLoading } = useGetMe({
+    query: {
+      queryKey: getGetMeQueryKey(),
+      enabled: !!isSignedIn
+    }
+  });
+
+  if (isAuthLoaded && !isSignedIn) {
+    setLocation("/");
+    return null;
+  }
+
+  // Route-guard: Redirect to onboarding if profile is incomplete, or student home if role is student
+  if (!isLoading && me) {
+    const isProfileComplete = 
+      me.name && 
+      me.role && 
+      me.institutionName && 
+      me.subjectArea && 
+      me.trafficSource;
+
+    if (!isProfileComplete) {
+      setLocation("/onboarding");
+      return null;
+    }
+    if (me.role !== "instructor") {
+      setLocation("/student");
+      return null;
+    }
+  }
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

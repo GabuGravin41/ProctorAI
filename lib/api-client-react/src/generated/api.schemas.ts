@@ -9,7 +9,27 @@ export interface HealthStatus {
   status: string;
 }
 
-export type UserProfileRole = typeof UserProfileRole[keyof typeof UserProfileRole];
+export type AIConfigProvider = typeof AIConfigProvider[keyof typeof AIConfigProvider];
+
+
+export const AIConfigProvider = {
+  free: 'free',
+  custom_openrouter: 'custom_openrouter',
+  custom_gemini: 'custom_gemini',
+  hosted: 'hosted',
+} as const;
+
+export interface AIConfig {
+  provider: AIConfigProvider;
+  model: string;
+  customApiKey?: string;
+  hostedPaid?: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type UserProfileRole = typeof UserProfileRole[keyof typeof UserProfileRole] | null;
 
 
 export const UserProfileRole = {
@@ -23,7 +43,14 @@ export interface UserProfile {
   email: string;
   /** @nullable */
   name?: string | null;
-  role: UserProfileRole;
+  /** @nullable */
+  role?: UserProfileRole;
+  /** @nullable */
+  institutionName?: string | null;
+  /** @nullable */
+  subjectArea?: string | null;
+  /** @nullable */
+  trafficSource?: string | null;
   createdAt?: string;
 }
 
@@ -38,6 +65,9 @@ export const UserProfileUpdateRole = {
 export interface UserProfileUpdate {
   name?: string;
   role?: UserProfileUpdateRole;
+  institutionName?: string;
+  subjectArea?: string;
+  trafficSource?: string;
 }
 
 export type ExamStatus = typeof ExamStatus[keyof typeof ExamStatus];
@@ -47,6 +77,15 @@ export const ExamStatus = {
   draft: 'draft',
   published: 'published',
   archived: 'archived',
+} as const;
+
+export type ExamGradingMode = typeof ExamGradingMode[keyof typeof ExamGradingMode];
+
+
+export const ExamGradingMode = {
+  manual: 'manual',
+  review_release: 'review_release',
+  auto_release: 'auto_release',
 } as const;
 
 export interface Exam {
@@ -62,6 +101,8 @@ export interface Exam {
   questionCount?: number;
   sessionCount?: number;
   flagCount?: number;
+  gradingMode?: ExamGradingMode;
+  aiConfig?: AIConfig;
   createdAt: string;
   updatedAt?: string;
 }
@@ -73,6 +114,15 @@ export const ExamWithQuestionsStatus = {
   draft: 'draft',
   published: 'published',
   archived: 'archived',
+} as const;
+
+export type ExamWithQuestionsGradingMode = typeof ExamWithQuestionsGradingMode[keyof typeof ExamWithQuestionsGradingMode];
+
+
+export const ExamWithQuestionsGradingMode = {
+  manual: 'manual',
+  review_release: 'review_release',
+  auto_release: 'auto_release',
 } as const;
 
 export type QuestionType = typeof QuestionType[keyof typeof QuestionType];
@@ -94,6 +144,8 @@ export interface Question {
   options?: string[] | null;
   /** @nullable */
   correctAnswer?: string | null;
+  /** @nullable */
+  referenceSolution?: string | null;
   points?: number;
   orderIndex: number;
 }
@@ -108,10 +160,21 @@ export interface ExamWithQuestions {
   /** @nullable */
   subject?: string | null;
   instructorClerkId: string;
+  gradingMode?: ExamWithQuestionsGradingMode;
+  aiConfig?: AIConfig;
   createdAt: string;
   updatedAt?: string;
   questions: Question[];
 }
+
+export type ExamInputGradingMode = typeof ExamInputGradingMode[keyof typeof ExamInputGradingMode];
+
+
+export const ExamInputGradingMode = {
+  manual: 'manual',
+  review_release: 'review_release',
+  auto_release: 'auto_release',
+} as const;
 
 export interface ExamInput {
   /** @minLength 1 */
@@ -120,7 +183,18 @@ export interface ExamInput {
   subject?: string;
   /** @minimum 5 */
   durationMinutes: number;
+  gradingMode?: ExamInputGradingMode;
+  aiConfig?: AIConfig;
 }
+
+export type ExamUpdateGradingMode = typeof ExamUpdateGradingMode[keyof typeof ExamUpdateGradingMode];
+
+
+export const ExamUpdateGradingMode = {
+  manual: 'manual',
+  review_release: 'review_release',
+  auto_release: 'auto_release',
+} as const;
 
 export type ExamUpdateStatus = typeof ExamUpdateStatus[keyof typeof ExamUpdateStatus];
 
@@ -138,7 +212,9 @@ export interface ExamUpdate {
   subject?: string;
   /** @minimum 5 */
   durationMinutes?: number;
+  gradingMode?: ExamUpdateGradingMode;
   status?: ExamUpdateStatus;
+  aiConfig?: AIConfig;
 }
 
 export interface PublishExamInput {
@@ -171,6 +247,7 @@ export interface QuestionInput {
   text: string;
   options?: string[];
   correctAnswer?: string;
+  referenceSolution?: string;
   points?: number;
 }
 
@@ -190,6 +267,7 @@ export interface QuestionUpdate {
   text?: string;
   options?: string[];
   correctAnswer?: string;
+  referenceSolution?: string;
   points?: number;
   orderIndex?: number;
 }
@@ -311,6 +389,7 @@ export interface JoinExamInput {
 export interface AnswerInput {
   questionId: number;
   answer: string;
+  attachments?: string[];
 }
 
 export interface SubmitAnswersInput {
@@ -335,6 +414,8 @@ export const CheatingFlagType = {
   phone_detected: 'phone_detected',
   suspicious_movement: 'suspicious_movement',
   audio_anomaly: 'audio_anomaly',
+  tab_switch: 'tab_switch',
+  fullscreen_exit: 'fullscreen_exit',
 } as const;
 
 export type CheatingFlagReviewStatus = typeof CheatingFlagReviewStatus[keyof typeof CheatingFlagReviewStatus];
@@ -372,6 +453,8 @@ export const FlagInputType = {
   phone_detected: 'phone_detected',
   suspicious_movement: 'suspicious_movement',
   audio_anomaly: 'audio_anomaly',
+  tab_switch: 'tab_switch',
+  fullscreen_exit: 'fullscreen_exit',
 } as const;
 
 export interface FlagInput {

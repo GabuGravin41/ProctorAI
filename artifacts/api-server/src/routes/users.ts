@@ -18,19 +18,31 @@ router.get("/me", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
     let [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    
     if (!user) {
       const auth = getAuth(req);
+      const emailAddress = (auth?.sessionClaims?.email as string ?? "").toLowerCase();
+      
       [user] = await db
         .insert(usersTable)
-        .values({ clerkId, email: auth?.sessionClaims?.email as string ?? "", role: "student" })
+        .values({ 
+          clerkId, 
+          email: emailAddress,
+          role: null,
+          name: null
+        })
         .returning();
     }
+
     res.json({
       id: user.id,
       clerkId: user.clerkId,
       email: user.email,
-      name: user.name,
-      role: user.role,
+      name: user.name ?? null,
+      role: user.role ?? null,
+      institutionName: user.institutionName ?? null,
+      subjectArea: user.subjectArea ?? null,
+      trafficSource: user.trafficSource ?? null,
       createdAt: user.createdAt.toISOString(),
     });
   } catch (err) {
@@ -43,17 +55,28 @@ router.get("/me", requireAuth, async (req: any, res) => {
 router.patch("/me", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
-    const { name, role } = req.body;
+    const { name, role, institutionName, subjectArea, trafficSource } = req.body;
     const updates: any = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
     if (role !== undefined) updates.role = role;
+    if (institutionName !== undefined) updates.institutionName = institutionName;
+    if (subjectArea !== undefined) updates.subjectArea = subjectArea;
+    if (trafficSource !== undefined) updates.trafficSource = trafficSource;
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
     if (!user) {
       const auth = getAuth(req);
       [user] = await db
         .insert(usersTable)
-        .values({ clerkId, email: auth?.sessionClaims?.email as string ?? "", role: role ?? "student", name })
+        .values({ 
+          clerkId, 
+          email: auth?.sessionClaims?.email as string ?? "", 
+          role: role ?? null, 
+          name: name ?? null,
+          institutionName: institutionName ?? null,
+          subjectArea: subjectArea ?? null,
+          trafficSource: trafficSource ?? null
+        })
         .returning();
     } else {
       [user] = await db.update(usersTable).set(updates).where(eq(usersTable.clerkId, clerkId)).returning();
@@ -62,8 +85,11 @@ router.patch("/me", requireAuth, async (req: any, res) => {
       id: user.id,
       clerkId: user.clerkId,
       email: user.email,
-      name: user.name,
-      role: user.role,
+      name: user.name ?? null,
+      role: user.role ?? null,
+      institutionName: user.institutionName ?? null,
+      subjectArea: user.subjectArea ?? null,
+      trafficSource: user.trafficSource ?? null,
       createdAt: user.createdAt.toISOString(),
     });
   } catch (err) {

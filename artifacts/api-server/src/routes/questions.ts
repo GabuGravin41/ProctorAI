@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, questionsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -21,6 +21,7 @@ function formatQuestion(q: any) {
     text: q.text,
     options: q.options ?? null,
     correctAnswer: q.correctAnswer ?? null,
+    referenceSolution: q.referenceSolution ?? null,
     points: q.points,
     orderIndex: q.orderIndex,
   };
@@ -42,14 +43,23 @@ router.get("/:examId/questions", requireAuth, async (req: any, res) => {
 router.post("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
-    const { type, text, options, correctAnswer, points } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points } = req.body;
 
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
     const orderIndex = existing.length;
 
     const [q] = await db
       .insert(questionsTable)
-      .values({ examId, type, text, options: options ?? null, correctAnswer: correctAnswer ?? null, points: points ?? 1, orderIndex })
+      .values({ 
+        examId, 
+        type, 
+        text, 
+        options: options ?? null, 
+        correctAnswer: correctAnswer ?? null, 
+        referenceSolution: referenceSolution ?? null, 
+        points: points ?? 1, 
+        orderIndex 
+      })
       .returning();
     res.status(201).json(formatQuestion(q));
   } catch (err) {
@@ -62,12 +72,13 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
 router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
     const questionId = parseInt(req.params.questionId);
-    const { type, text, options, correctAnswer, points, orderIndex } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points, orderIndex } = req.body;
     const updates: any = {};
     if (type !== undefined) updates.type = type;
     if (text !== undefined) updates.text = text;
     if (options !== undefined) updates.options = options;
     if (correctAnswer !== undefined) updates.correctAnswer = correctAnswer;
+    if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
     if (points !== undefined) updates.points = points;
     if (orderIndex !== undefined) updates.orderIndex = orderIndex;
 
@@ -92,50 +103,227 @@ router.delete("/:examId/questions/:questionId", requireAuth, async (req: any, re
   }
 });
 
+// ── OpenRouter AI question generation ──────────────────────────────────────────
+
+interface AIQuestion {
+  type: "multiple_choice" | "true_false" | "short_answer" | "essay";
+  text: string;
+  options?: string[];
+  correctAnswer?: string;
+  referenceSolution?: string;
+  points: number;
+}
+
+async function generateWithOpenRouter(
+  topic: string,
+  count: number,
+  difficulty: string,
+  questionTypes: string[],
+  aiConfig?: any
+): Promise<AIQuestion[]> {
+  // Determine API key & Model to use based on aiConfig
+  let apiKey = process.env.OPENROUTER_API_KEY;
+  let model = "google/gemma-2-9b-it:free"; // default free tier model
+  let provider = "free";
+  let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
+
+  if (aiConfig) {
+    provider = aiConfig.provider || "free";
+    if (provider === "custom_openrouter" && aiConfig.customApiKey) {
+      apiKey = aiConfig.customApiKey;
+      model = aiConfig.model || "google/gemma-2-9b-it:free";
+    } else if (provider === "custom_gemini" && aiConfig.customApiKey) {
+      apiKey = aiConfig.customApiKey;
+      model = aiConfig.model || "gemini-2.5-flash";
+      apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+    } else if (provider === "hosted") {
+      // Hosted paid uses our own OpenRouter keys with premium models like deepseek v3/gemini 2.5
+      apiKey = process.env.OPENROUTER_API_KEY;
+      model = aiConfig.model || "deepseek/deepseek-chat";
+    } else if (provider === "free") {
+      apiKey = process.env.OPENROUTER_API_KEY;
+      model = aiConfig.model || "google/gemma-2-9b-it:free";
+    }
+  }
+
+  if (!apiKey || apiKey === "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
+    throw new Error(`API key not configured for provider: ${provider}`);
+  }
+
+  const typeDescriptions = questionTypes.map((t) => {
+    if (t === "multiple_choice") return "multiple_choice (4 options, one correct)";
+    if (t === "true_false") return 'true_false (options: ["True","False"])';
+    if (t === "short_answer") return "short_answer (1-2 sentence expected answer)";
+    if (t === "essay") return "essay (proof-based or detailed mathematical question requiring step-by-step logic)";
+    return t;
+  });
+
+  const prompt = `You are an expert exam question creator. Generate exactly ${count} exam questions about the topic: "${topic}".
+
+Difficulty level: ${difficulty}
+Question types to use (distribute evenly): ${typeDescriptions.join(", ")}
+
+Return ONLY a valid JSON array with this exact structure (no markdown, no explanation, no code fences):
+[
+  {
+    "type": "multiple_choice",
+    "text": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Option A",
+    "points": 1
+  },
+  {
+    "type": "true_false",
+    "text": "Statement that is true or false?",
+    "options": ["True", "False"],
+    "correctAnswer": "True",
+    "points": 1
+  },
+  {
+    "type": "short_answer",
+    "text": "Question requiring a brief answer?",
+    "correctAnswer": "Expected answer here",
+    "points": 2
+  },
+  {
+    "type": "essay",
+    "text": "Olympiad-style proof or mathematical question? (e.g. Prove that $a^2 + b^2 \\\\equiv 2 \\\\pmod 3$)",
+    "referenceSolution": "Step-by-step rigorous proof using LaTeX formatting.",
+    "points": 7
+  }
+]
+
+Rules:
+- For essay type: omit "options" and "correctAnswer" fields, but you MUST include "referenceSolution" containing the full rigorous math proof or solution.
+- For short_answer type: omit "options", include "correctAnswer"  
+- For multiple_choice: always 4 distinct options, correctAnswer must match one exactly
+- For true_false: options must be exactly ["True","False"]
+- Points: multiple_choice=1, true_false=1, short_answer=2, essay=7
+- Use standard LaTeX notation (enclosed in $ for inline and $$ for display, e.g. $\\alpha$, $\\frac{a}{b}$, $a^2$) for all mathematical symbols, formulas, and equations in BOTH question text and reference solutions.
+- Make questions specific and educational about "${topic}".
+- Vary difficulty appropriately for "${difficulty}" level.
+- Return ONLY the JSON array, nothing else`;
+
+  // Models to attempt if free/default
+  const modelsToTry = provider === "free" ? [
+    model,
+    "google/gemma-2-9b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free"
+  ] : [model];
+
+  let lastError = "";
+  for (const currentModel of modelsToTry) {
+    try {
+      let content = "";
+      if (provider === "custom_gemini") {
+        const response = await fetch(`${apiEndpoint}?key=${apiKey}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          lastError = `Gemini API error ${response.status}: ${errText}`;
+          continue;
+        }
+
+        const data = await response.json() as any;
+        content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else {
+        // OpenRouter or OpenRouter-compatible format
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://proctorAI.app",
+            "X-Title": "ProctorAI",
+          },
+          body: JSON.stringify({
+            model: currentModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 4000,
+          }),
+        });
+
+        if (response.status === 429) {
+          lastError = `Rate limited on ${currentModel}`;
+          continue;
+        }
+
+        if (!response.ok) {
+          const errText = await response.text();
+          lastError = `API error ${response.status} on ${currentModel}: ${errText}`;
+          continue;
+        }
+
+        const data = await response.json() as any;
+        content = data.choices?.[0]?.message?.content || "";
+      }
+
+      if (!content) { lastError = `No content from ${currentModel}`; continue; }
+
+      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned) as AIQuestion[];
+
+      if (!Array.isArray(parsed)) { lastError = `Invalid JSON from ${currentModel}`; continue; }
+      return parsed.slice(0, count);
+    } catch (err: any) {
+      lastError = err.message;
+      continue;
+    }
+  }
+
+  throw new Error(`AI generation failed: ${lastError}`);
+}
+
 // POST /api/exams/:examId/generate-questions
 router.post("/:examId/generate-questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const { topic, questionTypes, count, difficulty } = req.body;
-
-    // AI-generated questions based on topic
-    const generated = [];
-    const types = questionTypes ?? ["multiple_choice"];
     const totalCount = Math.min(count ?? 5, 20);
+    const types = questionTypes ?? ["multiple_choice"];
 
-    for (let i = 0; i < totalCount; i++) {
-      const type = types[i % types.length];
-      const diffLabel = difficulty ?? "medium";
-      const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
-      const orderIndex = existing.length + i;
+    // Fetch the exam to get its aiConfig
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-      let questionData: any = {
+    const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
+    const startIndex = existing.length;
+
+    let aiQuestions: AIQuestion[];
+
+    try {
+      aiQuestions = await generateWithOpenRouter(topic, totalCount, difficulty ?? "medium", types, exam.aiConfig);
+    } catch (aiErr: any) {
+      req.log.warn({ aiErr: aiErr.message }, "AI generation failed, using fallback generator");
+      aiQuestions = generateFallbackQuestions(topic, totalCount, types, difficulty ?? "medium");
+    }
+
+    const generated = [];
+    for (let i = 0; i < aiQuestions.length; i++) {
+      const q = aiQuestions[i];
+      const [saved] = await db.insert(questionsTable).values({
         examId,
-        type,
-        text: generateQuestionText(topic, type, i, diffLabel),
-        points: type === "essay" ? 5 : 1,
-        orderIndex,
-      };
-
-      if (type === "multiple_choice") {
-        questionData.options = generateOptions(topic, i);
-        questionData.correctAnswer = questionData.options[0];
-      } else if (type === "true_false") {
-        questionData.options = ["True", "False"];
-        questionData.correctAnswer = i % 2 === 0 ? "True" : "False";
-      }
-
-      const [q] = await db.insert(questionsTable).values(questionData).returning();
-      generated.push({
-        id: q.id,
-        examId: q.examId,
         type: q.type,
         text: q.text,
         options: q.options ?? null,
         correctAnswer: q.correctAnswer ?? null,
-        points: q.points,
-        orderIndex: q.orderIndex,
-      });
+        referenceSolution: q.referenceSolution ?? null,
+        points: q.points ?? 1,
+        orderIndex: startIndex + i,
+      }).returning();
+      generated.push(formatQuestion(saved));
     }
 
     res.json(generated);
@@ -145,28 +333,48 @@ router.post("/:examId/generate-questions", requireAuth, async (req: any, res) =>
   }
 });
 
-function generateQuestionText(topic: string, type: string, index: number, difficulty: string): string {
-  const difficultyPrefix = difficulty === "hard" ? "Critically analyze" : difficulty === "easy" ? "Define" : "Explain";
-  const stems = [
-    `What is the primary concept of ${topic}?`,
-    `Which statement best describes ${topic}?`,
-    `${difficultyPrefix} the key principle behind ${topic}.`,
-    `How does ${topic} relate to its core components?`,
-    `What is the significance of ${topic} in its domain?`,
-    `Identify the main characteristic of ${topic}.`,
-    `Which of the following is true about ${topic}?`,
-    `What does ${topic} primarily involve?`,
-  ];
-  return stems[index % stems.length];
-}
-
-function generateOptions(topic: string, index: number): string[] {
-  return [
-    `The correct definition of ${topic}`,
-    `An incorrect interpretation of ${topic}`,
-    `A related but distinct concept`,
-    `An unrelated concept`,
-  ];
+function generateFallbackQuestions(topic: string, count: number, types: string[], difficulty: string): AIQuestion[] {
+  const diffLabel = difficulty === "hard" ? "Critically analyze" : difficulty === "easy" ? "Define" : "Explain";
+  const questions: AIQuestion[] = [];
+  for (let i = 0; i < count; i++) {
+    const type = types[i % types.length] as AIQuestion["type"];
+    if (type === "multiple_choice") {
+      questions.push({
+        type: "multiple_choice",
+        text: `Which of the following best describes a key aspect of ${topic}?`,
+        options: [
+          `The primary mechanism of ${topic}`,
+          `An unrelated concept`,
+          `A secondary effect of ${topic}`,
+          `The historical origin of ${topic}`,
+        ],
+        correctAnswer: `The primary mechanism of ${topic}`,
+        points: 1,
+      });
+    } else if (type === "true_false") {
+      questions.push({
+        type: "true_false",
+        text: `${topic} has a significant impact in its domain.`,
+        options: ["True", "False"],
+        correctAnswer: "True",
+        points: 1,
+      });
+    } else if (type === "short_answer") {
+      questions.push({
+        type: "short_answer",
+        text: `${diffLabel} the core concept of ${topic} in 1-2 sentences.`,
+        correctAnswer: `${topic} refers to...`,
+        points: 2,
+      });
+    } else {
+      questions.push({
+        type: "essay",
+        text: `${diffLabel} the significance of ${topic} and its implications.`,
+        points: 5,
+      });
+    }
+  }
+  return questions;
 }
 
 export default router;

@@ -1,5 +1,5 @@
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetMe, useListSessions } from "@workspace/api-client-react";
+import { useGetMe, useListSessions, getListSessionsQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { format } from "date-fns";
 export default function StudentHome() {
   const { data: me } = useGetMe();
   // Fetch sessions for this student
-  const { data: sessions, isLoading } = useListSessions(undefined, { query: { enabled: !!me?.clerkId } });
+  const { data: sessions, isLoading } = useListSessions(undefined, { query: { queryKey: getListSessionsQueryKey(undefined), enabled: !!me?.clerkId } });
 
   const activeSessions = sessions?.filter(s => s.session.status === 'pending' || s.session.status === 'active') || [];
   const completedSessions = sessions?.filter(s => s.session.status === 'submitted') || [];

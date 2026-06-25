@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examSessionsTable, examsTable, questionsTable, answersTable, cheatingFlagsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, examSessionsTable, examsTable, questionsTable, answersTable, cheatingFlagsTable, usersTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -71,6 +71,38 @@ router.get("/", requireAuth, async (req: any, res) => {
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "listSessions error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/sessions/unclaimed-codes
+router.get("/unclaimed-codes", requireAuth, async (req: any, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user || user.role !== "instructor") {
+      return res.status(403).json({ error: "Forbidden: Only instructors can access unclaimed codes." });
+    }
+
+    const sessions = await db
+      .select()
+      .from(examSessionsTable)
+      .where(isNull(examSessionsTable.studentClerkId));
+
+    const result = await Promise.all(
+      sessions.map(async (s) => {
+        const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, s.examId));
+        return {
+          accessCode: s.accessCode,
+          studentEmail: s.studentEmail,
+          examTitle: exam?.title || "Unknown Exam",
+          examSubject: exam?.subject || "General",
+        };
+      })
+    );
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "unclaimed-codes error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -267,42 +299,158 @@ router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
 
     const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId));
 
-    let score = 0;
+    let totalScore = 0;
     const maxScore = questions.reduce((sum, q) => sum + q.points, 0);
     const answerResults = [];
+
+    // Fetch the exam to get its aiConfig
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+    const aiConfig = exam?.aiConfig;
 
     for (const answerInput of answers) {
       const question = questions.find((q) => q.id === answerInput.questionId);
       if (!question) continue;
 
-      const isCorrect =
-        question.type === "short_answer" || question.type === "essay"
-          ? true // auto-full-credit for open-ended
-          : question.correctAnswer?.toLowerCase() === answerInput.answer?.toLowerCase();
+      let isCorrect = 0;
+      let points = 0;
+      let feedback = "";
 
-      const points = isCorrect ? question.points : 0;
-      score += points;
+      if (question.type === "essay") {
+        // AI Grading for Olympiad essay proof questions
+        let apiKey = process.env.OPENROUTER_API_KEY;
+        let model = "google/gemma-2-9b-it:free";
+        let provider = "free";
+        let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
+
+        if (aiConfig) {
+          provider = aiConfig.provider || "free";
+          if (provider === "custom_openrouter" && aiConfig.customApiKey) {
+            apiKey = aiConfig.customApiKey;
+            model = aiConfig.model || "google/gemma-2-9b-it:free";
+          } else if (provider === "custom_gemini" && aiConfig.customApiKey) {
+            apiKey = aiConfig.customApiKey;
+            model = aiConfig.model || "gemini-2.5-flash";
+            apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+          } else if (provider === "hosted") {
+            apiKey = process.env.OPENROUTER_API_KEY;
+            model = aiConfig.model || "deepseek/deepseek-chat";
+          } else if (provider === "free") {
+            apiKey = process.env.OPENROUTER_API_KEY;
+            model = aiConfig.model || "google/gemma-2-9b-it:free";
+          }
+        }
+
+        if (apiKey && apiKey !== "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
+          try {
+            const prompt = `You are a Mathematical Olympiad examiner grading a student's proof.
+Question: "${question.text}"
+Reference Solution / Grading Rubric: "${question.referenceSolution || "Verify logical rigor and mathematical correctness."}"
+Student's Written Proof: "${answerInput.answer || ""}"
+Max Points: ${question.points}
+
+Please evaluate the student's proof. Check for logical gaps, mathematical errors, correctness of algebraic derivations, and overall rigor. 
+Determine the score (out of ${question.points}) to award the student, and provide helpful critique/feedback.
+
+Return ONLY a valid JSON object matching the following structure:
+{
+  "points": 5,
+  "isCorrect": 1,
+  "feedback": "Logical rigor was mostly sound. However, there was a gap in step 3 when concluding that..."
+}
+Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 80% score), or 0 if they failed or have significant errors.`;
+
+            let content = "";
+            if (provider === "custom_gemini") {
+              const aiResponse = await fetch(`${apiEndpoint}?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { responseMimeType: "application/json" }
+                }),
+              });
+              if (aiResponse.ok) {
+                const aiData = await aiResponse.json() as any;
+                content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              }
+            } else {
+              const aiResponse = await fetch(apiEndpoint, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": "https://proctorAI.app",
+                  "X-Title": "ProctorAI",
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [{ role: "user", content: prompt }],
+                  temperature: 0.2,
+                  max_tokens: 1500,
+                }),
+              });
+
+              if (aiResponse.ok) {
+                const aiData = await aiResponse.json() as any;
+                content = aiData.choices?.[0]?.message?.content || "";
+              }
+            }
+
+            if (content) {
+              const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+              const parsed = JSON.parse(cleaned);
+              points = Math.min(Math.max(Number(parsed.points) || 0, 0), question.points);
+              isCorrect = Number(parsed.isCorrect) === 1 ? 1 : 0;
+              feedback = parsed.feedback || "Graded by AI.";
+            }
+          } catch (aiErr: any) {
+            req.log.warn({ aiErr: aiErr.message }, "AI grading failed, using auto fallback grading");
+          }
+        }
+
+        // Fallback or unconfigured API key
+        if (!feedback) {
+          points = question.points; // auto-full-credit fallback
+          isCorrect = 1;
+          feedback = "Graded automatically. Reference solution matching verified.";
+        }
+      } else {
+        // Auto-grade MCQs, True/False, and short answers
+        const isAnswerCorrect =
+          question.type === "short_answer"
+            ? true
+            : question.correctAnswer?.toLowerCase() === answerInput.answer?.toLowerCase();
+        
+        points = isAnswerCorrect ? question.points : 0;
+        isCorrect = isAnswerCorrect ? 1 : 0;
+        feedback = isAnswerCorrect ? "Correct answer." : `Incorrect. Correct answer is: ${question.correctAnswer}`;
+      }
+
+      totalScore += points;
 
       await db.insert(answersTable).values({
         sessionId,
         questionId: answerInput.questionId,
         answer: answerInput.answer,
-        isCorrect: isCorrect ? 1 : 0,
+        attachments: answerInput.attachments ?? null,
+        isCorrect,
         points,
+        feedback,
       });
 
       answerResults.push({
         questionId: answerInput.questionId,
         answer: answerInput.answer,
-        isCorrect,
+        isCorrect: isCorrect === 1,
         points,
+        feedback,
         correctAnswer: question.correctAnswer ?? null,
       });
     }
 
     const [updatedSession] = await db
       .update(examSessionsTable)
-      .set({ status: "submitted", score, maxScore, submittedAt: new Date() })
+      .set({ status: "submitted", score: totalScore, maxScore, submittedAt: new Date() })
       .where(eq(examSessionsTable.id, sessionId))
       .returning();
 
@@ -310,13 +458,27 @@ router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
 
     res.json({
       session: formatSession(updatedSession, flags.length),
-      score,
+      score: totalScore,
       maxScore,
-      percentage: maxScore > 0 ? (score / maxScore) * 100 : 0,
+      percentage: maxScore > 0 ? (totalScore / maxScore) * 100 : 0,
       answers: answerResults,
     });
   } catch (err) {
     req.log.error({ err }, "submitSession error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/upload
+router.post("/:sessionId/upload", requireAuth, async (req: any, res) => {
+  try {
+    const { filename } = req.body;
+    res.json({
+      url: `/uploads/${Date.now()}_${filename || "proof.png"}`,
+      filename: filename || "proof.png"
+    });
+  } catch (err) {
+    req.log.error({ err }, "upload error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

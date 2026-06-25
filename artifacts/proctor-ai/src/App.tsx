@@ -1,9 +1,10 @@
 import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import NotFound from "@/pages/not-found";
@@ -20,7 +21,7 @@ import JoinExam from "@/pages/student/join";
 import ExamTaking from "@/pages/student/exam-taking";
 import StudentResults from "@/pages/student/results";
 
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -106,9 +107,23 @@ function SignUpPage() {
 }
 
 function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
+  const { addListener, session } = useClerk();
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    // Set up the token getter so all API client requests have the bearer token
+    setAuthTokenGetter(async () => {
+      try {
+        return await session?.getToken() ?? null;
+      } catch (e) {
+        return null;
+      }
+    });
+    return () => {
+      setAuthTokenGetter(null);
+    };
+  }, [session]);
 
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
@@ -128,28 +143,52 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 function HomeRedirect() {
-  const { data: me, isLoading } = useGetMe({ query: { retry: false } });
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   
-  if (isLoading) {
+  const { data: me, isLoading, error } = useGetMe({ 
+    query: { 
+      queryKey: getGetMeQueryKey(), 
+      enabled: !!isSignedIn,
+      retry: (failureCount, error: any) => {
+        if (error?.status === 401) return false; // don't retry unauthorized errors
+        return failureCount < 3;
+      }
+    } 
+  });
+  
+  if (!isAuthLoaded || (isSignedIn && isLoading)) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  return (
-    <>
-      <Show when="signed-in">
-        {me?.role === "instructor" ? (
-          <Redirect to="/dashboard" />
-        ) : me?.role === "student" ? (
-          <Redirect to="/student" />
-        ) : (
-          <Redirect to="/onboarding" />
-        )}
-      </Show>
-      <Show when="signed-out">
-        <Landing />
-      </Show>
-    </>
-  );
+  if (!isSignedIn) {
+    return <Landing />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-destructive font-semibold">Failed to load user profile.</p>
+        <Button onClick={() => window.location.reload()}>
+          Retry Connection
+        </Button>
+      </div>
+    );
+  }
+
+  // Check if any required demographic or role onboarding details are missing
+  const isProfileComplete = 
+    me && 
+    me.name && 
+    me.role && 
+    me.institutionName && 
+    me.subjectArea && 
+    me.trafficSource;
+
+  if (isProfileComplete) {
+    return <Redirect to={me.role === "instructor" ? "/dashboard" : "/student"} />;
+  }
+
+  return <Redirect to="/onboarding" />;
 }
 
 const queryClient = new QueryClient();

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, real } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, real, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { examsTable } from "./exams";
@@ -23,8 +23,10 @@ export const answersTable = pgTable("answers", {
   sessionId: integer("session_id").notNull().references(() => examSessionsTable.id, { onDelete: "cascade" }),
   questionId: integer("question_id").notNull(),
   answer: text("answer").notNull(),
+  attachments: json("attachments").$type<string[]>(),
   isCorrect: integer("is_correct"),
   points: real("points").default(0),
+  feedback: text("feedback"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

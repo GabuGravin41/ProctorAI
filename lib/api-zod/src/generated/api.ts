@@ -34,6 +34,13 @@ export const ListExamsResponseItem = zod.object({
   "questionCount": zod.number().optional(),
   "sessionCount": zod.number().optional(),
   "flagCount": zod.number().optional(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -52,7 +59,14 @@ export const CreateExamBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
   "subject": zod.string().optional(),
-  "durationMinutes": zod.number().min(createExamBodyDurationMinutesMin)
+  "durationMinutes": zod.number().min(createExamBodyDurationMinutesMin),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional()
 })
 
 
@@ -71,6 +85,13 @@ export const GetExamResponse = zod.object({
   "durationMinutes": zod.number(),
   "subject": zod.string().nullish(),
   "instructorClerkId": zod.string(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "questions": zod.array(zod.object({
@@ -80,6 +101,7 @@ export const GetExamResponse = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 }))
@@ -103,7 +125,14 @@ export const UpdateExamBody = zod.object({
   "description": zod.string().optional(),
   "subject": zod.string().optional(),
   "durationMinutes": zod.number().min(updateExamBodyDurationMinutesMin).optional(),
-  "status": zod.enum(['draft', 'published', 'archived']).optional()
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "status": zod.enum(['draft', 'published', 'archived']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional()
 })
 
 export const UpdateExamResponse = zod.object({
@@ -117,6 +146,13 @@ export const UpdateExamResponse = zod.object({
   "questionCount": zod.number().optional(),
   "sessionCount": zod.number().optional(),
   "flagCount": zod.number().optional(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -153,6 +189,13 @@ export const PublishExamResponse = zod.object({
   "questionCount": zod.number().optional(),
   "sessionCount": zod.number().optional(),
   "flagCount": zod.number().optional(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 }),
@@ -177,6 +220,7 @@ export const ListQuestionsResponseItem = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 })
@@ -198,6 +242,7 @@ export const CreateQuestionBody = zod.object({
   "text": zod.string().min(1),
   "options": zod.array(zod.string()).optional(),
   "correctAnswer": zod.string().optional(),
+  "referenceSolution": zod.string().optional(),
   "points": zod.number().optional()
 })
 
@@ -218,6 +263,7 @@ export const UpdateQuestionBody = zod.object({
   "text": zod.string().min(1).optional(),
   "options": zod.array(zod.string()).optional(),
   "correctAnswer": zod.string().optional(),
+  "referenceSolution": zod.string().optional(),
   "points": zod.number().optional(),
   "orderIndex": zod.number().optional()
 })
@@ -229,6 +275,7 @@ export const UpdateQuestionResponse = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 })
@@ -268,6 +315,7 @@ export const GenerateQuestionsResponseItem = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 })
@@ -340,6 +388,13 @@ export const JoinExamResponse = zod.object({
   "durationMinutes": zod.number(),
   "subject": zod.string().nullish(),
   "instructorClerkId": zod.string(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "questions": zod.array(zod.object({
@@ -349,6 +404,7 @@ export const JoinExamResponse = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 }))
@@ -399,6 +455,13 @@ export const GetSessionResponse = zod.object({
   "durationMinutes": zod.number(),
   "subject": zod.string().nullish(),
   "instructorClerkId": zod.string(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "questions": zod.array(zod.object({
@@ -408,6 +471,7 @@ export const GetSessionResponse = zod.object({
   "text": zod.string(),
   "options": zod.array(zod.string()).nullish(),
   "correctAnswer": zod.string().nullish(),
+  "referenceSolution": zod.string().nullish(),
   "points": zod.number().optional(),
   "orderIndex": zod.number()
 }))
@@ -461,7 +525,8 @@ export const SubmitSessionParams = zod.object({
 export const SubmitSessionBody = zod.object({
   "answers": zod.array(zod.object({
   "questionId": zod.number(),
-  "answer": zod.string()
+  "answer": zod.string(),
+  "attachments": zod.array(zod.string()).optional()
 }))
 })
 
@@ -509,7 +574,7 @@ export const ListSessionFlagsParams = zod.object({
 export const ListSessionFlagsResponseItem = zod.object({
   "id": zod.number(),
   "sessionId": zod.number(),
-  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly']),
+  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly', 'tab_switch', 'fullscreen_exit']),
   "description": zod.string().nullish(),
   "clipData": zod.string().nullish(),
   "detectedAt": zod.string(),
@@ -528,7 +593,7 @@ export const ReportFlagParams = zod.object({
 })
 
 export const ReportFlagBody = zod.object({
-  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly']),
+  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly', 'tab_switch', 'fullscreen_exit']),
   "description": zod.string().optional(),
   "clipData": zod.string().optional(),
   "detectedAt": zod.string()
@@ -550,7 +615,7 @@ export const ReviewFlagBody = zod.object({
 export const ReviewFlagResponse = zod.object({
   "id": zod.number(),
   "sessionId": zod.number(),
-  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly']),
+  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly', 'tab_switch', 'fullscreen_exit']),
   "description": zod.string().nullish(),
   "clipData": zod.string().nullish(),
   "detectedAt": zod.string(),
@@ -581,13 +646,20 @@ export const GetDashboardStatsResponse = zod.object({
   "questionCount": zod.number().optional(),
   "sessionCount": zod.number().optional(),
   "flagCount": zod.number().optional(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })).optional(),
   "recentFlags": zod.array(zod.object({
   "id": zod.number(),
   "sessionId": zod.number(),
-  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly']),
+  "type": zod.enum(['face_not_visible', 'multiple_faces', 'looking_away', 'phone_detected', 'suspicious_movement', 'audio_anomaly', 'tab_switch', 'fullscreen_exit']),
   "description": zod.string().nullish(),
   "clipData": zod.string().nullish(),
   "detectedAt": zod.string(),
@@ -617,6 +689,13 @@ export const GetExamResultsResponse = zod.object({
   "questionCount": zod.number().optional(),
   "sessionCount": zod.number().optional(),
   "flagCount": zod.number().optional(),
+  "gradingMode": zod.enum(['manual', 'review_release', 'auto_release']).optional(),
+  "aiConfig": zod.object({
+  "provider": zod.enum(['free', 'custom_openrouter', 'custom_gemini', 'hosted']),
+  "model": zod.string(),
+  "customApiKey": zod.string().optional(),
+  "hostedPaid": zod.boolean().optional()
+}).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 }),
@@ -649,7 +728,10 @@ export const GetMeResponse = zod.object({
   "clerkId": zod.string(),
   "email": zod.string(),
   "name": zod.string().nullish(),
-  "role": zod.enum(['instructor', 'student']),
+  "role": zod.enum(['instructor', 'student']).nullish(),
+  "institutionName": zod.string().nullish(),
+  "subjectArea": zod.string().nullish(),
+  "trafficSource": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -659,7 +741,10 @@ export const GetMeResponse = zod.object({
  */
 export const UpdateMeBody = zod.object({
   "name": zod.string().optional(),
-  "role": zod.enum(['instructor', 'student']).optional()
+  "role": zod.enum(['instructor', 'student']).optional(),
+  "institutionName": zod.string().optional(),
+  "subjectArea": zod.string().optional(),
+  "trafficSource": zod.string().optional()
 })
 
 export const UpdateMeResponse = zod.object({
@@ -667,7 +752,10 @@ export const UpdateMeResponse = zod.object({
   "clerkId": zod.string(),
   "email": zod.string(),
   "name": zod.string().nullish(),
-  "role": zod.enum(['instructor', 'student']),
+  "role": zod.enum(['instructor', 'student']).nullish(),
+  "institutionName": zod.string().nullish(),
+  "subjectArea": zod.string().nullish(),
+  "trafficSource": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
