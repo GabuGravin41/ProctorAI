@@ -311,13 +311,18 @@ router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
       const question = questions.find((q) => q.id === answerInput.questionId);
       if (!question) continue;
 
-      let isCorrect = 0;
+      let isCorrect: number | null = 0;
       let points = 0;
       let feedback = "";
 
       if (question.type === "essay") {
-        // AI Grading for Olympiad essay proof questions
-        let apiKey = process.env.OPENROUTER_API_KEY;
+        if (exam?.gradingMode === "manual") {
+          isCorrect = null;
+          points = 0;
+          feedback = "Pending manual grading.";
+        } else {
+          // AI Grading for Olympiad essay proof questions
+          let apiKey = process.env.OPENROUTER_API_KEY;
         let model = "google/gemma-2-9b-it:free";
         let provider = "free";
         let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
@@ -408,11 +413,12 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
           }
         }
 
-        // Fallback or unconfigured API key
-        if (!feedback) {
-          points = question.points; // auto-full-credit fallback
-          isCorrect = 1;
-          feedback = "Graded automatically. Reference solution matching verified.";
+          // Fallback or unconfigured API key
+          if (!feedback) {
+            points = question.points; // auto-full-credit fallback
+            isCorrect = 1;
+            feedback = "Graded automatically. Reference solution matching verified.";
+          }
         }
       } else {
         // Auto-grade MCQs, True/False, and short answers
@@ -448,9 +454,17 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
       });
     }
 
+    const isAutoRelease = exam?.gradingMode === "auto_release";
+
     const [updatedSession] = await db
       .update(examSessionsTable)
-      .set({ status: "submitted", score: totalScore, maxScore, submittedAt: new Date() })
+      .set({ 
+        status: "submitted", 
+        score: totalScore, 
+        maxScore, 
+        submittedAt: new Date(),
+        isResultsReleased: isAutoRelease
+      })
       .where(eq(examSessionsTable.id, sessionId))
       .returning();
 
@@ -479,6 +493,69 @@ router.post("/:sessionId/upload", requireAuth, async (req: any, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "upload error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/release
+router.post("/:sessionId/release", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const [updated] = await db
+      .update(examSessionsTable)
+      .set({ isResultsReleased: true })
+      .where(eq(examSessionsTable.id, sessionId))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "release error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/questions/:questionId/grade
+router.post("/:sessionId/questions/:questionId/grade", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const questionId = parseInt(req.params.questionId);
+    const { points, feedback } = req.body;
+
+    let [answer] = await db.select().from(answersTable).where(and(eq(answersTable.sessionId, sessionId), eq(answersTable.questionId, questionId)));
+    
+    if (answer) {
+      [answer] = await db
+        .update(answersTable)
+        .set({ points, feedback, isCorrect: points > 0 ? 1 : 0 })
+        .where(eq(answersTable.id, answer.id))
+        .returning();
+    } else {
+      [answer] = await db
+        .insert(answersTable)
+        .values({
+          sessionId,
+          questionId,
+          answer: "",
+          isCorrect: points > 0 ? 1 : 0,
+          points,
+          feedback,
+        })
+        .returning();
+    }
+
+    // Recalculate total score for session
+    const allAnswers = await db.select().from(answersTable).where(eq(answersTable.sessionId, sessionId));
+    const totalScore = allAnswers.reduce((sum, a) => sum + (a.points || 0), 0);
+
+    const [updatedSession] = await db
+      .update(examSessionsTable)
+      .set({ score: totalScore })
+      .where(eq(examSessionsTable.id, sessionId))
+      .returning();
+
+    res.json({ answer, session: updatedSession });
+  } catch (err) {
+    req.log.error({ err }, "grade error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

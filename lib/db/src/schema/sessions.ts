@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, real, json } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, real, json, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { examsTable } from "./exams";
@@ -11,6 +11,7 @@ export const examSessionsTable = pgTable("exam_sessions", {
   studentName: text("student_name"),
   accessCode: text("access_code").notNull().unique(),
   status: text("status", { enum: ["pending", "active", "submitted", "expired"] }).notNull().default("pending"),
+  isResultsReleased: boolean("is_results_released").notNull().default(false),
   score: real("score"),
   maxScore: integer("max_score"),
   startedAt: timestamp("started_at"),

@@ -50,9 +50,10 @@ export default function StudentResults() {
   }
 
   const { session, exam, answers } = sessionData;
+  const isResultsReleased = (session as any).isResultsReleased;
   const isSubmitted = session.status === "submitted";
   const percentage =
-    session.score != null && session.maxScore
+    isResultsReleased && session.score != null && session.maxScore
       ? Math.round((session.score / session.maxScore) * 100)
       : null;
 
@@ -93,12 +94,14 @@ export default function StudentResults() {
                   {percentage !== null && <ScoreBadge percentage={percentage} />}
                 </div>
                 <div className="text-7xl font-display font-bold text-primary mb-3">
-                  {percentage !== null ? `${percentage}%` : "Pending"}
+                  {!isResultsReleased ? "Pending Review" : (percentage !== null ? `${percentage}%` : "N/A")}
                 </div>
-                <p className="text-lg font-medium text-muted-foreground">
-                  {session.score} out of {session.maxScore} points
-                </p>
-                {percentage !== null && (
+                {isResultsReleased && (
+                  <p className="text-lg font-medium text-muted-foreground">
+                    {session.score} out of {session.maxScore} points
+                  </p>
+                )}
+                {isResultsReleased && percentage !== null && (
                   <Progress value={percentage} className="mt-4 max-w-xs mx-auto h-2" />
                 )}
               </div>
@@ -117,7 +120,7 @@ export default function StudentResults() {
                     Correct
                   </div>
                   <div className="font-bold text-xl text-green-600">
-                    {answers ? answers.filter((a) => a.isCorrect).length : "—"}
+                    {isResultsReleased && answers ? answers.filter((a) => a.isCorrect).length : "—"}
                   </div>
                 </div>
                 <div className="p-4 text-center col-span-2 sm:col-span-1">
@@ -142,11 +145,24 @@ export default function StudentResults() {
               ) : null}
             </Card>
 
-            {/* Per-question breakdown */}
-            {answers && answers.length > 0 && (
+            {!isResultsReleased ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Results Pending Instructor Review</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Your exam has been submitted successfully. Your instructor needs to review and release the results before they become available here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold border-b pb-2">Question Breakdown</h2>
-                {answers.map((item, idx) => {
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary" /> Answer Review
+                </h2>
+                {answers && answers.length > 0 && answers.map((item, idx) => {
                   const isEssay =
                     item.questionType === "essay" || item.questionType === "short_answer";
                   const unanswered = item.studentAnswer === null || item.studentAnswer === "";

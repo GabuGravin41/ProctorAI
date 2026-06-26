@@ -29,7 +29,6 @@ export default function UserProfile() {
     institutionName: "",
     subjectArea: "",
     trafficSource: "",
-    bio: "",
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -42,7 +41,6 @@ export default function UserProfile() {
         institutionName: me.institutionName || "",
         subjectArea: me.subjectArea || "",
         trafficSource: me.trafficSource || "",
-        bio: me.bio || "",
       });
     }
   }, [me]);
@@ -72,7 +70,6 @@ export default function UserProfile() {
           institutionName: formData.institutionName.trim(),
           subjectArea: formData.subjectArea,
           trafficSource: formData.trafficSource,
-          bio: formData.bio.trim() || undefined,
         }
       },
       {
@@ -286,19 +283,6 @@ export default function UserProfile() {
                 </div>
               </div>
 
-              {/* Bio */}
-              <div className="space-y-2">
-                <Label>Bio</Label>
-                <Textarea
-                  placeholder="Tell us about yourself and your teaching experience..."
-                  value={formData.bio}
-                  onChange={(e) => setFormData(f => ({ ...f, bio: e.target.value }))}
-                  disabled={!isEditing}
-                  className="min-h-24 resize-none"
-                />
-                <p className="text-xs text-muted-foreground">Optional - helps us personalize your experience</p>
-              </div>
-
               {/* Form Actions */}
               {isEditing && (
                 <div className="flex gap-3 pt-6 border-t">
@@ -314,7 +298,6 @@ export default function UserProfile() {
                           institutionName: me.institutionName || "",
                           subjectArea: me.subjectArea || "",
                           trafficSource: me.trafficSource || "",
-                          bio: me.bio || "",
                         });
                       }
                     }}
@@ -351,12 +334,6 @@ export default function UserProfile() {
                 {me.createdAt ? new Date(me.createdAt).toLocaleDateString() : "N/A"}
               </span>
             </div>
-            {me.examsCreated !== undefined && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Exams Created:</span>
-                <span className="font-medium">{me.examsCreated}</span>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
