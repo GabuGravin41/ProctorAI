@@ -4,6 +4,7 @@ import "./index.css";
 import { ClerkProvider } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -12,6 +13,11 @@ const clerkPubKey = publishableKeyFromHost(
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// Point API requests to the backend URL
+if (import.meta.env.VITE_API_URL) {
+  setBaseUrl(import.meta.env.VITE_API_URL);
+}
 
 const clerkAppearance = {
   theme: shadcn,
