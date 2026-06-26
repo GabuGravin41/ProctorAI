@@ -118,6 +118,36 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+  // Build the Vercel serverless function entry point (api/index.js)
+  // Does NOT use the pino plugin (avoids worker file conflicts with outfile).
+  // pino-http is excluded so logging degrades gracefully on Vercel serverless.
+  const { build: esbuildApi } = await import("esbuild");
+  await esbuildApi({
+    entryPoints: [path.resolve(artifactDir, "src/app.ts")],
+    platform: "node",
+    bundle: true,
+    format: "esm",
+    outfile: path.resolve(artifactDir, "api/index.js"),
+    external: [
+      "*.node",
+      "sharp",
+      "pg-native",
+      "pino-http",
+      "pino",
+      "pino-pretty",
+    ],
+    sourcemap: false,
+    banner: {
+      js: `import { createRequire as __bannerCrReq } from 'node:module';
+import __bannerPath from 'node:path';
+import __bannerUrl from 'node:url';
+
+globalThis.require = __bannerCrReq(import.meta.url);
+globalThis.__filename = __bannerUrl.fileURLToPath(import.meta.url);
+globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
+    `,
+    },
+  });
 }
 
 buildAll().catch((err) => {
