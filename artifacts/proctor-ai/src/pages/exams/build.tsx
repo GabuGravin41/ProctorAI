@@ -94,18 +94,78 @@ export default function ExamBuilder() {
   const [aiProvider, setAiProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
   const [aiModel, setAiModel] = useState("deepseek/deepseek-chat");
   const [customApiKey, setCustomApiKey] = useState("");
+  
+  // Enhanced AI generation state
+  const [learningObjectives, setLearningObjectives] = useState("");
+  const [assessmentStyle, setAssessmentStyle] = useState<"conceptual" | "practical" | "mixed">("mixed");
+  const [easyPercentage, setEasyPercentage] = useState("20");
+  const [mediumPercentage, setMediumPercentage] = useState("60");
+  const [hardPercentage, setHardPercentage] = useState("20");
+  const [contentGuidelines, setContentGuidelines] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleGenerate = () => {
-    if (!aiPrompt) return;
+    if (!aiPrompt.trim()) {
+      toast({ title: "Please provide course material or topic", variant: "destructive" });
+      return;
+    }
     if (selectedQuestionTypes.length === 0) {
       toast({ title: "Select at least one question type", variant: "destructive" });
       return;
     }
+
+    // Validate difficulty distribution
+    const easy = parseInt(easyPercentage) || 0;
+    const medium = parseInt(mediumPercentage) || 0;
+    const hard = parseInt(hardPercentage) || 0;
+    const total = easy + medium + hard;
     
+    if (total !== 100) {
+      toast({ 
+        title: "Difficulty distribution must equal 100%", 
+        description: `Current total: ${total}%`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Build comprehensive exam generation prompt
+    const comprehensivePrompt = `
+EXAM GENERATION TASK:
+Generate educational questions based on the following specifications:
+
+COURSE MATERIAL:
+${aiPrompt}
+
+LEARNING OBJECTIVES:
+${learningObjectives || "(Not specified - infer from material above)"}
+
+ASSESSMENT STYLE: ${assessmentStyle === "conceptual" ? "Focus on understanding concepts and theory" : assessmentStyle === "practical" ? "Focus on application and problem-solving" : "Balance between theory and application"}
+
+QUESTION TYPES TO GENERATE: ${selectedQuestionTypes.map(t => t.replace(/_/g, ' ')).join(", ")}
+
+DIFFICULTY DISTRIBUTION:
+- Easy (remembering/understanding): ${easy}%
+- Medium (applying/analyzing): ${medium}%
+- Hard (evaluating/creating): ${hard}%
+
+${contentGuidelines ? `CONTENT GUIDELINES:\n${contentGuidelines}\n` : ""}
+
+QUALITY REQUIREMENTS:
+- Questions must be clear, unambiguous, and educationally sound
+- Answers must be factually accurate
+- Questions should test different aspects of the material
+- For multiple choice: all options should be plausible distractors
+- For essay: include clear grading rubric or reference solution
+- Avoid trick questions or overly ambiguous wording
+
+Generate ${aiCount} questions that follow these specifications exactly.
+    `.trim();
+
     generateQuestions.mutate({
       examId,
       data: {
-        topic: aiPrompt,
+        topic: comprehensivePrompt,
         count: parseInt(aiCount, 10),
         difficulty: aiDifficulty,
         questionTypes: selectedQuestionTypes as GenerateQuestionsInputQuestionTypesItem[],
@@ -114,11 +174,22 @@ export default function ExamBuilder() {
       onSuccess: () => {
         toast({ title: "Questions Generated", description: "Successfully added AI generated questions." });
         setAiGenerateOpen(false);
+        // Reset form
+        setAiPrompt("");
+        setLearningObjectives("");
+        setContentGuidelines("");
+        setEasyPercentage("20");
+        setMediumPercentage("60");
+        setHardPercentage("20");
         refetchQuestions();
         queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
       },
-      onError: () => {
-        toast({ title: "Generation Failed", description: "Could not generate questions.", variant: "destructive" });
+      onError: (error: any) => {
+        toast({ 
+          title: "Generation Failed", 
+          description: error?.message || "Could not generate questions. Please check your input and try again.",
+          variant: "destructive" 
+        });
       }
     });
   };
@@ -304,12 +375,14 @@ export default function ExamBuilder() {
     });
   };
 
-  // Initialize AI settings from exam
-  if (exam?.aiConfig && !aiSettingsOpen) {
-    setAiProvider(exam.aiConfig.provider as any);
-    setAiModel(exam.aiConfig.model);
-    setCustomApiKey(exam.aiConfig.customApiKey || "");
-  }
+  // Initialize AI settings from exam when dialog opens
+  useEffect(() => {
+    if (aiSettingsOpen && exam?.aiConfig) {
+      setAiProvider(exam.aiConfig.provider as any);
+      setAiModel(exam.aiConfig.model);
+      setCustomApiKey(exam.aiConfig.customApiKey || "");
+    }
+  }, [aiSettingsOpen, exam?.aiConfig]);
 
   const handlePublish = () => {
     const emails = studentEmails.split(/[\n,]+/).map(e => e.trim()).filter(e => e);
@@ -331,72 +404,75 @@ export default function ExamBuilder() {
     });
   };
 
-  if (isLoadingExam) return <InstructorLayout><div className="p-8">Loading...</div></InstructorLayout>;
-  if (!exam) return <InstructorLayout><div className="p-8">Exam not found</div></InstructorLayout>;
+  if (isLoadingExam) return <InstructorLayout><div className="p-4 md:p-8">Loading...</div></InstructorLayout>;
+  if (!exam) return <InstructorLayout><div className="p-4 md:p-8">Exam not found</div></InstructorLayout>;
 
   return (
     <InstructorLayout>
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
+        {/* Header - Mobile Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
               <Link href="/exams"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">{exam.title}</h1>
-                <Badge variant={exam.status === 'published' ? 'default' : exam.status === 'archived' ? 'outline' : 'secondary'} className="capitalize">{exam.status}</Badge>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground truncate">{exam.title}</h1>
+                <Badge variant={exam.status === 'published' ? 'default' : exam.status === 'archived' ? 'outline' : 'secondary'} className="capitalize shrink-0">{exam.status}</Badge>
               </div>
-              <p className="text-muted-foreground mt-1">{exam.subject} • {exam.durationMinutes} min</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">{exam.subject} • {exam.durationMinutes} min</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Action Buttons - Mobile Responsive */}
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {exam.status === 'draft' && (
               <>
                 <Button
                   variant="outline"
-                  className="gap-2"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
                   onClick={() => setAiSettingsOpen(true)}
                   disabled={updateExam.isPending}
                 >
-                  <Settings className="h-4 w-4" /> AI Settings
+                  <Settings className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">AI Settings</span><span className="sm:hidden">AI</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="gap-2 text-destructive hover:text-destructive"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-destructive hover:text-destructive flex-1 sm:flex-none"
                   onClick={() => setDeleteAllOpen(true)}
                   disabled={!questions || questions.length === 0}
                 >
-                  <Trash2 className="h-4 w-4" /> Delete All
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="gap-2"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
                   onClick={() => setRegenerateOpen(true)}
                   disabled={!questions || questions.length === 0}
                 >
-                  <RefreshCw className="h-4 w-4" /> Regenerate All
+                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Regenerate</span><span className="sm:hidden">Regen</span>
                 </Button>
               </>
             )}
             {exam.status === 'published' && (
               <Button
                 variant="outline"
-                className="gap-2 text-muted-foreground"
+                className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-muted-foreground flex-1 sm:flex-none"
                 onClick={() => setArchiveOpen(true)}
                 disabled={updateExam.isPending}
               >
-                <Archive className="h-4 w-4" /> Archive
+                <Archive className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Archive</span>
               </Button>
             )}
             {exam.status === 'draft' && (
               <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Send className="h-4 w-4" /> Publish Exam
+                  <Button className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none">
+                    <Send className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Publish</span><span className="sm:hidden">Pub</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Publish & Generate Access Codes</DialogTitle>
                     <DialogDescription>
@@ -414,9 +490,9 @@ export default function ExamBuilder() {
                       />
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setPublishOpen(false)}>Cancel</Button>
-                    <Button onClick={handlePublish} disabled={publishExam.isPending}>
+                  <DialogFooter className="flex gap-2 flex-col sm:flex-row">
+                    <Button variant="outline" onClick={() => setPublishOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                    <Button onClick={handlePublish} disabled={publishExam.isPending} className="w-full sm:w-auto">
                       {publishExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Publish Exam
                     </Button>
@@ -425,15 +501,16 @@ export default function ExamBuilder() {
               </Dialog>
             )}
             {(exam.status === 'published' || exam.status === 'archived') && (
-              <Button variant="secondary" asChild>
+              <Button variant="secondary" asChild className="flex-1 sm:flex-none text-xs sm:text-sm">
                 <Link href={`/exams/${exam.id}/results`}>View Results</Link>
               </Button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-8">
-          <h2 className="text-xl font-bold">Questions ({questions?.length || 0})</h2>
+        {/* Questions Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-8">
+          <h2 className="text-lg sm:text-xl font-bold">Questions ({questions?.length || 0})</h2>
           
           {exam.status === 'draft' && (
             <div className="flex gap-2">
@@ -443,64 +520,203 @@ export default function ExamBuilder() {
                     <Sparkles className="h-4 w-4" /> Auto-Generate
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Generate Questions with AI</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-indigo-600" />
+                      Generate Questions with AI
+                    </DialogTitle>
                     <DialogDescription>
-                      Provide a topic or source text, and we'll generate high-quality questions for your exam.
+                      Provide detailed specifications to ensure the AI generates exactly what you need. The more information you provide, the better the results.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Topic or Source Text</Label>
+                  
+                  <div className="space-y-6 py-4">
+                    {/* Course Material */}
+                    <div className="space-y-2 border-b pb-4">
+                      <Label className="font-semibold flex items-center gap-2">
+                        📚 Course Material or Topic <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mb-2">Paste the content students should be tested on</p>
                       <Textarea 
-                        placeholder="e.g. The causes of the French Revolution, focusing on economic factors..." 
+                        placeholder="Paste textbook excerpts, lecture notes, or specific topics here. Be as detailed as possible.
+
+Example: Chapter 3 covers photosynthesis...
+- The light-dependent reactions occur in the thylakoid membrane
+- The Calvin cycle occurs in the stroma..."
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
+                        className="min-h-28 font-mono text-xs"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Count</Label>
-                        <Input type="number" min="1" max="20" value={aiCount} onChange={(e) => setAiCount(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Difficulty</Label>
-                        <Select value={aiDifficulty} onValueChange={(v: any) => setAiDifficulty(v)}>
-                          <SelectTrigger><SelectValue placeholder="Difficulty" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="easy">Easy</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="hard">Hard</SelectItem>
-                          </SelectContent>
-                        </Select>
+
+                    {/* Learning Objectives */}
+                    <div className="space-y-2 border-b pb-4">
+                      <Label className="font-semibold flex items-center gap-2">
+                        🎯 Learning Objectives
+                      </Label>
+                      <p className="text-xs text-muted-foreground mb-2">What should students be able to do after learning this material?</p>
+                      <Textarea 
+                        placeholder="Examples:
+- Students should understand the difference between...
+- Students should be able to calculate...
+- Students should apply concepts to real-world scenarios..."
+                        value={learningObjectives}
+                        onChange={(e) => setLearningObjectives(e.target.value)}
+                        className="min-h-20 text-sm"
+                      />
+                    </div>
+
+                    {/* Assessment Style */}
+                    <div className="space-y-3 border-b pb-4">
+                      <Label className="font-semibold">Assessment Style</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[
+                          { id: "conceptual", label: "Conceptual", desc: "Test understanding of theory" },
+                          { id: "practical", label: "Practical", desc: "Test problem-solving skills" },
+                          { id: "mixed", label: "Mixed", desc: "Balance of both" },
+                        ].map((style) => (
+                          <button
+                            key={style.id}
+                            onClick={() => setAssessmentStyle(style.id as any)}
+                            className={`p-3 rounded-lg border-2 transition-all text-left ${
+                              assessmentStyle === style.id
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-slate-200 hover:border-slate-300"
+                            }`}
+                          >
+                            <p className="font-medium text-sm">{style.label}</p>
+                            <p className="text-xs text-muted-foreground">{style.desc}</p>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Question Types (select all that apply)</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {QUESTION_TYPES.map((qt) => (
-                          <div key={qt.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`qt-${qt.value}`}
-                              checked={selectedQuestionTypes.includes(qt.value)}
-                              onCheckedChange={() => toggleQuestionType(qt.value)}
+
+                    {/* Question Configuration */}
+                    <div className="space-y-3 border-b pb-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-semibold">Question Configuration</Label>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm">Number of Questions</Label>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="20" 
+                            value={aiCount}
+                            onChange={(e) => setAiCount(e.target.value)}
+                            className="text-center text-lg font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Difficulty Distribution */}
+                    <div className="space-y-3 border-b pb-4">
+                      <Label className="font-semibold">Difficulty Distribution (must equal 100%)</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Easy (Remembering/Understanding)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              max="100" 
+                              value={easyPercentage}
+                              onChange={(e) => setEasyPercentage(e.target.value)}
+                              className="text-center font-semibold"
                             />
-                            <label
-                              htmlFor={`qt-${qt.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {qt.label}
-                            </label>
+                            <span className="text-sm font-medium">%</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Medium (Applying/Analyzing)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              max="100" 
+                              value={mediumPercentage}
+                              onChange={(e) => setMediumPercentage(e.target.value)}
+                              className="text-center font-semibold"
+                            />
+                            <span className="text-sm font-medium">%</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Hard (Evaluating/Creating)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              max="100" 
+                              value={hardPercentage}
+                              onChange={(e) => setHardPercentage(e.target.value)}
+                              className="text-center font-semibold"
+                            />
+                            <span className="text-sm font-medium">%</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Current total: {(parseInt(easyPercentage)||0) + (parseInt(mediumPercentage)||0) + (parseInt(hardPercentage)||0)}%
+                      </p>
+                    </div>
+
+                    {/* Question Types */}
+                    <div className="space-y-2 border-b pb-4">
+                      <Label className="font-semibold">Question Types (select all that apply)</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {QUESTION_TYPES.map((qt) => (
+                          <div
+                            key={qt.value}
+                            onClick={() => toggleQuestionType(qt.value)}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              selectedQuestionTypes.includes(qt.value)
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-slate-200 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={selectedQuestionTypes.includes(qt.value)}
+                                onCheckedChange={() => {}}
+                              />
+                              <span className="font-medium text-sm">{qt.label}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
+
+                    {/* Content Guidelines */}
+                    <div className="space-y-2">
+                      <Label className="font-semibold">Content Guidelines (Optional)</Label>
+                      <p className="text-xs text-muted-foreground mb-2">Any specific requirements or restrictions for questions?</p>
+                      <Textarea 
+                        placeholder="Examples:
+- Avoid questions about X topic
+- Include real-world examples
+- Focus on numerical calculations
+- Emphasize vocabulary terms..."
+                        value={contentGuidelines}
+                        onChange={(e) => setContentGuidelines(e.target.value)}
+                        className="min-h-16 text-sm"
+                      />
+                    </div>
                   </div>
-                  <DialogFooter>
+
+                  <DialogFooter className="flex gap-2 mt-6">
                     <Button variant="outline" onClick={() => setAiGenerateOpen(false)}>Cancel</Button>
-                    <Button onClick={handleGenerate} disabled={generateQuestions.isPending}>
-                      {generateQuestions.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button 
+                      onClick={handleGenerate} 
+                      disabled={generateQuestions.isPending}
+                      className="gap-2"
+                    >
+                      {generateQuestions.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                      <Sparkles className="h-4 w-4" />
                       Generate Questions
                     </Button>
                   </DialogFooter>
@@ -509,17 +725,17 @@ export default function ExamBuilder() {
 
               <Dialog open={addQuestionOpen} onOpenChange={(open) => { setAddQuestionOpen(open); if (!open) setQuestionForm(DEFAULT_FORM); }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Plus className="h-4 w-4" /> Add Question
+                  <Button variant="outline" className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Add Question</span><span className="sm:hidden">Add</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add Question Manually</DialogTitle>
                     <DialogDescription>Create a custom question for your exam.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Question Type</Label>
                         <Select
@@ -634,9 +850,9 @@ export default function ExamBuilder() {
                       </div>
                     )}
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddQuestionOpen(false)}>Cancel</Button>
-                    <Button onClick={handleAddQuestion} disabled={createQuestion.isPending}>
+                  <DialogFooter className="flex gap-2 flex-col sm:flex-row">
+                    <Button variant="outline" onClick={() => setAddQuestionOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                    <Button onClick={handleAddQuestion} disabled={createQuestion.isPending} className="w-full sm:w-auto">
                       {createQuestion.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Add Question
                     </Button>
@@ -658,23 +874,23 @@ export default function ExamBuilder() {
         ) : (
           <div className="space-y-4">
             {questions.map((q, index) => (
-              <Card key={q.id} className="group relative">
-                <CardHeader className="py-4 flex flex-row items-start justify-between space-y-0">
-                  <div className="space-y-1 flex-1 min-w-0 pr-4">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <span className="text-muted-foreground shrink-0">{index + 1}.</span> 
+              <Card key={q.id} className="group relative overflow-hidden">
+                <CardHeader className="py-3 md:py-4 flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-2 sm:space-y-0">
+                  <div className="space-y-1 flex-1 min-w-0 pr-2">
+                    <CardTitle className="text-sm md:text-base flex items-start gap-2 break-words">
+                      <span className="text-muted-foreground shrink-0 font-normal">{index + 1}.</span> 
                       <LatexRenderer text={q.text} className="leading-relaxed" />
                     </CardTitle>
-                    <CardDescription className="capitalize flex items-center gap-2">
-                      {q.type.replace(/_/g, ' ')}
-                      <span className="text-xs bg-slate-100 rounded px-1.5 py-0.5">{q.points || 1} pt{(q.points || 1) !== 1 ? "s" : ""}</span>
+                    <CardDescription className="capitalize flex items-center gap-1 text-xs md:text-sm flex-wrap">
+                      <span>{q.type.replace(/_/g, ' ')}</span>
+                      <span className="text-xs bg-slate-100 rounded px-1.5 py-0.5 shrink-0">{q.points || 1} pt{(q.points || 1) !== 1 ? "s" : ""}</span>
                     </CardDescription>
                   </div>
                   {exam.status === 'draft' && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                      className="h-8 w-8 opacity-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 active:opacity-100"
                       onClick={() => setDeleteTargetId(q.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -806,6 +1022,133 @@ export default function ExamBuilder() {
               <Copy className="h-4 w-4 mr-2" /> Copy All
             </Button>
             <Button onClick={() => setCodesOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all questions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete all {questions?.length || 0} questions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleDeleteAll}
+              disabled={deleteQuestion.isPending}
+            >
+              {deleteQuestion.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerate Confirmation */}
+      <AlertDialog open={regenerateOpen} onOpenChange={setRegenerateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {regenerateTargetId ? "Regenerate this question?" : "Regenerate all questions?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {regenerateTargetId 
+                ? "The selected question will be deleted and replaced with a newly generated one." 
+                : `All ${questions?.length || 0} questions will be deleted and regenerated using the same settings.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-indigo-600 text-white hover:bg-indigo-700"
+              onClick={() => {
+                if (regenerateTargetId) {
+                  handleRegenerateOne(regenerateTargetId);
+                } else {
+                  handleRegenerateAll();
+                }
+              }}
+              disabled={generateQuestions.isPending || deleteQuestion.isPending}
+            >
+              {(generateQuestions.isPending || deleteQuestion.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Settings Dialog */}
+      <Dialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" /> AI Model Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure the AI model used for question generation on this exam.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>AI Provider</Label>
+              <Select value={aiProvider} onValueChange={(v: any) => setAiProvider(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (Deepseek via OpenRouter)</SelectItem>
+                  <SelectItem value="custom_openrouter">Custom OpenRouter API</SelectItem>
+                  <SelectItem value="custom_gemini">Custom Google Gemini API</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Switch between free tier and custom paid APIs</p>
+            </div>
+
+            {aiProvider === "free" && (
+              <div className="space-y-2 p-3 rounded-md bg-indigo-50 border border-indigo-200">
+                <p className="text-sm font-medium text-indigo-900">Free Tier</p>
+                <p className="text-xs text-indigo-800">Using Deepseek model via OpenRouter API (free tier)</p>
+              </div>
+            )}
+
+            {aiProvider !== "free" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Model ID</Label>
+                  <Input 
+                    placeholder={aiProvider === "custom_openrouter" ? "e.g. anthropic/claude-3-haiku" : "e.g. gemini-pro"}
+                    value={aiModel} 
+                    onChange={(e) => setAiModel(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {aiProvider === "custom_openrouter" 
+                      ? "See openrouter.ai/models for available models"
+                      : "See cloud.google.com/vertex-ai for available models"}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>API Key</Label>
+                  <Input 
+                    type="password"
+                    placeholder={aiProvider === "custom_openrouter" ? "sk-..." : "AIza..."}
+                    value={customApiKey} 
+                    onChange={(e) => setCustomApiKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Your API key is only used for this exam</p>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAiSettingsOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateAiSettings} disabled={updateExam.isPending}>
+              {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Settings
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

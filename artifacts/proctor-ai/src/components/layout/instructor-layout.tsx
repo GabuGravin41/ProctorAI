@@ -73,16 +73,18 @@ export default function InstructorLayout({ children }: InstructorLayoutProps) {
         })}
       </div>
 
-      <div className="p-4 border-t border-sidebar-border bg-sidebar/50">
-        <div className="flex items-center mb-4 px-2">
-          <div className="h-8 w-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary font-bold">
-            {user?.firstName?.charAt(0) || "U"}
+      <div className="p-4 border-t border-sidebar-border bg-sidebar/50 space-y-2">
+        <Link href="/profile">
+          <div className="flex items-center px-2 py-1.5 rounded cursor-pointer hover:bg-sidebar-accent/40 transition-colors">
+            <div className="h-8 w-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary font-bold">
+              {user?.firstName?.charAt(0) || "U"}
+            </div>
+            <div className="ml-3 truncate flex-1">
+              <p className="text-sm font-medium truncate">{user?.fullName || "Instructor"}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+            </div>
           </div>
-          <div className="ml-3 truncate">
-            <p className="text-sm font-medium truncate">{user?.fullName || "Instructor"}</p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
-          </div>
-        </div>
+        </Link>
         <Button 
           variant="ghost" 
           className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 border-sidebar-border"

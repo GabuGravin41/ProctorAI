@@ -114,14 +114,14 @@ export default function NewExam() {
 
   return (
     <InstructorLayout>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <Button variant="ghost" size="icon" asChild className="w-fit">
             <Link href="/exams"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">Create New Exam</h1>
-            <p className="text-muted-foreground mt-1">Set up exam specifications and AI configuration.</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-foreground">Create New Exam</h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Set up exam specifications and AI configuration.</p>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export default function NewExam() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Card className="border border-slate-100 shadow-sm backdrop-blur-md bg-white/95">
               <CardHeader>
-                <CardTitle>Exam Details</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Exam Details</CardTitle>
                 <CardDescription>Enter primary name and testing attributes.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -140,14 +140,14 @@ export default function NewExam() {
                     <FormItem>
                       <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="IMO Mock Olympiad - Geometry" {...field} className="bg-slate-50/50 focus:bg-white" />
+                        <Input placeholder="IMO Mock Olympiad - Geometry" {...field} className="bg-slate-50/50 focus:bg-white text-sm" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="subject"

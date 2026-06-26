@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, questionsTable } from "@workspace/db";
+import { db, questionsTable, examsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -158,50 +158,61 @@ async function generateWithOpenRouter(
     return t;
   });
 
-  const prompt = `You are an expert exam question creator. Generate exactly ${count} exam questions about the topic: "${topic}".
+  const prompt = `You are an expert mathematician specializing in Olympiad-level problem creation (IMO, Putnam, national competitions). Generate exactly ${count} rigorous exam questions about the topic: "${topic}".
 
-Difficulty level: ${difficulty}
+Difficulty level: ${difficulty} (interpret as: easy=foundational concepts, medium=competition level, hard=Olympiad championship level)
 Question types to use (distribute evenly): ${typeDescriptions.join(", ")}
+
+CRITICAL INSTRUCTIONS FOR OLYMPIAD-STYLE QUESTIONS:
+1. For proof-based questions (essay type): These should be genuine mathematical proofs requiring logical reasoning, not just calculations
+2. Questions must be self-contained with all necessary definitions
+3. Use proper mathematical notation and LaTeX formatting throughout
+4. Reference solutions must be complete, step-by-step proofs with clear logical flow
+5. Avoid trivial or computational questions for hard difficulty - focus on conceptual depth
+6. For geometry problems: include clear diagram descriptions when needed
+7. For number theory: specify domains (e.g., "for all positive integers n")
+8. For algebra: ensure equations are well-posed with unique solutions
 
 Return ONLY a valid JSON array with this exact structure (no markdown, no explanation, no code fences):
 [
   {
     "type": "multiple_choice",
-    "text": "Question text here?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "text": "Question text here with proper LaTeX notation like $x^2 + y^2 = 1$?",
+    "options": ["Option A with $\\mathbb{R}$", "Option B", "Option C", "Option D"],
     "correctAnswer": "Option A",
     "points": 1
   },
   {
     "type": "true_false",
-    "text": "Statement that is true or false?",
+    "text": "Mathematical statement to evaluate (e.g., 'For all $n \\in \\mathbb{N}$, $n^2 \\geq n$')?",
     "options": ["True", "False"],
     "correctAnswer": "True",
     "points": 1
   },
   {
     "type": "short_answer",
-    "text": "Question requiring a brief answer?",
-    "correctAnswer": "Expected answer here",
+    "text": "Question requiring a brief mathematical answer?",
+    "correctAnswer": "Expected answer with LaTeX notation",
     "points": 2
   },
   {
     "type": "essay",
-    "text": "Olympiad-style proof or mathematical question? (e.g. Prove that $a^2 + b^2 \\\\equiv 2 \\\\pmod 3$)",
-    "referenceSolution": "Step-by-step rigorous proof using LaTeX formatting.",
+    "text": "Olympiad-style proof question (e.g., 'Prove that for any prime $p > 3$, $p^2 \\equiv 1 \\pmod{24}$')",
+    "referenceSolution": "Complete rigorous proof with: (1) Clear statement of what to prove, (2) Step-by-step logical deductions, (3) Proper use of mathematical theorems, (4) LaTeX formatting for all math expressions",
     "points": 7
   }
 ]
 
 Rules:
-- For essay type: omit "options" and "correctAnswer" fields, but you MUST include "referenceSolution" containing the full rigorous math proof or solution.
+- For essay type: omit "options" and "correctAnswer" fields, but you MUST include "referenceSolution" containing a complete rigorous proof
 - For short_answer type: omit "options", include "correctAnswer"  
-- For multiple_choice: always 4 distinct options, correctAnswer must match one exactly
+- For multiple_choice: always 4 distinct plausible options, correctAnswer must match one exactly
 - For true_false: options must be exactly ["True","False"]
 - Points: multiple_choice=1, true_false=1, short_answer=2, essay=7
-- Use standard LaTeX notation (enclosed in $ for inline and $$ for display, e.g. $\\alpha$, $\\frac{a}{b}$, $a^2$) for all mathematical symbols, formulas, and equations in BOTH question text and reference solutions.
-- Make questions specific and educational about "${topic}".
-- Vary difficulty appropriately for "${difficulty}" level.
+- Use standard LaTeX notation: $ for inline math ($x^2$), $$ for display math ($$\\sum_{i=1}^n i = \\frac{n(n+1)}{2}$$)
+- Common LaTeX: \\mathbb{R} (real numbers), \\mathbb{Z} (integers), \\mathbb{N} (natural numbers), \\pmod{n} (mod n), \\frac{a}{b} (fraction), \\sqrt{n} (square root)
+- Make questions specific to "${topic}" with appropriate mathematical depth
+- For hard difficulty: focus on proof techniques, clever insights, non-obvious connections
 - Return ONLY the JSON array, nothing else`;
 
   // Models to attempt if free/default
@@ -292,11 +303,24 @@ router.post("/:examId/generate-questions", requireAuth, async (req: any, res) =>
     const examId = parseInt(req.params.examId);
     const { topic, questionTypes, count, difficulty } = req.body;
     const totalCount = Math.min(count ?? 5, 20);
-    const types = questionTypes ?? ["multiple_choice"];
-
-    // Fetch the exam to get its aiConfig
+    
+    // Fetch the exam to get its aiConfig and examType
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    // Determine question types based on examType
+    let types = questionTypes;
+    if (!types) {
+      if (exam.examType === "proof_only") {
+        types = ["essay"]; // Only proof-based questions for Olympiad style
+      } else {
+        types = ["multiple_choice", "true_false", "short_answer", "essay"];
+      }
+    } else if (exam.examType === "proof_only") {
+      // Filter out MCQ and true_false for proof-only exams
+      types = types.filter((t: string) => t !== "multiple_choice" && t !== "true_false");
+      if (types.length === 0) types = ["essay"];
+    }
 
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
     const startIndex = existing.length;

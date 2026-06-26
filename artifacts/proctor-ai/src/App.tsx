@@ -14,6 +14,7 @@ import ExamsList from "@/pages/exams/index";
 import NewExam from "@/pages/exams/new";
 import ExamBuilder from "@/pages/exams/build";
 import ExamResults from "@/pages/exams/results";
+import UserProfile from "@/pages/profile";
 import StudentHome from "@/pages/student/home";
 import JoinExam from "@/pages/student/join";
 import ExamTaking from "@/pages/student/exam-taking";
@@ -146,6 +147,7 @@ function App() {
             
             {/* Instructor Routes */}
             <Route path="/dashboard" component={Dashboard} />
+            <Route path="/profile" component={UserProfile} />
             <Route path="/exams" component={ExamsList} />
             <Route path="/exams/new" component={NewExam} />
             <Route path="/exams/:examId/build" component={ExamBuilder} />
