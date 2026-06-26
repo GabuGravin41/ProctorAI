@@ -3,7 +3,7 @@ import cors from "cors";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pinoHttp = require("pino-http") as typeof import("pino-http");
+const pinoHttp = require("pino-http") as any;
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
