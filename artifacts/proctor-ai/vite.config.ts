@@ -42,7 +42,7 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname),
   build: {
     sourcemap: false,
-    outDir: "../../public",
+    outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
       onwarn(warning, warn) {
