@@ -55,3 +55,8 @@ Thumbs.db
 .env.development
 .env.test
 
+# API-server build outputs
+artifacts/api-server/api/index.js
+artifacts/api-server/.api-build/
+
+
