@@ -41,7 +41,7 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
-    outDir: "public",
+    outDir: path.resolve(import.meta.dirname, "..", "..", "public"),
     emptyOutDir: true,
     rollupOptions: {
       onwarn(warning, warn) {

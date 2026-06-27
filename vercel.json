@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build",
+  "buildCommand": "cd artifacts/proctor-ai && pnpm run build",
   "installCommand": "pnpm install",
   "functions": {
     "artifacts/api-server/api/index.js": {
