@@ -43,7 +43,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    sourcemap: process.env.NODE_ENV !== "production",
+    sourcemap: false,
     outDir: path.resolve(import.meta.dirname, "..", "..", "public"),
     emptyOutDir: true,
   },
