@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build",
+  "buildCommand": "pnpm run build:prod",
   "installCommand": "pnpm install",
   "outputDirectory": "artifacts/proctor-ai/dist/public",
   "functions": {
@@ -11,19 +11,14 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://your-api-domain.com/api/$1"
+      "destination": "/artifacts/api-server/api/index"
     },
     {
-      "source": "/((?!api).*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
   }
 }
