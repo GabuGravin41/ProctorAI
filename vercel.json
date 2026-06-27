@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build:prod",
+  "buildCommand": "pnpm -r --if-present run build",
   "installCommand": "pnpm install",
   "outputDirectory": "artifacts/proctor-ai/dist/public",
   "functions": {
