@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm -r --if-present run build",
+  "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "functions": {
     "artifacts/api-server/api/index.js": {
