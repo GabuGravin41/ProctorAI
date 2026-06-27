@@ -2,6 +2,7 @@
   "version": 2,
   "buildCommand": "pnpm -r --if-present run build",
   "installCommand": "pnpm install",
+  "outputDirectory": "public",
   "functions": {
     "artifacts/api-server/api/index.js": {
       "maxDuration": 60
