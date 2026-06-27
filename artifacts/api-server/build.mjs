@@ -118,7 +118,11 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
-  // Build the Vercel serverless function entry point (api/index.js)
+  // Build the Vercel serverless function entry point.
+  // Output goes to the PROJECT ROOT's api/index.js (not api-server/api/).
+  // Vercel auto-detects files in the root api/ directory as serverless functions,
+  // which avoids needing an explicit `functions` key in vercel.json that conflicts
+  // with the custom outputDirectory.
   // Does NOT use the pino plugin (avoids worker file conflicts with outfile).
   // pino-http is excluded so logging degrades gracefully on Vercel serverless.
   const { build: esbuildApi } = await import("esbuild");
@@ -127,7 +131,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     platform: "node",
     bundle: true,
     format: "esm",
-    outfile: path.resolve(artifactDir, "api/index.js"),
+    outfile: path.resolve(artifactDir, "../../api/index.js"),
     external: [
       "*.node",
       "sharp",
