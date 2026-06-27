@@ -128,17 +128,17 @@ export default function UserProfile() {
 
   return (
     <InstructorLayout>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" asChild>
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">User Profile</h1>
-            <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground">User Profile</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Manage your account and preferences</p>
           </div>
         </div>
 

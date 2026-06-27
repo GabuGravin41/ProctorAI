@@ -11,13 +11,19 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 
+if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  console.warn(
+    "VITE_CLERK_PUBLISHABLE_KEY is not configured. Set it in Vercel before deploying the app.",
+  );
+}
+
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// Point API requests to the backend URL
-if (import.meta.env.VITE_API_URL) {
-  setBaseUrl(import.meta.env.VITE_API_URL);
-}
+// Don't set a base URL - the generated API routes already include /api/
+// In development, Vite proxy forwards /api to http://localhost:5000
+// In production, routes work directly with the same origin
+// setBaseUrl(import.meta.env.VITE_API_URL || null);
 
 const clerkAppearance = {
   theme: shadcn,

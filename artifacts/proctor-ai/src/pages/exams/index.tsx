@@ -47,12 +47,12 @@ export default function ExamsList() {
   return (
     <InstructorLayout>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-foreground">Exams</h1>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">Manage your assessments and question banks.</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground">Exams</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Manage your assessments and question banks.</p>
           </div>
-          <Button asChild className="w-full sm:w-auto">
+          <Button asChild className="w-full sm:w-auto h-10 sm:h-11">
             <Link href="/exams/new">
               <Plus className="mr-2 h-4 w-4" />
               Create Exam
@@ -147,35 +147,35 @@ export default function ExamsList() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
+            <div className="md:hidden space-y-3 sm:space-y-4">
               {exams.map((exam) => (
-                <div key={exam.id} className="border rounded-lg p-4 bg-white hover:bg-slate-50 transition-colors">
-                  <Link href={`/exams/${exam.id}/build`} className="font-bold text-foreground hover:text-primary transition-colors block mb-2">
+                <div key={exam.id} className="border rounded-lg p-4 sm:p-5 bg-white hover:bg-slate-50 transition-colors">
+                  <Link href={`/exams/${exam.id}/build`} className="font-bold text-sm sm:text-base text-foreground hover:text-primary transition-colors block mb-2 sm:mb-3 line-clamp-2">
                     {exam.title}
                   </Link>
-                  <div className="space-y-2 mb-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div className="space-y-2 sm:space-y-2.5 mb-3 sm:mb-4">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       {exam.subject && <span className="mr-2">{exam.subject} •</span>}
                       {exam.durationMinutes} min
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {getStatusBadge(exam.status)}
-                      <span className="text-xs text-muted-foreground">{exam.questionCount || 0} questions</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="text-xs sm:text-sm text-muted-foreground">{exam.questionCount || 0} questions</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                         <Users className="h-3 w-3" />
                         {exam.sessionCount || 0} sessions
                       </span>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button asChild variant="outline" size="sm" className="flex-1 text-xs">
+                    <Button asChild variant="outline" size="sm" className="flex-1 text-xs sm:text-sm h-9 sm:h-10">
                       <Link href={`/exams/${exam.id}/build`}>
-                        <Settings className="mr-2 h-3 w-3" /> Edit
+                        <Settings className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Edit
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" size="sm" className="flex-1 text-xs">
+                    <Button asChild variant="outline" size="sm" className="flex-1 text-xs sm:text-sm h-9 sm:h-10">
                       <Link href={`/exams/${exam.id}/results`}>
-                        <FileBarChart className="mr-2 h-3 w-3" /> Results
+                        <FileBarChart className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Results
                       </Link>
                     </Button>
                     {exam.status === "published" && (

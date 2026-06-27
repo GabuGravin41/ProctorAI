@@ -16,21 +16,21 @@ export default function StudentHome() {
 
   return (
     <StudentLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border shadow-sm">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-6 rounded-xl border shadow-sm">
           <div>
-            <h1 className="text-2xl font-display font-bold tracking-tight text-primary">Welcome back, {me?.name || 'Student'}</h1>
-            <p className="text-muted-foreground mt-1">Ready to take an assessment?</p>
+            <h1 className="text-xl sm:text-2xl font-display font-bold tracking-tight text-primary">Welcome back, {me?.name || 'Student'}</h1>
+            <p className="text-sm text-muted-foreground mt-1">Ready to take an assessment?</p>
           </div>
-          <Button size="lg" asChild className="shrink-0">
+          <Button size="lg" asChild className="shrink-0 h-10 sm:h-12 text-sm sm:text-base">
             <Link href="/join">
               <KeyRound className="mr-2 h-4 w-4" />
-              Join Exam with Access Code
+              Join Exam
             </Link>
           </Button>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <h2 className="text-xl font-bold border-b pb-2">Active Assessments</h2>
           
           {isLoading ? (

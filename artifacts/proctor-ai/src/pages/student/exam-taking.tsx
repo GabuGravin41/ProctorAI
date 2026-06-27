@@ -546,15 +546,16 @@ export default function ExamTaking() {
           </div>
         )}
 
-        {/* Floating proctoring widget */}
-        <div className="fixed bottom-6 right-6 z-50 bg-black rounded-lg shadow-2xl overflow-hidden border-2 border-border/20 w-64">
-          <div className="bg-primary/90 text-white text-xs px-3 py-1.5 font-medium flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-              MONITORED
+        {/* Floating proctoring widget - responsive size */}
+        <div className="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-50 bg-black rounded-lg shadow-2xl overflow-hidden border-2 border-border/20 w-40 sm:w-48 md:w-64">
+          <div className="bg-primary/90 text-white text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 font-medium flex items-center justify-between">
+            <span className="flex items-center gap-1 sm:gap-1.5">
+              <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="hidden sm:inline">MONITORED</span>
+              <span className="sm:hidden">ON</span>
             </span>
-            <span className="flex items-center gap-1 opacity-70">
-              <Mic className="h-3 w-3" /> <Video className="h-3 w-3" />
+            <span className="flex items-center gap-0.5 sm:gap-1 opacity-70">
+              <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> <Video className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
             </span>
           </div>
           <div className="aspect-video bg-zinc-900 relative">
@@ -579,34 +580,35 @@ export default function ExamTaking() {
         </div>
 
         {/* Sticky top bar */}
-        <div className={`sticky top-0 z-40 border-b shadow-sm mb-8 -mx-4 md:-mx-8 px-4 md:px-8 py-4 flex items-center justify-between transition-colors ${isUrgent ? "bg-red-50 border-red-200" : "bg-background"}`}>
-          <div>
-            <h1 className="text-xl font-bold truncate pr-4">{exam?.title}</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+        <div className={`sticky top-0 z-40 border-b shadow-sm mb-6 sm:mb-8 -mx-3 sm:-mx-4 md:-mx-8 px-3 sm:px-4 md:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 transition-colors ${isUrgent ? "bg-red-50 border-red-200" : "bg-background"}`}>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold truncate pr-2 sm:pr-4">{exam?.title}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               {Object.keys(answers).length} of {questions.length} answered
             </p>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Timer chip */}
-            <div className={`flex items-center gap-2 font-mono text-xl font-bold px-4 py-2 rounded-lg border transition-all ${
+            <div className={`flex items-center gap-1 sm:gap-2 font-mono text-base sm:text-lg md:text-xl font-bold px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border transition-all ${
               isUrgent
                 ? "bg-red-600 text-white border-red-600 animate-pulse"
                 : isWarning
                 ? "bg-yellow-50 text-yellow-700 border-yellow-300"
                 : "bg-slate-100 text-foreground border-transparent"
             }`}>
-              <Timer className="h-5 w-5 shrink-0" />
-              {formatTime(timeLeft)}
+              <Timer className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              <span className="text-sm sm:text-base md:text-lg">{formatTime(timeLeft)}</span>
             </div>
 
             <Button
               onClick={() => setSubmitConfirmOpen(true)}
               disabled={submitSession.isPending}
-              className={isUrgent ? "bg-red-600 hover:bg-red-700" : ""}
+              className={`h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-4 ${isUrgent ? "bg-red-600 hover:bg-red-700" : ""}`}
             >
-              {submitSession.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Submit Exam
+              {submitSession.isPending && <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />}
+              <span className="hidden sm:inline">Submit Exam</span>
+              <span className="sm:hidden">Submit</span>
             </Button>
           </div>
         </div>
@@ -619,30 +621,30 @@ export default function ExamTaking() {
         )}
 
         {/* Questions */}
-        <div className="space-y-12 pb-32 max-w-4xl">
+        <div className="space-y-6 sm:space-y-8 md:space-y-12 pb-24 sm:pb-32 max-w-4xl px-0">
           {questions.map((q, index) => (
             <Card
               key={q.id}
               id={`question-${q.id}`}
-              className={`border shadow-sm scroll-mt-24 transition-colors ${answers[q.id] ? "border-primary/30" : ""}`}
+              className={`border shadow-sm scroll-mt-32 sm:scroll-mt-40 transition-colors ${answers[q.id] ? "border-primary/30" : ""}`}
             >
-              <div className="bg-slate-50 border-b px-6 py-3 font-medium text-sm text-muted-foreground flex justify-between">
+              <div className="bg-slate-50 border-b px-3 sm:px-4 md:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm text-muted-foreground flex justify-between">
                 <span>Question {index + 1} of {questions.length}</span>
                 <span>{q.points || 1} point{(q.points || 1) !== 1 ? "s" : ""}</span>
               </div>
-              <CardContent className="p-6">
-                <LatexRenderer text={q.text} className="text-lg mb-6 leading-relaxed text-slate-800" />
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <LatexRenderer text={q.text} className="text-base sm:text-lg mb-4 sm:mb-6 leading-relaxed text-slate-800" />
 
                 {q.type === "multiple_choice" || q.type === "true_false" ? (
                   <RadioGroup
                     value={answers[q.id] || ""}
                     onValueChange={(val) => setAnswers(prev => ({ ...prev, [q.id]: val }))}
-                    className="space-y-3"
+                    className="space-y-2 sm:space-y-3"
                   >
                     {q.options?.map((opt, i) => (
-                      <div key={i} className={`flex items-start space-x-3 space-y-0 p-3 rounded-md border cursor-pointer hover:bg-slate-50 transition-colors ${answers[q.id] === opt ? "bg-primary/5 border-primary/40" : ""}`}>
+                      <div key={i} className={`flex items-start space-x-2 sm:space-x-3 space-y-0 p-2 sm:p-3 rounded-md border cursor-pointer hover:bg-slate-50 transition-colors ${answers[q.id] === opt ? "bg-primary/5 border-primary/40" : ""}`}>
                         <RadioGroupItem value={opt} id={`q${q.id}-opt${i}`} className="mt-1" />
-                        <Label htmlFor={`q${q.id}-opt${i}`} className="font-normal text-base cursor-pointer flex-1 leading-relaxed">
+                        <Label htmlFor={`q${q.id}-opt${i}`} className="font-normal text-sm sm:text-base cursor-pointer flex-1 leading-relaxed">
                           {opt}
                         </Label>
                       </div>
