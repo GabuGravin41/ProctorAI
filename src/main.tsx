@@ -11,12 +11,6 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 
-if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
-  console.warn(
-    "VITE_CLERK_PUBLISHABLE_KEY is not configured. Set it in Vercel before deploying the app.",
-  );
-}
-
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -74,17 +68,29 @@ const clerkAppearance = {
   },
 };
 
-createRoot(document.getElementById("root")!).render(
-  <ClerkProvider
-    publishableKey={clerkPubKey}
-    proxyUrl={clerkProxyUrl}
-    appearance={clerkAppearance}
-    signInUrl={`${basePath}/sign-in`}
-    signUpUrl={`${basePath}/sign-up`}
-    afterSignOutUrl={basePath || "/"}
-    routerPush={(to) => window.location.href = to}
-    routerReplace={(to) => window.location.replace(to)}
-  >
-    <App />
-  </ClerkProvider>
-);
+// Render with or without Clerk based on configuration
+const appElement = <App />;
+
+if (!clerkPubKey) {
+  console.warn(
+    "VITE_CLERK_PUBLISHABLE_KEY is not configured. App will run without authentication.",
+  );
+  // Render without Clerk - app should handle missing auth gracefully
+  createRoot(document.getElementById("root")!).render(appElement);
+} else {
+  // Render with Clerk
+  createRoot(document.getElementById("root")!).render(
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      afterSignOutUrl={basePath || "/"}
+      routerPush={(to) => window.location.href = to}
+      routerReplace={(to) => window.location.replace(to)}
+    >
+      {appElement}
+    </ClerkProvider>
+  );
+}

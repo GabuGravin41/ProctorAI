@@ -1,9 +1,9 @@
 // Simple API client to replace @workspace/api-client-react
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-let authTokenGetter: (() => string | null) | null = null;
+let authTokenGetter: (() => string | null | Promise<string | null>) | null = null;
 
-export function setAuthTokenGetter(getter: () => string | null) {
+export function setAuthTokenGetter(getter: () => string | null | Promise<string | null>) {
   authTokenGetter = getter;
 }
 
@@ -12,10 +12,10 @@ export function setBaseUrl(url: string) {
 }
 
 export async function customFetch(url: string, options: RequestInit = {}) {
-  const token = authTokenGetter?.();
-  const headers: HeadersInit = {
+  const token = authTokenGetter ? await authTokenGetter() : null;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
   
   if (token) {
@@ -35,6 +35,17 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 }
 
 // Types
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'student' | 'instructor';
+  institutionName: string;
+  subjectArea: string;
+  trafficSource: string;
+  createdAt: string;
+}
+
 export interface CheatingFlag {
   id: string;
   type: string;
@@ -61,7 +72,7 @@ export interface GenerateQuestionsInputQuestionTypesItem {
 
 // React Query hooks (simplified placeholders)
 export function useGetMe() {
-  return { data: null, isLoading: false, error: null };
+  return { data: null as User | null, isLoading: false, error: null };
 }
 
 export function useUpdateMe() {

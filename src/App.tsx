@@ -30,7 +30,20 @@ function stripBase(path: string): string {
     : path;
 }
 
+// Check if Clerk is configured
+const isClerkConfigured = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 function SignInPage() {
+  if (!isClerkConfigured) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Authentication is not configured</p>
+          <Button onClick={() => window.location.href = basePath || "/"}>Continue to App</Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
@@ -39,6 +52,16 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  if (!isClerkConfigured) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Authentication is not configured</p>
+          <Button onClick={() => window.location.href = basePath || "/"}>Continue to App</Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
@@ -47,21 +70,23 @@ function SignUpPage() {
 }
 
 function ClerkQueryClientCacheInvalidator() {
+  if (!isClerkConfigured) return null;
+  
   const { addListener, session } = useClerk();
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     // Set up the token getter so all API client requests have the bearer token
-    setAuthTokenGetter(async () => {
+    setAuthTokenGetter(() => {
       try {
-        return await session?.getToken() ?? null;
+        return session?.getToken() ?? null;
       } catch (e) {
         return null;
       }
     });
     return () => {
-      setAuthTokenGetter(null);
+      setAuthTokenGetter(() => null);
     };
   }, [session]);
 
@@ -85,16 +110,7 @@ function ClerkQueryClientCacheInvalidator() {
 function HomeRedirect() {
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   
-  const { data: me, isLoading, error } = useGetMe({ 
-    query: { 
-      queryKey: getGetMeQueryKey(), 
-      enabled: !!isSignedIn,
-      retry: (failureCount, error: any) => {
-        if (error?.status === 401) return false; // don't retry unauthorized errors
-        return failureCount < 3;
-      }
-    } 
-  });
+  const { data: me, isLoading, error } = useGetMe();
   
   if (!isAuthLoaded || (isSignedIn && isLoading)) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
