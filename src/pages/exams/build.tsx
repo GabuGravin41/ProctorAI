@@ -10,12 +10,13 @@ import {
   usePublishExam,
   useCreateQuestion,
   useDeleteQuestion,
+  useUpdateQuestion,
   getGetExamQueryKey,
   getListQuestionsQueryKey,
   GenerateQuestionsInputDifficulty,
   GenerateQuestionsInputQuestionTypesItem
 } from "@/lib/api-client";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -72,6 +73,7 @@ export default function ExamBuilder() {
   const generateQuestions = useGenerateQuestions();
   const createQuestion = useCreateQuestion();
   const deleteQuestion = useDeleteQuestion();
+  const updateQuestion = useUpdateQuestion();
   const updateExam = useUpdateExam();
 
   const [aiPrompt, setAiPrompt] = useState("");
@@ -94,6 +96,11 @@ export default function ExamBuilder() {
   const [aiProvider, setAiProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
   const [aiModel, setAiModel] = useState("deepseek/deepseek-chat");
   const [customApiKey, setCustomApiKey] = useState("");
+  
+  // Edit Question State
+  const [editQuestionOpen, setEditQuestionOpen] = useState(false);
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
+  const [editQuestionForm, setEditQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
   
   // Enhanced AI generation state
   const [learningObjectives, setLearningObjectives] = useState("");
@@ -254,6 +261,87 @@ Generate ${aiCount} questions that follow these specifications exactly.
         setDeleteTargetId(null);
       }
     });
+  };
+
+  const handleEditQuestion = () => {
+    if (!editTargetId) return;
+    const { type, text, options, correctAnswer, referenceSolution, points } = editQuestionForm;
+    if (!text.trim()) {
+      toast({ title: "Question text is required", variant: "destructive" });
+      return;
+    }
+    if (type === "multiple_choice" && options.some(o => !o.trim())) {
+      toast({ title: "All 4 options are required for multiple choice", variant: "destructive" });
+      return;
+    }
+    if ((type === "multiple_choice" || type === "true_false") && !correctAnswer) {
+      toast({ title: "Please select the correct answer", variant: "destructive" });
+      return;
+    }
+
+    const payload: any = {
+      type,
+      text: text.trim(),
+      points: parseInt(points, 10) || 1,
+    };
+
+    if (type === "multiple_choice") {
+      payload.options = options.map(o => o.trim());
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "true_false") {
+      payload.options = ["True", "False"];
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "short_answer") {
+      payload.correctAnswer = correctAnswer || null;
+    } else if (type === "essay") {
+      payload.referenceSolution = referenceSolution.trim() || null;
+    }
+
+    updateQuestion.mutate({ examId: String(examId), questionId: editTargetId, data: payload }, {
+      onSuccess: () => {
+        toast({ title: "Question updated successfully" });
+        setEditQuestionOpen(false);
+        setEditTargetId(null);
+        refetchQuestions();
+        queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+      },
+      onError: () => {
+        toast({ title: "Failed to update question", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleMoveQuestion = async (index: number, direction: "up" | "down") => {
+    if (!questions) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= questions.length) return;
+
+    const q1 = questions[index];
+    const q2 = questions[targetIndex];
+
+    try {
+      const order1 = q1.order;
+      const order2 = q2.order;
+
+      await Promise.all([
+        updateQuestion.mutateAsync({
+          examId: String(examId),
+          questionId: q1.id,
+          data: { order: order2 }
+        }),
+        updateQuestion.mutateAsync({
+          examId: String(examId),
+          questionId: q2.id,
+          data: { order: order1 }
+        })
+      ]);
+
+      toast({ title: "Question order updated" });
+      refetchQuestions();
+      queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
+    } catch (err) {
+      toast({ title: "Failed to update order", variant: "destructive" });
+    }
   };
 
   const toggleQuestionType = (type: QuestionType) => {
@@ -925,18 +1013,61 @@ Example: Chapter 3 covers photosynthesis...
                   </CardContent>
                 )}
                 {exam.status === 'draft' && (
-                  <CardContent className="py-2 flex gap-2 justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        setRegenerateTargetId(q.id);
-                        setRegenerateOpen(true);
-                      }}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
-                    </Button>
+                  <CardContent className="py-2 flex gap-2 justify-between items-center border-t bg-slate-50/20">
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        disabled={index === 0 || updateQuestion.isPending}
+                        onClick={() => handleMoveQuestion(index, "up")}
+                        title="Move Up"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        disabled={index === questions.length - 1 || updateQuestion.isPending}
+                        onClick={() => handleMoveQuestion(index, "down")}
+                        title="Move Down"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditTargetId(q.id);
+                          setEditQuestionForm({
+                            type: q.type as QuestionType,
+                            text: q.text,
+                            options: q.options || (q.type === "multiple_choice" ? ["", "", "", ""] : q.type === "true_false" ? ["True", "False"] : []),
+                            correctAnswer: q.correctAnswer || "",
+                            referenceSolution: q.referenceSolution || "",
+                            points: String(q.points || 1),
+                          });
+                          setEditQuestionOpen(true);
+                        }}
+                      >
+                        <Settings className="h-3 w-3 mr-1" /> Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setRegenerateTargetId(q.id);
+                          setRegenerateOpen(true);
+                        }}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                      </Button>
+                    </div>
                   </CardContent>
                 )}
               </Card>
@@ -944,6 +1075,139 @@ Example: Chapter 3 covers photosynthesis...
           </div>
         )}
       </div>
+
+      {/* Edit Question Overlay Dialog */}
+      <Dialog open={editQuestionOpen} onOpenChange={(open) => { setEditQuestionOpen(open); if (!open) setEditTargetId(null); }}>
+        <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Question</DialogTitle>
+            <DialogDescription>Update details for this question.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Question Type</Label>
+                <Select
+                  value={editQuestionForm.type}
+                  onValueChange={(v: QuestionType) => {
+                    const defaults: Partial<NewQuestionForm> = {};
+                    if (v === "multiple_choice") defaults.options = ["", "", "", ""];
+                    else if (v === "true_false") { defaults.options = ["True", "False"]; defaults.correctAnswer = "True"; }
+                    else { defaults.options = []; defaults.correctAnswer = ""; }
+                    setEditQuestionForm(f => ({ ...f, type: v, correctAnswer: "", referenceSolution: "", ...defaults }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                    <SelectItem value="true_false">True / False</SelectItem>
+                    <SelectItem value="short_answer">Short Answer</SelectItem>
+                    <SelectItem value="essay">Essay / Proof</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Points</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={editQuestionForm.points}
+                  onChange={(e) => setEditQuestionForm(f => ({ ...f, points: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Question Text</Label>
+              <Textarea
+                placeholder="Write your question here..."
+                value={editQuestionForm.text}
+                onChange={(e) => setEditQuestionForm(f => ({ ...f, text: e.target.value }))}
+                className="min-h-20"
+              />
+            </div>
+
+            {editQuestionForm.type === "multiple_choice" && (
+              <div className="space-y-3">
+                <Label>Answer Options</Label>
+                {editQuestionForm.options.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="editCorrectAnswer"
+                      id={`edit-opt-${i}`}
+                      checked={editQuestionForm.correctAnswer === opt && opt !== ""}
+                      onChange={() => setEditQuestionForm(f => ({ ...f, correctAnswer: f.options[i] }))}
+                      className="shrink-0"
+                    />
+                    <Input
+                      placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                      value={opt}
+                      onChange={(e) => {
+                        const newOpts = [...editQuestionForm.options];
+                        newOpts[i] = e.target.value;
+                        setEditQuestionForm(f => ({
+                          ...f,
+                          options: newOpts,
+                          correctAnswer: f.correctAnswer === f.options[i] ? e.target.value : f.correctAnswer,
+                        }));
+                      }}
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">Select the radio button next to the correct answer.</p>
+              </div>
+            )}
+
+            {editQuestionForm.type === "true_false" && (
+              <div className="space-y-2">
+                <Label>Correct Answer</Label>
+                <Select
+                  value={editQuestionForm.correctAnswer}
+                  onValueChange={(v) => setEditQuestionForm(f => ({ ...f, correctAnswer: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select correct answer" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="True">True</SelectItem>
+                    <SelectItem value="False">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {editQuestionForm.type === "short_answer" && (
+              <div className="space-y-2">
+                <Label>Expected Answer (optional)</Label>
+                <Input
+                  placeholder="Model answer for grading reference..."
+                  value={editQuestionForm.correctAnswer}
+                  onChange={(e) => setEditQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                />
+              </div>
+            )}
+
+            {editQuestionForm.type === "essay" && (
+              <div className="space-y-2">
+                <Label>Reference Solution / Proof Rubric (LaTeX supported)</Label>
+                <Textarea
+                  placeholder="Write the expected proof, mathematical derivations, or rubrics using LaTeX..."
+                  value={editQuestionForm.referenceSolution}
+                  onChange={(e) => setEditQuestionForm(f => ({ ...f, referenceSolution: e.target.value }))}
+                  className="min-h-32 font-mono"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2 flex-col sm:flex-row">
+            <Button variant="outline" onClick={() => setEditQuestionOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={handleEditQuestion} disabled={updateQuestion.isPending} className="w-full sm:w-auto">
+              {updateQuestion.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Question Confirmation */}
       <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
