@@ -482,18 +482,23 @@ export function useReportFlag() {
 export function useReviewFlag() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<CheatingFlag, Error, { sessionId: string; flagId: number; data: any }>({
-    mutationFn: async ({ sessionId, flagId, data }) => {
+  return useMutation<CheatingFlag, Error, { flagId: number; data: any; sessionId?: number }>({
+    mutationFn: async ({ flagId, data }) => {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/sessions/${sessionId}/flags/${flagId}`, {
+      const res = await fetch(`${API_BASE}/flags/${flagId}/review`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`PATCH /flags/${flagId} failed: ${res.status}`);
+      if (!res.ok) throw new Error(`PATCH /flags/${flagId}/review failed: ${res.status}`);
       return res.json();
     },
-    onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: getListSessionFlagsQueryKey(Number(v.sessionId)) }),
+    onSuccess: (data, v) => {
+      const sId = v.sessionId || data.sessionId;
+      if (sId) {
+        queryClient.invalidateQueries({ queryKey: getListSessionFlagsQueryKey(sId) });
+      }
+    },
   });
 }
 

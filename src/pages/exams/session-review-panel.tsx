@@ -157,7 +157,7 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
   const handleReview = (flagId: number, reviewStatus: "confirmed" | "dismissed") => {
     setActing(flagId);
     reviewFlag.mutate(
-      { flagId, data: { reviewStatus, reviewNote: notes[flagId] ?? "" } },
+      { flagId, data: { reviewStatus, reviewNote: notes[flagId] ?? "" }, sessionId },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSessionFlagsQueryKey(sessionId) });
