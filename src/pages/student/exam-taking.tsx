@@ -390,7 +390,7 @@ export default function ExamTaking() {
                 for (const file of files) {
                   try {
                     // Call the mock upload endpoint
-                    const res = await customFetch<{ url: string, filename: string }>(`/api/sessions/${sessionId}/upload`, {
+                    const res = await customFetch<{ url: string, filename: string }>(`/sessions/${sessionId}/upload`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ filename: file.name }),

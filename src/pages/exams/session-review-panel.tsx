@@ -26,7 +26,7 @@ import { customFetch } from "@/lib/api-client";
 function useReleaseSessionResults() {
   return useMutation({
     mutationFn: async (sessionId: number) => {
-      return await customFetch(`/api/sessions/${sessionId}/release`, { method: "POST" });
+      return await customFetch(`/sessions/${sessionId}/release`, { method: "POST" });
     }
   });
 }
@@ -34,7 +34,7 @@ function useReleaseSessionResults() {
 function useGradeSessionAnswer() {
   return useMutation({
     mutationFn: async ({ sessionId, questionId, points, feedback }: { sessionId: number, questionId: number, points: number, feedback: string }) => {
-      return await customFetch(`/api/sessions/${sessionId}/questions/${questionId}/grade`, {
+      return await customFetch(`/sessions/${sessionId}/questions/${questionId}/grade`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ points, feedback })
