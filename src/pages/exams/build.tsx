@@ -82,8 +82,7 @@ export default function ExamBuilder() {
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<QuestionType[]>(["essay"]);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [studentEmails, setStudentEmails] = useState("");
-  const [accessCodes, setAccessCodes] = useState<{ code: string; studentEmail: string }[]>([]);
+  const [accessCode, setAccessCode] = useState("");
   const [codesOpen, setCodesOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
@@ -473,19 +472,12 @@ Generate ${aiCount} questions that follow these specifications exactly.
   }, [aiSettingsOpen, exam?.aiConfig]);
 
   const handlePublish = () => {
-    const emails = studentEmails.split(/[\n,]+/).map(e => e.trim()).filter(e => e);
-    if (emails.length === 0) {
-      toast({ title: "No emails provided", description: "Please enter at least one student email.", variant: "destructive" });
-      return;
-    }
-
     publishExam.mutate({
-      examId,
-      data: { studentEmails: emails }
+      examId
     }, {
       onSuccess: (data) => {
         setPublishOpen(false);
-        setAccessCodes(data.accessCodes ?? []);
+        setAccessCode(data.accessCode || "");
         setCodesOpen(true);
         queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
       }
@@ -509,7 +501,16 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground truncate">{exam.title}</h1>
                 <Badge variant={exam.status === 'published' ? 'default' : exam.status === 'archived' ? 'outline' : 'secondary'} className="capitalize shrink-0">{exam.status}</Badge>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">{exam.subject} • {exam.durationMinutes} min</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                {exam.subject} • {exam.durationMinutes} min
+                {exam.accessCode && (
+                  <>
+                    <span className="mx-2">•</span>
+                    <span className="font-semibold text-primary">Access Code: </span>
+                    <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-xs select-all">{exam.accessCode}</code>
+                  </>
+                )}
+              </p>
             </div>
           </div>
           
@@ -560,23 +561,15 @@ Generate ${aiCount} questions that follow these specifications exactly.
                     <Send className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Publish</span><span className="sm:hidden">Pub</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Publish & Generate Access Codes</DialogTitle>
+                    <DialogTitle>Publish Exam</DialogTitle>
                     <DialogDescription>
-                      Publishing will finalize the exam and generate unique access codes for each student.
+                      Publishing will lock questions and generate a single access code. Students will use this code to join and take the exam.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Student Emails (comma or newline separated)</Label>
-                      <Textarea 
-                        placeholder="student1@example.com&#10;student2@example.com" 
-                        value={studentEmails}
-                        onChange={(e) => setStudentEmails(e.target.value)}
-                        className="min-h-32"
-                      />
-                    </div>
+                  <div className="py-4 text-sm text-muted-foreground">
+                    Are you sure you want to publish this exam? You will not be able to edit or delete questions once the exam is published.
                   </div>
                   <DialogFooter className="flex gap-2 flex-col sm:flex-row">
                     <Button variant="outline" onClick={() => setPublishOpen(false)} className="w-full sm:w-auto">Cancel</Button>
@@ -1266,26 +1259,35 @@ Example: Chapter 3 covers photosynthesis...
 
       {/* Access Codes Dialog */}
       <Dialog open={codesOpen} onOpenChange={setCodesOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-700">
-              <CheckCheck className="h-5 w-5" /> Student Access Codes
+               <CheckCheck className="h-5 w-5" /> Exam Published Successfully!
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 my-2 max-h-80 overflow-y-auto pr-1">
-            {accessCodes.map(({ code, studentEmail }) => (
-              <AccessCodeRow key={code} code={code} studentEmail={studentEmail} />
-            ))}
+          <div className="space-y-4 my-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Share this access code with your students. Anyone with this code can sign in and take the exam.
+            </p>
+            <div className="flex items-center justify-center gap-2 bg-slate-100 p-4 rounded-lg border border-slate-200">
+              <span className="font-mono text-2xl font-bold tracking-wider text-indigo-600 selection:bg-indigo-100">
+                {accessCode}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(accessCode);
+                  toast({ title: "Copied code to clipboard!" });
+                }}
+                title="Copy Code"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => {
-              const text = accessCodes.map(({ studentEmail, code }) => `${studentEmail}: ${code}`).join("\n");
-              navigator.clipboard.writeText(text);
-              toast({ title: "All codes copied to clipboard" });
-            }}>
-              <Copy className="h-4 w-4 mr-2" /> Copy All
-            </Button>
-            <Button onClick={() => setCodesOpen(false)}>Done</Button>
+          <DialogFooter>
+            <Button className="w-full" onClick={() => setCodesOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

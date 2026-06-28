@@ -38,6 +38,7 @@ CREATE TABLE exams (
   grading_mode         TEXT    NOT NULL,
   ai_config            JSONB,
   exam_type            TEXT,
+  access_code          TEXT    UNIQUE,
   created_at           TIMESTAMP NOT NULL DEFAULT now(),
   updated_at           TIMESTAMP NOT NULL DEFAULT now()
 );

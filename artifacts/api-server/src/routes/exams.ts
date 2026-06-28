@@ -24,6 +24,7 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     aiConfig: exam.aiConfig,
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
+    accessCode: exam.accessCode ?? null,
     questionCount,
     sessionCount,
     flagCount,
@@ -156,36 +157,32 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { studentEmails } = req.body;
 
-    const [exam] = await db.update(examsTable).set({ status: "published", updatedAt: new Date() }).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
-    if (!exam) return res.status(404).json({ error: "Exam not found" });
-
-    const accessCodes = [];
-    for (const email of studentEmails) {
-      // Generate a unique 8-char code, retry if collision
-      let code: string;
-      let attempts = 0;
-      while (true) {
-        code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const existing = await db.select({ id: examSessionsTable.id }).from(examSessionsTable).where(eq(examSessionsTable.accessCode, code));
-        if (existing.length === 0 || attempts > 5) break;
-        attempts++;
-      }
-      // Pre-allocate a session row (studentClerkId null until student claims it)
-      await db.insert(examSessionsTable).values({
-        examId,
-        studentClerkId: null,
-        studentEmail: email,
-        accessCode: code!,
-        status: "pending",
-      });
-      accessCodes.push({ code: code!, studentEmail: email });
+    // Generate a unique 8-character uppercase access code
+    let code: string = "";
+    let attempts = 0;
+    while (true) {
+      code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const existing = await db.select({ id: examsTable.id }).from(examsTable).where(eq(examsTable.accessCode, code));
+      if (existing.length === 0 || attempts > 10) break;
+      attempts++;
     }
+
+    const [exam] = await db
+      .update(examsTable)
+      .set({ 
+        status: "published", 
+        accessCode: code,
+        updatedAt: new Date() 
+      })
+      .where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId)))
+      .returning();
+
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
 
     res.json({
       exam: formatExam(exam),
-      accessCodes,
+      accessCode: code,
     });
   } catch (err) {
     req.log.error({ err }, "publishExam error");

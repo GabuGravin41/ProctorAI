@@ -114,31 +114,36 @@ router.post("/join", requireAuth, async (req: any, res) => {
     const { accessCode } = req.body;
     const normalizedCode = accessCode.trim().toUpperCase();
 
-    // Look up the pre-allocated session by access code
-    const [preAllocated] = await db.select().from(examSessionsTable).where(
-      eq(examSessionsTable.accessCode, normalizedCode)
+    // Look up the exam by its single access code
+    const [exam] = await db.select().from(examsTable).where(
+      eq(examsTable.accessCode, normalizedCode)
     );
 
-    if (!preAllocated) {
+    if (!exam || exam.status !== "published") {
       return res.status(404).json({ error: "Invalid access code. Please check with your instructor." });
     }
 
-    let session = preAllocated;
+    // Check if the student already has a session for this exam
+    let [session] = await db.select().from(examSessionsTable).where(
+      and(
+        eq(examSessionsTable.examId, exam.id),
+        eq(examSessionsTable.studentClerkId, clerkId)
+      )
+    );
 
-    // If unclaimed (studentClerkId is null), claim it
-    if (!session.studentClerkId) {
-      const [updated] = await db.update(examSessionsTable)
-        .set({ studentClerkId: clerkId })
-        .where(eq(examSessionsTable.id, session.id))
-        .returning();
-      session = updated;
-    } else if (session.studentClerkId !== clerkId) {
-      // Code already claimed by someone else
-      return res.status(403).json({ error: "This access code has already been used by another student." });
+    // If no session exists, create a new one dynamically for this student
+    if (!session) {
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      [session] = await db.insert(examSessionsTable).values({
+        examId: exam.id,
+        studentClerkId: clerkId,
+        studentEmail: student?.email || "",
+        studentName: student?.name || "Student",
+        accessCode: normalizedCode,
+        status: "not_started",
+      }).returning();
     }
 
-    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
-    if (!exam) return res.status(404).json({ error: "Exam not found" });
     if (exam.status === "archived") {
       return res.status(403).json({ error: "This exam has been archived and is no longer accepting submissions." });
     }

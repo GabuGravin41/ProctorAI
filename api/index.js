@@ -49149,6 +49149,7 @@ var examsTable = pgTable("exams", {
   aiConfig: jsonb("ai_config").$type(),
   examType: text("exam_type"),
   // 'mixed' | 'proof_only'
+  accessCode: text("access_code").unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -49339,6 +49340,7 @@ function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0) {
     aiConfig: exam.aiConfig,
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
+    accessCode: exam.accessCode ?? null,
     questionCount,
     sessionCount,
     flagCount,
@@ -49452,31 +49454,23 @@ router3.post("/:examId/publish", requireAuth3, async (req, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { studentEmails } = req.body;
-    const [exam] = await db.update(examsTable).set({ status: "published", updatedAt: /* @__PURE__ */ new Date() }).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
-    if (!exam) return res.status(404).json({ error: "Exam not found" });
-    const accessCodes = [];
-    for (const email of studentEmails) {
-      let code;
-      let attempts = 0;
-      while (true) {
-        code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const existing = await db.select({ id: examSessionsTable.id }).from(examSessionsTable).where(eq(examSessionsTable.accessCode, code));
-        if (existing.length === 0 || attempts > 5) break;
-        attempts++;
-      }
-      await db.insert(examSessionsTable).values({
-        examId,
-        studentClerkId: null,
-        studentEmail: email,
-        accessCode: code,
-        status: "pending"
-      });
-      accessCodes.push({ code, studentEmail: email });
+    let code = "";
+    let attempts = 0;
+    while (true) {
+      code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const existing = await db.select({ id: examsTable.id }).from(examsTable).where(eq(examsTable.accessCode, code));
+      if (existing.length === 0 || attempts > 10) break;
+      attempts++;
     }
+    const [exam] = await db.update(examsTable).set({
+      status: "published",
+      accessCode: code,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
     res.json({
       exam: formatExam(exam),
-      accessCodes
+      accessCode: code
     });
   } catch (err) {
     req.log.error({ err }, "publishExam error");
@@ -49993,21 +49987,29 @@ router5.post("/join", requireAuth5, async (req, res) => {
     const clerkId = req.clerkUserId;
     const { accessCode } = req.body;
     const normalizedCode = accessCode.trim().toUpperCase();
-    const [preAllocated] = await db.select().from(examSessionsTable).where(
-      eq(examSessionsTable.accessCode, normalizedCode)
+    const [exam] = await db.select().from(examsTable).where(
+      eq(examsTable.accessCode, normalizedCode)
     );
-    if (!preAllocated) {
+    if (!exam || exam.status !== "published") {
       return res.status(404).json({ error: "Invalid access code. Please check with your instructor." });
     }
-    let session = preAllocated;
-    if (!session.studentClerkId) {
-      const [updated] = await db.update(examSessionsTable).set({ studentClerkId: clerkId }).where(eq(examSessionsTable.id, session.id)).returning();
-      session = updated;
-    } else if (session.studentClerkId !== clerkId) {
-      return res.status(403).json({ error: "This access code has already been used by another student." });
+    let [session] = await db.select().from(examSessionsTable).where(
+      and(
+        eq(examSessionsTable.examId, exam.id),
+        eq(examSessionsTable.studentClerkId, clerkId)
+      )
+    );
+    if (!session) {
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      [session] = await db.insert(examSessionsTable).values({
+        examId: exam.id,
+        studentClerkId: clerkId,
+        studentEmail: student?.email || "",
+        studentName: student?.name || "Student",
+        accessCode: normalizedCode,
+        status: "not_started"
+      }).returning();
     }
-    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
-    if (!exam) return res.status(404).json({ error: "Exam not found" });
     if (exam.status === "archived") {
       return res.status(403).json({ error: "This exam has been archived and is no longer accepting submissions." });
     }
