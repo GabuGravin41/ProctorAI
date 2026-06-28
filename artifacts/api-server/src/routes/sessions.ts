@@ -6,6 +6,14 @@ import { eq, and, isNull } from "drizzle-orm";
 const router = Router();
 
 const requireAuth = (req: any, res: any, next: any) => {
+  const loadTestSecret = req.headers["x-load-test-secret"];
+  const configSecret = process.env.LOAD_TEST_SECRET;
+
+  if (configSecret && loadTestSecret === configSecret) {
+    req.clerkUserId = req.headers["x-mock-user-id"] || "load_test_user_default";
+    return next();
+  }
+
   const auth = getAuth(req);
   const userId = auth?.userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
