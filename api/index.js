@@ -50104,6 +50104,7 @@ router5.get("/:sessionId", requireAuth5, async (req, res) => {
           maxPoints: q.points,
           attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : q.correctAnswer ?? null,
+          referenceSolution: q.referenceSolution ?? null,
           options: q.options ?? null
         };
       });

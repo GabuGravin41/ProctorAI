@@ -145,20 +145,23 @@ export default function StudentResults() {
               ) : null}
             </Card>
 
-            {!isResultsReleased ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Clock className="h-8 w-8 text-primary" />
+            {!isResultsReleased && (
+              <Card className="border-amber-200 bg-amber-50/30">
+                <CardContent className="py-6 flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <Clock className="h-6 w-6 text-amber-700" />
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">Results Pending Instructor Review</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Your exam has been submitted successfully. Your instructor needs to review and release the results before they become available here.
-                  </p>
+                  <div>
+                    <h3 className="font-bold text-amber-900">Grades &amp; Feedback Pending</h3>
+                    <p className="text-sm text-amber-800/80 mt-0.5">
+                      Your response has been submitted successfully. The instructor is review-grading your exam. In the meantime, you can review the correct solutions below to revise your work.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="space-y-4">
+            )}
+
+            <div className="space-y-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" /> Answer Review
                 </h2>
@@ -188,22 +191,28 @@ export default function StudentResults() {
                               {item.questionText}
                             </CardTitle>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isEssay ? (
-                              <Badge variant="outline" className="text-blue-600 border-blue-300">
-                                Auto-graded
-                              </Badge>
-                            ) : unanswered ? (
-                              <MinusCircle className="h-5 w-5 text-muted-foreground" />
-                            ) : item.isCorrect ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <XCircle className="h-5 w-5 text-red-500" />
-                            )}
-                            <span className="text-sm font-medium">
-                              {item.points}/{item.maxPoints}
-                            </span>
-                          </div>
+                          {isResultsReleased ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isEssay ? (
+                                <Badge variant="outline" className="text-blue-600 border-blue-300">
+                                  Auto-graded
+                                </Badge>
+                              ) : unanswered ? (
+                                <MinusCircle className="h-5 w-5 text-muted-foreground" />
+                              ) : item.isCorrect ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-500" />
+                              )}
+                              <span className="text-sm font-medium">
+                                {item.points}/{item.maxPoints}
+                              </span>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 shrink-0">
+                              Pending Grade
+                            </Badge>
+                          )}
                         </div>
                       </CardHeader>
 
@@ -262,20 +271,65 @@ export default function StudentResults() {
 
                         {/* Short answer / essay */}
                         {isEssay && (
-                          <div className="text-sm space-y-1">
-                            <p className="text-muted-foreground font-medium text-xs uppercase tracking-wide">
-                              Your response
-                            </p>
-                            <div className="rounded-md bg-muted/50 p-3 text-foreground">
-                              {unanswered ? (
-                                <span className="italic text-muted-foreground">No response</span>
-                              ) : (
-                                item.studentAnswer
-                              )}
+                          <div className="text-sm space-y-3">
+                            <div>
+                              <p className="text-muted-foreground font-medium text-xs uppercase tracking-wide mb-1">
+                                Your response
+                              </p>
+                              <div className="rounded-md bg-muted/50 p-3 text-foreground border">
+                                {unanswered ? (
+                                  <span className="italic text-muted-foreground">No response</span>
+                                ) : (
+                                  item.studentAnswer
+                                )}
+                              </div>
                             </div>
-                            <p className="text-xs text-blue-600">
-                              Open-ended questions receive full marks automatically.
+
+                            {item.referenceSolution && (
+                              <div>
+                                <p className="text-blue-700 font-semibold text-xs uppercase tracking-wide mb-1">
+                                  Reference Solution / Model Answer
+                                </p>
+                                <div className="rounded-md bg-blue-50/50 border border-blue-200 p-3 text-blue-900">
+                                  {item.referenceSolution}
+                                </div>
+                              </div>
+                            )}
+
+                            {isResultsReleased && (
+                              <p className="text-xs text-blue-600">
+                                Open-ended questions receive full marks automatically.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Attachments */}
+                        {item.attachments && item.attachments.length > 0 && (
+                          <div className="text-sm space-y-2">
+                            <p className="text-muted-foreground font-medium text-xs uppercase tracking-wide">
+                              Attached Photos/Solutions
                             </p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {item.attachments.map((url: string, i: number) => (
+                                <a 
+                                  key={i} 
+                                  href={url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="border rounded-lg overflow-hidden block hover:ring-2 hover:ring-primary/50 transition-all bg-white relative aspect-[4/3]"
+                                >
+                                  <img 
+                                    src={url} 
+                                    alt={`Attachment ${i + 1}`} 
+                                    className="w-full h-full object-cover" 
+                                  />
+                                  <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                                    Page {i + 1}
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         )}
 
@@ -288,9 +342,8 @@ export default function StudentResults() {
                   );
                 })}
               </div>
-            )}
-          </>
-        )}
+            </>
+          )}
 
         <div className="text-center pt-4">
           <Button asChild variant="outline">
