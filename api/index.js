@@ -50163,7 +50163,7 @@ router5.post("/:sessionId/submit", requireAuth5, async (req, res) => {
       let feedback = "";
       if (question.type === "essay") {
         if (exam?.gradingMode === "manual") {
-          isCorrect = null;
+          isCorrect = 0;
           points = 0;
           feedback = "Pending manual grading.";
         } else {
@@ -50283,7 +50283,7 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         correctAnswer: question.correctAnswer ?? null
       });
     }
-    const isAutoRelease = exam?.gradingMode === "auto_release";
+    const isAutoRelease = exam?.gradingMode === "auto";
     const [updatedSession] = await db.update(examSessionsTable).set({
       status: "submitted",
       score: totalScore,
@@ -50332,16 +50332,17 @@ router5.post("/:sessionId/questions/:questionId/grade", requireAuth5, async (req
     const sessionId = parseInt(req.params.sessionId);
     const questionId = parseInt(req.params.questionId);
     const { points, feedback } = req.body;
+    const pointsVal = Math.round(Number(points) || 0);
     let [answer] = await db.select().from(answersTable).where(and(eq(answersTable.sessionId, sessionId), eq(answersTable.questionId, questionId)));
     if (answer) {
-      [answer] = await db.update(answersTable).set({ points, feedback, isCorrect: points > 0 ? 1 : 0 }).where(eq(answersTable.id, answer.id)).returning();
+      [answer] = await db.update(answersTable).set({ points: pointsVal, feedback, isCorrect: pointsVal > 0 ? 1 : 0 }).where(eq(answersTable.id, answer.id)).returning();
     } else {
       [answer] = await db.insert(answersTable).values({
         sessionId,
         questionId,
         answer: "",
-        isCorrect: points > 0 ? 1 : 0,
-        points,
+        isCorrect: pointsVal > 0 ? 1 : 0,
+        points: pointsVal,
         feedback
       }).returning();
     }
