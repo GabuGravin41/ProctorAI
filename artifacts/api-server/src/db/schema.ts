@@ -5,7 +5,7 @@ export const usersTable = pgTable('users', {
   clerkId: text('clerk_id').notNull().unique(),
   name: text('name'),
   email: text('email').notNull(),
-  role: text('role').notNull(), // 'student' | 'instructor'
+  role: text('role'), // 'student' | 'instructor' — nullable until onboarding complete
   institutionName: text('institution_name'),
   subjectArea: text('subject_area'),
   trafficSource: text('traffic_source'),
