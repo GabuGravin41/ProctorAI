@@ -21,7 +21,7 @@ export function setBaseUrl(_url: string) {
 
 // ─── Core fetch wrapper ──────────────────────────────────────────────────────
 
-export async function customFetch(url: string, options: RequestInit = {}) {
+export async function customFetch<T = any>(url: string, options: RequestInit = {}): Promise<T> {
   const token = authTokenGetter ? await authTokenGetter() : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,9 +69,12 @@ export interface Exam {
   subject: string | null;
   durationMinutes: number;
   status: 'draft' | 'published' | 'archived';
-  gradingMode: 'auto' | 'manual';
+  gradingMode: 'auto' | 'manual' | 'review_release';
   aiConfig: any;
   examType: string | null;
+  accessCode: string | null;
+  questionCount?: number;
+  sessionCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -111,34 +114,40 @@ export interface CheatingFlag {
   sessionId: number;
   type: string;
   description: string | null;
-  timestamp: string;
-  reviewed: boolean;
+  clipData: string | null;
+  detectedAt: string;
+  reviewStatus: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
   createdAt: string;
 }
 
-export interface GenerateQuestionsInputDifficulty {
-  level: 'easy' | 'medium' | 'hard';
+export type FlagInputType = string;
+
+export interface SessionDetails {
+  session: ExamSession & { flagCount?: number };
+  exam: Exam & { questions?: Question[] };
+  answers?: any[];
 }
 
-export interface GenerateQuestionsInputQuestionTypesItem {
-  type: string;
-  count: number;
-}
+export type GenerateQuestionsInputDifficulty = 'easy' | 'medium' | 'hard';
+
+export type GenerateQuestionsInputQuestionTypesItem = string;
 
 // ─── Query key helpers ───────────────────────────────────────────────────────
 
 export const getGetMeQueryKey = () => ['getMe'] as const;
-export const getGetSessionQueryKey = (id?: string) => ['getSession', id] as const;
-export const getListSessionsQueryKey = () => ['listSessions'] as const;
+export const getGetSessionQueryKey = (id?: string | number) => ['getSession', id?.toString()] as const;
+export const getListSessionsQueryKey = (query?: any) => ['listSessions', query] as const;
 export const getListExamsQueryKey = () => ['listExams'] as const;
-export const getGetExamResultsQueryKey = (id?: string) => ['getExamResults', id] as const;
-export const getListQuestionsQueryKey = (id?: string) => ['listQuestions', id] as const;
+export const getGetExamResultsQueryKey = (id?: string | number) => ['getExamResults', id?.toString()] as const;
+export const getListQuestionsQueryKey = (id?: string | number) => ['listQuestions', id?.toString()] as const;
 export const getListSessionFlagsQueryKey = (id?: number) => ['listSessionFlags', id] as const;
-export const getGetExamQueryKey = (id?: string) => ['getExam', id] as const;
+export const getGetExamQueryKey = (id?: string | number) => ['getExam', id?.toString()] as const;
 
 // ─── User hooks ──────────────────────────────────────────────────────────────
 
-export function useGetMe(opts?: { query?: Omit<UseQueryOptions<User>, 'queryKey' | 'queryFn'> }) {
+export function useGetMe(opts?: { query?: Omit<UseQueryOptions<User, Error, User, any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery<User>({
     queryKey: getGetMeQueryKey(),
@@ -188,7 +197,7 @@ export function useUpdateMe() {
 
 // ─── Exam hooks ──────────────────────────────────────────────────────────────
 
-export function useListExams() {
+export function useListExams(opts?: { query?: Omit<UseQueryOptions<Exam[], Error, Exam[], any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery<Exam[]>({
     queryKey: getListExamsQueryKey(),
@@ -200,10 +209,11 @@ export function useListExams() {
       if (!res.ok) throw new Error(`GET /exams failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
-export function useGetExam(examId?: string) {
+export function useGetExam(examId?: string | number, opts?: { query?: Omit<UseQueryOptions<Exam, Error, Exam, any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery<Exam>({
     queryKey: getGetExamQueryKey(examId),
@@ -216,6 +226,7 @@ export function useGetExam(examId?: string) {
       if (!res.ok) throw new Error(`GET /exams/${examId} failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
@@ -240,7 +251,7 @@ export function useCreateExam() {
 export function useUpdateExam() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<Exam, Error, { examId: string; data: Partial<Exam> }>({
+  return useMutation<Exam, Error, { examId: string | number; data: Partial<Exam> }>({
     mutationFn: async ({ examId, data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/exams/${examId}`, {
@@ -258,7 +269,7 @@ export function useUpdateExam() {
 export function usePublishExam() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<Exam, Error, { examId: string }>({
+  return useMutation<Exam, Error, { examId: string | number }>({
     mutationFn: async ({ examId }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/exams/${examId}/publish`, {
@@ -274,7 +285,7 @@ export function usePublishExam() {
 
 // ─── Question hooks ──────────────────────────────────────────────────────────
 
-export function useListQuestions(examId?: string) {
+export function useListQuestions(examId?: string | number, opts?: { query?: Omit<UseQueryOptions<Question[], Error, Question[], any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery<Question[]>({
     queryKey: getListQuestionsQueryKey(examId),
@@ -287,13 +298,14 @@ export function useListQuestions(examId?: string) {
       if (!res.ok) throw new Error(`GET /exams/${examId}/questions failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
 export function useCreateQuestion() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<Question, Error, { examId: string; data: Partial<Question> }>({
+  return useMutation<Question, Error, { examId: string | number; data: Partial<Question> }>({
     mutationFn: async ({ examId, data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/exams/${examId}/questions`, {
@@ -311,7 +323,7 @@ export function useCreateQuestion() {
 export function useUpdateQuestion() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<Question, Error, { examId: string; questionId: number; data: Partial<Question> }>({
+  return useMutation<Question, Error, { examId: string | number; questionId: number; data: Partial<Question> }>({
     mutationFn: async ({ examId, questionId, data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/exams/${examId}/questions/${questionId}`, {
@@ -329,7 +341,7 @@ export function useUpdateQuestion() {
 export function useDeleteQuestion() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<void, Error, { examId: string; questionId: number }>({
+  return useMutation<void, Error, { examId: string | number; questionId: number }>({
     mutationFn: async ({ examId, questionId }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/exams/${examId}/questions/${questionId}`, {
@@ -345,10 +357,10 @@ export function useDeleteQuestion() {
 export function useGenerateQuestions() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<Question[], Error, { examId: string; data: any }>({
+  return useMutation<Question[], Error, { examId: string | number; data: any }>({
     mutationFn: async ({ examId, data }) => {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/exams/${examId}/questions/generate`, {
+      const res = await fetch(`${API_BASE}/exams/${examId}/generate-questions`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -362,9 +374,9 @@ export function useGenerateQuestions() {
 
 // ─── Session hooks ───────────────────────────────────────────────────────────
 
-export function useGetSession(sessionId?: string) {
+export function useGetSession(sessionId?: string | number, opts?: { query?: Omit<UseQueryOptions<SessionDetails, Error, SessionDetails, any>, 'queryFn'> }) {
   const { getToken } = useAuth();
-  return useQuery<ExamSession>({
+  return useQuery<SessionDetails>({
     queryKey: getGetSessionQueryKey(sessionId),
     enabled: !!sessionId,
     queryFn: async () => {
@@ -375,12 +387,13 @@ export function useGetSession(sessionId?: string) {
       if (!res.ok) throw new Error(`GET /sessions/${sessionId} failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
-export function useListSessions(query?: any) {
+export function useListSessions(query?: any, opts?: { query?: Omit<UseQueryOptions<{ session: ExamSession; exam: Exam }[], Error, { session: ExamSession; exam: Exam }[], any>, 'queryFn'> }) {
   const { getToken } = useAuth();
-  return useQuery<ExamSession[]>({
+  return useQuery<{ session: ExamSession; exam: Exam }[]>({
     queryKey: getListSessionsQueryKey(),
     queryFn: async () => {
       const token = await getToken();
@@ -391,12 +404,13 @@ export function useListSessions(query?: any) {
       if (!res.ok) throw new Error(`GET /sessions failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
 export function useJoinExam() {
   const { getToken } = useAuth();
-  return useMutation<ExamSession, Error, { data: { accessCode: string } }>({
+  return useMutation<SessionDetails, Error, { data: { accessCode: string } }>({
     mutationFn: async ({ data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/sessions/join`, {
@@ -413,7 +427,7 @@ export function useJoinExam() {
 export function useStartSession() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<ExamSession, Error, { sessionId: string }>({
+  return useMutation<ExamSession, Error, { sessionId: string | number }>({
     mutationFn: async ({ sessionId }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/start`, {
@@ -430,7 +444,7 @@ export function useStartSession() {
 export function useSubmitSession() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  return useMutation<ExamSession, Error, { sessionId: string; data: any }>({
+  return useMutation<ExamSession, Error, { sessionId: string | number; data: any }>({
     mutationFn: async ({ sessionId, data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/submit`, {
@@ -447,7 +461,7 @@ export function useSubmitSession() {
 
 // ─── Flag hooks ──────────────────────────────────────────────────────────────
 
-export function useListSessionFlags(sessionId?: number) {
+export function useListSessionFlags(sessionId?: number, opts?: { query?: Omit<UseQueryOptions<CheatingFlag[], Error, CheatingFlag[], any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery<CheatingFlag[]>({
     queryKey: getListSessionFlagsQueryKey(sessionId),
@@ -460,12 +474,13 @@ export function useListSessionFlags(sessionId?: number) {
       if (!res.ok) throw new Error(`GET /sessions/${sessionId}/flags failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
 export function useReportFlag() {
   const { getToken } = useAuth();
-  return useMutation<CheatingFlag, Error, { sessionId: string; data: Partial<CheatingFlag> }>({
+  return useMutation<CheatingFlag, Error, { sessionId: string | number; data: Partial<CheatingFlag> & { detectedAt?: string } }>({
     mutationFn: async ({ sessionId, data }) => {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/flags`, {
@@ -504,7 +519,7 @@ export function useReviewFlag() {
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-export function useGetDashboardStats() {
+export function useGetDashboardStats(opts?: { query?: Omit<UseQueryOptions<any, Error, any, any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery({
     queryKey: ['dashboardStats'],
@@ -516,10 +531,11 @@ export function useGetDashboardStats() {
       if (!res.ok) throw new Error(`GET /dashboard/stats failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }
 
-export function useGetExamResults(examId?: string) {
+export function useGetExamResults(examId?: string | number, opts?: { query?: Omit<UseQueryOptions<any, Error, any, any>, 'queryFn'> }) {
   const { getToken } = useAuth();
   return useQuery({
     queryKey: getGetExamResultsQueryKey(examId),
@@ -532,5 +548,6 @@ export function useGetExamResults(examId?: string) {
       if (!res.ok) throw new Error(`GET /exams/${examId}/results failed: ${res.status}`);
       return res.json();
     },
+    ...opts?.query,
   });
 }

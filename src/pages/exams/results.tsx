@@ -88,7 +88,7 @@ export default function ExamResults() {
                     No students have joined yet.
                   </div>
                 )}
-                {results.sessions.map((session) => (
+                {results.sessions.map((session: any) => (
                   <div
                     key={session.id}
                     className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-50/70 transition-colors"

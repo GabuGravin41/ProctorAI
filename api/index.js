@@ -49609,8 +49609,11 @@ router4.post("/:examId/questions", requireAuth4, async (req, res) => {
 });
 router4.patch("/:examId/questions/:questionId", requireAuth4, async (req, res) => {
   try {
+    const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
     const { type, text: text2, options, correctAnswer, referenceSolution, points, order } = req.body;
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
     const updates = {};
     if (type !== void 0) updates.type = type;
     if (text2 !== void 0) updates.text = text2;
@@ -49619,6 +49622,14 @@ router4.patch("/:examId/questions/:questionId", requireAuth4, async (req, res) =
     if (referenceSolution !== void 0) updates.referenceSolution = referenceSolution;
     if (points !== void 0) updates.points = points;
     if (order !== void 0) updates.order = order;
+    if (exam.status !== "draft") {
+      const allowedKeys = ["referenceSolution"];
+      const attemptedKeys = Object.keys(updates);
+      const isAttemptingOtherUpdates = attemptedKeys.some((k) => !allowedKeys.includes(k));
+      if (isAttemptingOtherUpdates) {
+        return res.status(400).json({ error: "Cannot modify question structure of a published exam. Only reference solutions can be edited." });
+      }
+    }
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });
     res.json(formatQuestion(q));

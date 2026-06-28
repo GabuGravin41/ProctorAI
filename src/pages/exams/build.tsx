@@ -1000,7 +1000,7 @@ Example: Chapter 3 covers photosynthesis...
                     </div>
                   </CardContent>
                 )}
-                {q.type === 'essay' && q.referenceSolution && (
+                {q.referenceSolution && (
                   <CardContent className="py-0 pb-4 border-t pt-3 mt-1 bg-slate-50/50">
                     <div className="text-sm pl-6 text-muted-foreground space-y-1">
                       <span className="font-semibold text-foreground text-xs uppercase tracking-wider block">Reference Solution:</span>
@@ -1008,7 +1008,7 @@ Example: Chapter 3 covers photosynthesis...
                     </div>
                   </CardContent>
                 )}
-                {exam.status === 'draft' && (
+                {exam.status === 'draft' ? (
                   <CardContent className="py-2 flex gap-2 justify-between items-center border-t bg-slate-50/20">
                     <div className="flex gap-1.5">
                       <Button
@@ -1065,6 +1065,28 @@ Example: Chapter 3 covers photosynthesis...
                       </Button>
                     </div>
                   </CardContent>
+                ) : (
+                  <CardContent className="py-2 flex gap-2 justify-end items-center border-t bg-slate-50/20">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditTargetId(q.id);
+                        setEditQuestionForm({
+                          type: q.type as QuestionType,
+                          text: q.text,
+                          options: q.options || (q.type === "multiple_choice" ? ["", "", "", ""] : q.type === "true_false" ? ["True", "False"] : []),
+                          correctAnswer: q.correctAnswer || "",
+                          referenceSolution: q.referenceSolution || "",
+                          points: String(q.points || 1),
+                        });
+                        setEditQuestionOpen(true);
+                      }}
+                    >
+                      <Settings className="h-3 w-3 mr-1" /> Edit Reference Solution
+                    </Button>
+                  </CardContent>
                 )}
               </Card>
             ))}
@@ -1077,13 +1099,18 @@ Example: Chapter 3 covers photosynthesis...
         <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Question</DialogTitle>
-            <DialogDescription>Update details for this question.</DialogDescription>
+            <DialogDescription>
+              {exam?.status === "draft"
+                ? "Update details for this question."
+                : "The exam is published. You can only edit the reference solution or explanation below."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Question Type</Label>
                 <Select
+                  disabled={exam?.status !== "draft"}
                   value={editQuestionForm.type}
                   onValueChange={(v: QuestionType) => {
                     const defaults: Partial<NewQuestionForm> = {};
@@ -1105,6 +1132,7 @@ Example: Chapter 3 covers photosynthesis...
               <div className="space-y-2">
                 <Label>Points</Label>
                 <Input
+                  disabled={exam?.status !== "draft"}
                   type="number"
                   min="1"
                   max="100"
@@ -1117,6 +1145,7 @@ Example: Chapter 3 covers photosynthesis...
             <div className="space-y-2">
               <Label>Question Text</Label>
               <Textarea
+                disabled={exam?.status !== "draft"}
                 placeholder="Write your question here..."
                 value={editQuestionForm.text}
                 onChange={(e) => setEditQuestionForm(f => ({ ...f, text: e.target.value }))}
@@ -1130,6 +1159,7 @@ Example: Chapter 3 covers photosynthesis...
                 {editQuestionForm.options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input
+                      disabled={exam?.status !== "draft"}
                       type="radio"
                       name="editCorrectAnswer"
                       id={`edit-opt-${i}`}
@@ -1138,6 +1168,7 @@ Example: Chapter 3 covers photosynthesis...
                       className="shrink-0"
                     />
                     <Input
+                      disabled={exam?.status !== "draft"}
                       placeholder={`Option ${String.fromCharCode(65 + i)}`}
                       value={opt}
                       onChange={(e) => {
@@ -1160,6 +1191,7 @@ Example: Chapter 3 covers photosynthesis...
               <div className="space-y-2">
                 <Label>Correct Answer</Label>
                 <Select
+                  disabled={exam?.status !== "draft"}
                   value={editQuestionForm.correctAnswer}
                   onValueChange={(v) => setEditQuestionForm(f => ({ ...f, correctAnswer: v }))}
                 >
@@ -1176,6 +1208,7 @@ Example: Chapter 3 covers photosynthesis...
               <div className="space-y-2">
                 <Label>Expected Answer (optional)</Label>
                 <Input
+                  disabled={exam?.status !== "draft"}
                   placeholder="Model answer for grading reference..."
                   value={editQuestionForm.correctAnswer}
                   onChange={(e) => setEditQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
@@ -1183,7 +1216,7 @@ Example: Chapter 3 covers photosynthesis...
               </div>
             )}
 
-            {editQuestionForm.type === "essay" && (
+            {(editQuestionForm.type === "essay" || exam?.status !== "draft") && (
               <div className="space-y-2">
                 <Label>Reference Solution / Proof Rubric (LaTeX supported)</Label>
                 <Textarea

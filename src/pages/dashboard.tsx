@@ -79,7 +79,7 @@ export default function Dashboard() {
             <CardContent>
               {stats?.recentExams?.length ? (
                 <div className="space-y-3 md:space-y-4">
-                  {stats.recentExams.map((exam) => (
+                  {stats.recentExams.map((exam: any) => (
                     <div key={exam.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 md:p-4 border rounded-md bg-slate-50 gap-2">
                       <div className="min-w-0 flex-1">
                         <Link href={`/exams/${exam.id}/build`} className="font-medium hover:text-primary hover:underline text-sm md:text-base block truncate">
@@ -125,7 +125,7 @@ export default function Dashboard() {
             <CardContent>
               {stats?.recentFlags?.length ? (
                 <div className="space-y-3 md:space-y-4">
-                  {stats.recentFlags.map((flag) => (
+                  {stats.recentFlags.map((flag: any) => (
                     <div key={flag.id} className="flex flex-col p-3 md:p-4 border rounded-md bg-red-50/50 border-red-100 gap-2">
                       <div className="flex items-start md:items-center justify-between gap-2">
                         <span className="font-medium capitalize text-destructive flex items-center gap-1 text-xs md:text-sm">

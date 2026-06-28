@@ -104,7 +104,7 @@ export default function ExamsList() {
                           title="Click to copy access code"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard.writeText(exam.accessCode);
+                            navigator.clipboard.writeText(exam.accessCode || "");
                             toast({ title: "Access code copied!" });
                           }}
                         >
@@ -179,7 +179,7 @@ export default function ExamsList() {
                           title="Click to copy access code"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard.writeText(exam.accessCode);
+                            navigator.clipboard.writeText(exam.accessCode || "");
                             toast({ title: "Access code copied!" });
                           }}
                         >

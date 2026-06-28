@@ -34,7 +34,7 @@ export default function Onboarding() {
   const [institutionName, setInstitutionName] = useState("");
   const [subjectArea, setSubjectArea] = useState("");
   const [trafficSource, setTrafficSource] = useState("");
-  const [selectedRole, setSelectedRole] = useState<UserProfileUpdateRole | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"student" | "instructor" | null>(null);
   
   const [step, setStep] = useState(1); // Step 1: Identity & School, Step 2: Role & Subject, Step 3: Traffic & Survey
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -47,7 +47,7 @@ export default function Onboarding() {
       setInstitutionName(me.institutionName || "");
       setSubjectArea(me.subjectArea || "");
       setTrafficSource(me.trafficSource || "");
-      setSelectedRole((me.role as UserProfileUpdateRole) || null);
+      setSelectedRole((me.role as "student" | "instructor") || null);
       setHasInitialized(true);
     } else if (user) {
       setName(user.fullName || "");

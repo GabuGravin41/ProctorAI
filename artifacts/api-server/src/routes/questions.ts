@@ -71,8 +71,14 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
 // PATCH /api/exams/:examId/questions/:questionId
 router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
+    const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
     const { type, text, options, correctAnswer, referenceSolution, points, order } = req.body;
+    
+    // Fetch the exam to check its status
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
     const updates: any = {};
     if (type !== undefined) updates.type = type;
     if (text !== undefined) updates.text = text;
@@ -81,6 +87,16 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
     if (points !== undefined) updates.points = points;
     if (order !== undefined) updates.order = order;
+
+    if (exam.status !== "draft") {
+      // If the exam is published/archived, only referenceSolution is allowed to be modified
+      const allowedKeys = ["referenceSolution"];
+      const attemptedKeys = Object.keys(updates);
+      const isAttemptingOtherUpdates = attemptedKeys.some(k => !allowedKeys.includes(k));
+      if (isAttemptingOtherUpdates) {
+        return res.status(400).json({ error: "Cannot modify question structure of a published exam. Only reference solutions can be edited." });
+      }
+    }
 
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });

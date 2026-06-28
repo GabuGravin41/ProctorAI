@@ -166,7 +166,7 @@ export default function StudentResults() {
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" /> Answer Review
                 </h2>
-                {answers && answers.length > 0 && answers.map((item, idx) => {
+                {answers && answers.length > 0 && answers.map((item: any, idx: number) => {
                   const isEssay =
                     item.questionType === "essay" || item.questionType === "short_answer";
                   const unanswered = item.studentAnswer === null || item.studentAnswer === "";
@@ -221,7 +221,7 @@ export default function StudentResults() {
                         {/* Multiple choice options */}
                         {item.options && item.options.length > 0 && (
                           <div className="space-y-1.5">
-                            {item.options.map((opt, oi) => {
+                            {item.options.map((opt: string, oi: number) => {
                               const isStudentChoice = item.studentAnswer === opt;
                               const isCorrectChoice = item.correctAnswer === opt;
                               return (
