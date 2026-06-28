@@ -18,10 +18,20 @@ router.get("/me", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
     let [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-    
     if (!user) {
       const auth = getAuth(req);
-      const emailAddress = (auth?.sessionClaims?.email as string ?? "").toLowerCase();
+      let emailAddress = "";
+      let fullName: string | null = null;
+      try {
+        const { clerkClient } = await import("@clerk/express");
+        const clerkUser = await clerkClient.users.getUser(clerkId);
+        emailAddress = (clerkUser.emailAddresses[0]?.emailAddress || "").toLowerCase();
+        if (clerkUser.firstName || clerkUser.lastName) {
+          fullName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+        }
+      } catch (clerkErr) {
+        console.error("Clerk fetch user failed, fallback to empty:", clerkErr);
+      }
       
       [user] = await db
         .insert(usersTable)
@@ -29,7 +39,7 @@ router.get("/me", requireAuth, async (req: any, res) => {
           clerkId, 
           email: emailAddress,
           role: null,
-          name: null
+          name: fullName
         })
         .returning();
     }

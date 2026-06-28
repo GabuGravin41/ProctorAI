@@ -23,7 +23,7 @@ function formatQuestion(q: any) {
     correctAnswer: q.correctAnswer ?? null,
     referenceSolution: q.referenceSolution ?? null,
     points: q.points,
-    orderIndex: q.orderIndex,
+    order: q.order,
   };
 }
 
@@ -31,7 +31,7 @@ function formatQuestion(q: any) {
 router.get("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.order);
     res.json(questions.map(formatQuestion));
   } catch (err) {
     req.log.error({ err }, "listQuestions error");
@@ -46,7 +46,7 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
     const { type, text, options, correctAnswer, referenceSolution, points } = req.body;
 
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
-    const orderIndex = existing.length;
+    const order = existing.length;
 
     const [q] = await db
       .insert(questionsTable)
@@ -58,7 +58,7 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
         correctAnswer: correctAnswer ?? null, 
         referenceSolution: referenceSolution ?? null, 
         points: points ?? 1, 
-        orderIndex 
+        order 
       })
       .returning();
     res.status(201).json(formatQuestion(q));
@@ -72,7 +72,7 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
 router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
     const questionId = parseInt(req.params.questionId);
-    const { type, text, options, correctAnswer, referenceSolution, points, orderIndex } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points, order } = req.body;
     const updates: any = {};
     if (type !== undefined) updates.type = type;
     if (text !== undefined) updates.text = text;
@@ -80,7 +80,7 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (correctAnswer !== undefined) updates.correctAnswer = correctAnswer;
     if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
     if (points !== undefined) updates.points = points;
-    if (orderIndex !== undefined) updates.orderIndex = orderIndex;
+    if (order !== undefined) updates.order = order;
 
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });
@@ -345,7 +345,7 @@ router.post("/:examId/generate-questions", requireAuth, async (req: any, res) =>
         correctAnswer: q.correctAnswer ?? null,
         referenceSolution: q.referenceSolution ?? null,
         points: q.points ?? 1,
-        orderIndex: startIndex + i,
+        order: startIndex + i,
       }).returning();
       generated.push(formatQuestion(saved));
     }

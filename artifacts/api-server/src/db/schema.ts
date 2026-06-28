@@ -81,3 +81,16 @@ export const waitlistTable = pgTable('waitlist', {
   role: text('role'), // 'student' | 'instructor'
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+export const answersTable = pgTable('answers', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  sessionId: integer('session_id').notNull().references(() => examSessionsTable.id, { onDelete: 'cascade' }),
+  questionId: integer('question_id').notNull().references(() => questionsTable.id, { onDelete: 'cascade' }),
+  answer: text('answer').notNull(),
+  attachments: jsonb('attachments').$type<string[]>(),
+  isCorrect: integer('is_correct').notNull().default(0), // 0 | 1
+  points: integer('points').notNull().default(0),
+  feedback: text('feedback'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+

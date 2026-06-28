@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import InstructorLayout from "@/components/layout/instructor-layout";
+import StudentLayout from "@/components/layout/student-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -94,28 +95,22 @@ export default function UserProfile() {
 
   if (isLoading) {
     return (
-      <InstructorLayout>
-        <div className="p-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </div>
-      </InstructorLayout>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!me) {
     return (
-      <InstructorLayout>
-        <div className="p-8">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-5 w-5" />
-            <p>Failed to load profile</p>
-          </div>
-        </div>
-      </InstructorLayout>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
+        <p className="text-destructive font-semibold">Failed to load user profile.</p>
+        <Button onClick={() => window.location.reload()}>Retry Connection</Button>
+      </div>
     );
   }
+
+  const Layout = me.role === "student" ? StudentLayout : InstructorLayout;
 
   const completionPercentage = Math.round(
     ((formData.name ? 1 : 0) +
@@ -127,7 +122,7 @@ export default function UserProfile() {
   );
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-4">
@@ -244,17 +239,14 @@ export default function UserProfile() {
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mathematics">Mathematics</SelectItem>
-                      <SelectItem value="physics">Physics</SelectItem>
-                      <SelectItem value="chemistry">Chemistry</SelectItem>
-                      <SelectItem value="biology">Biology</SelectItem>
-                      <SelectItem value="computer_science">Computer Science</SelectItem>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="economics">Economics</SelectItem>
-                      <SelectItem value="history">History</SelectItem>
-                      <SelectItem value="literature">Literature</SelectItem>
-                      <SelectItem value="languages">Languages</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="mathematics">Mathematics (Olympiads/Contests)</SelectItem>
+                      <SelectItem value="programming">Computer Programming & Dev</SelectItem>
+                      <SelectItem value="engineering">Engineering & Physical Sciences</SelectItem>
+                      <SelectItem value="physics">Physics & Cosmology</SelectItem>
+                      <SelectItem value="chemistry">Chemistry & Biochemistry</SelectItem>
+                      <SelectItem value="biology">Biology & Life Sciences</SelectItem>
+                      <SelectItem value="medicine">Medicine & Clinical studies</SelectItem>
+                      <SelectItem value="other">Other / General</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -272,12 +264,12 @@ export default function UserProfile() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="google">Google Search</SelectItem>
-                      <SelectItem value="social_media">Social Media</SelectItem>
-                      <SelectItem value="friend_referral">Friend Referral</SelectItem>
-                      <SelectItem value="educational_forum">Educational Forum</SelectItem>
-                      <SelectItem value="university">University Portal</SelectItem>
-                      <SelectItem value="hackathon">Hackathon</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="linkedin">LinkedIn</SelectItem>
+                      <SelectItem value="youtube">YouTube video</SelectItem>
+                      <SelectItem value="tiktok">TikTok video</SelectItem>
+                      <SelectItem value="instagram">Instagram post</SelectItem>
+                      <SelectItem value="referral">Referral / Friends recommendation</SelectItem>
+                      <SelectItem value="other">Other channels</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -337,6 +329,6 @@ export default function UserProfile() {
           </CardContent>
         </Card>
       </div>
-    </InstructorLayout>
+    </Layout>
   );
 }

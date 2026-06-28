@@ -92,7 +92,7 @@ router.get("/:examId", requireAuth, async (req: any, res) => {
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.order);
 
     res.json({
       ...formatExam(exam, questions.length),
@@ -105,7 +105,7 @@ router.get("/:examId", requireAuth, async (req: any, res) => {
         correctAnswer: q.correctAnswer ?? null,
         referenceSolution: q.referenceSolution ?? null,
         points: q.points,
-        orderIndex: q.orderIndex,
+        order: q.order,
       })),
     });
   } catch (err) {

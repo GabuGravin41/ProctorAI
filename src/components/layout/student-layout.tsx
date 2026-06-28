@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
-import { LogOut, LayoutDashboard, KeyRound } from "lucide-react";
+import { LogOut, LayoutDashboard, KeyRound, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGetMe, getGetMeQueryKey } from "@/lib/api-client";
 
@@ -72,16 +72,21 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 Join Exam
               </span>
             </Link>
+            <Link href="/profile">
+              <span className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === "/profile" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}>
+                Profile
+              </span>
+            </Link>
           </nav>
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-sm font-medium">
+          <Link href="/profile" className="hidden sm:flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
               {user?.firstName?.charAt(0) || "S"}
             </div>
             <span className="text-foreground">{user?.firstName || "Student"}</span>
-          </div>
+          </Link>
           <Button variant="ghost" size="sm" onClick={() => signOut({ redirectUrl: basePath || "/" })} className="text-muted-foreground">
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -99,6 +104,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         <Link href="/join">
           <span className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${location === "/join" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
             <KeyRound className="h-4 w-4 inline-block mr-1.5" /> Join Exam
+          </span>
+        </Link>
+        <Link href="/profile">
+          <span className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${location === "/profile" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
+            <User className="h-4 w-4 inline-block mr-1.5" /> Profile
           </span>
         </Link>
       </div>

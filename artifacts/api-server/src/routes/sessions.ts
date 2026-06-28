@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable } from "../db";
+import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable, answersTable } from "../db";
 import { eq, and, isNull } from "drizzle-orm";
 
 const router = Router();
@@ -143,7 +143,7 @@ router.post("/join", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "This exam has been archived and is no longer accepting submissions." });
     }
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.order);
 
     res.json({
       session: formatSession(session),
@@ -165,7 +165,7 @@ router.post("/join", requireAuth, async (req: any, res) => {
           options: q.options ?? null,
           correctAnswer: null,
           points: q.points,
-          orderIndex: q.orderIndex,
+          order: q.order,
         })),
       },
     });
@@ -182,7 +182,7 @@ router.get("/:sessionId/answers", requireAuth, async (req: any, res) => {
     const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId)).orderBy(questionsTable.order);
     const answers = await db.select().from(answersTable).where(eq(answersTable.sessionId, sessionId));
 
     const result = questions.map((q) => {
@@ -217,7 +217,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.order);
     const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
 
     let answerResults = undefined;
@@ -259,7 +259,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           options: q.options ?? null,
           correctAnswer: null,
           points: q.points,
-          orderIndex: q.orderIndex,
+          order: q.order,
         })),
       },
       ...(answerResults !== undefined ? { answers: answerResults } : {}),

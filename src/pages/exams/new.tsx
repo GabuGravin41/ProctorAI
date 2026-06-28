@@ -164,16 +164,49 @@ export default function NewExam() {
                   <FormField
                     control={form.control}
                     name="durationMinutes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duration (Minutes)</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="5" {...field} className="bg-slate-50/50 focus:bg-white" />
-                        </FormControl>
-                        <FormDescription>Duration of exam window</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const hours = Math.floor((field.value || 60) / 60);
+                      const mins = (field.value || 60) % 60;
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>Duration</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  value={hours} 
+                                  onChange={(e) => {
+                                    const h = Math.max(0, parseInt(e.target.value) || 0);
+                                    field.onChange(h * 60 + mins);
+                                  }}
+                                  className="bg-slate-50/50 focus:bg-white w-20"
+                                />
+                                <span className="text-sm font-medium text-muted-foreground">hrs</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  max="59"
+                                  value={mins} 
+                                  onChange={(e) => {
+                                    const m = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                                    field.onChange(hours * 60 + m);
+                                  }}
+                                  className="bg-slate-50/50 focus:bg-white w-20"
+                                />
+                                <span className="text-sm font-medium text-muted-foreground">mins</span>
+                              </div>
+                            </div>
+                          </FormControl>
+                          <FormDescription>Total duration: {field.value} minutes</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
