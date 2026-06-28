@@ -29025,7 +29025,6 @@ var init_logger = __esm({
 // artifacts/api-server/src/app.ts
 var import_express16 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
-import { createRequire } from "module";
 
 // node_modules/.pnpm/@clerk+shared@4.20.0_react-_ffb4ee18bb374c5de0bcf050fae10ae5/node_modules/@clerk/shared/dist/underscore.mjs
 function snakeToCamel(str) {
@@ -50254,29 +50253,36 @@ router9.use(waitlist_default);
 var routes_default = router9;
 
 // artifacts/api-server/src/app.ts
-init_logger();
-var require2 = createRequire(import.meta.url);
-var pinoHttp = require2("pino-http");
 var app = (0, import_express16.default)();
-app.use(
-  pinoHttp({
-    logger: logger2,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0]
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode
-        };
+try {
+  const { createRequire } = await import("node:module");
+  const _require = createRequire(import.meta.url);
+  const pinoHttp = _require("pino-http");
+  const { logger: logger3 } = await Promise.resolve().then(() => (init_logger(), logger_exports));
+  app.use(
+    pinoHttp({
+      logger: logger3,
+      serializers: {
+        req(req) {
+          return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
+        },
+        res(res) {
+          return { statusCode: res.statusCode };
+        }
       }
-    }
-  })
-);
+    })
+  );
+} catch {
+  app.use((_req, _res, next) => {
+    _req.log = {
+      info: (...args) => console.log("[INFO]", ...args),
+      warn: (...args) => console.warn("[WARN]", ...args),
+      error: (...args) => console.error("[ERROR]", ...args),
+      debug: (...args) => console.debug("[DEBUG]", ...args)
+    };
+    next();
+  });
+}
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
 app.use(import_express16.default.json());
 app.use(import_express16.default.urlencoded({ extended: true }));
