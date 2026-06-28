@@ -100,6 +100,7 @@ export default function ExamBuilder() {
   const [editQuestionOpen, setEditQuestionOpen] = useState(false);
   const [editTargetId, setEditTargetId] = useState<number | null>(null);
   const [editQuestionForm, setEditQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
+  const [proctoringEnabled, setProctoringEnabled] = useState(true);
   
   // Enhanced AI generation state
   const [learningObjectives, setLearningObjectives] = useState("");
@@ -448,16 +449,17 @@ Generate ${aiCount} questions that follow these specifications exactly.
           provider: aiProvider,
           model: aiModel,
           customApiKey: customApiKey || undefined,
+          proctoringEnabled: proctoringEnabled,
         }
       }
     }, {
       onSuccess: () => {
-        toast({ title: "AI settings updated" });
+        toast({ title: "Exam settings updated" });
         setAiSettingsOpen(false);
         queryClient.invalidateQueries({ queryKey: getGetExamQueryKey(examId) });
       },
       onError: () => {
-        toast({ title: "Failed to update AI settings", variant: "destructive" });
+        toast({ title: "Failed to update exam settings", variant: "destructive" });
       }
     });
   };
@@ -468,6 +470,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
       setAiProvider(exam.aiConfig.provider as any);
       setAiModel(exam.aiConfig.model);
       setCustomApiKey(exam.aiConfig.customApiKey || "");
+      setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
     }
   }, [aiSettingsOpen, exam?.aiConfig]);
 
@@ -524,7 +527,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
                   onClick={() => setAiSettingsOpen(true)}
                   disabled={updateExam.isPending}
                 >
-                  <Settings className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">AI Settings</span><span className="sm:hidden">AI</span>
+                  <Settings className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Exam Settings</span><span className="sm:hidden">Settings</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -1353,61 +1356,87 @@ Example: Chapter 3 covers photosynthesis...
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" /> AI Model Settings
+              <Settings className="h-5 w-5" /> Exam Settings
             </DialogTitle>
             <DialogDescription>
-              Configure the AI model used for question generation on this exam.
+              Configure AI generation and proctoring controls for this exam.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>AI Provider</Label>
-              <Select value={aiProvider} onValueChange={(v: any) => setAiProvider(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free (Deepseek via OpenRouter)</SelectItem>
-                  <SelectItem value="custom_openrouter">Custom OpenRouter API</SelectItem>
-                  <SelectItem value="custom_gemini">Custom Google Gemini API</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Switch between free tier and custom paid APIs</p>
+          <div className="space-y-5 py-4 divide-y divide-slate-100">
+            {/* AI Settings Section */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm text-foreground">AI Question Generation Settings</h4>
+              <div className="space-y-2">
+                <Label>AI Provider</Label>
+                <Select value={aiProvider} onValueChange={(v: any) => setAiProvider(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free (Deepseek via OpenRouter)</SelectItem>
+                    <SelectItem value="custom_openrouter">Custom OpenRouter API</SelectItem>
+                    <SelectItem value="custom_gemini">Custom Google Gemini API</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Switch between free tier and custom paid APIs</p>
+              </div>
+
+              {aiProvider === "free" && (
+                <div className="space-y-2 p-3 rounded-md bg-indigo-50 border border-indigo-200">
+                  <p className="text-sm font-medium text-indigo-900">Free Tier</p>
+                  <p className="text-xs text-indigo-800">Using Deepseek model via OpenRouter API (free tier)</p>
+                </div>
+              )}
+
+              {aiProvider !== "free" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Model ID</Label>
+                    <Input 
+                      placeholder={aiProvider === "custom_openrouter" ? "e.g. anthropic/claude-3-haiku" : "e.g. gemini-pro"}
+                      value={aiModel} 
+                      onChange={(e) => setAiModel(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {aiProvider === "custom_openrouter" 
+                        ? "See openrouter.ai/models for available models"
+                        : "See cloud.google.com/vertex-ai for available models"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>API Key</Label>
+                    <Input 
+                      type="password"
+                      placeholder={aiProvider === "custom_openrouter" ? "sk-..." : "AIza..."}
+                      value={customApiKey} 
+                      onChange={(e) => setCustomApiKey(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Your API key is only used for this exam</p>
+                  </div>
+                </>
+              )}
             </div>
 
-            {aiProvider === "free" && (
-              <div className="space-y-2 p-3 rounded-md bg-indigo-50 border border-indigo-200">
-                <p className="text-sm font-medium text-indigo-900">Free Tier</p>
-                <p className="text-xs text-indigo-800">Using Deepseek model via OpenRouter API (free tier)</p>
-              </div>
-            )}
-
-            {aiProvider !== "free" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Model ID</Label>
-                  <Input 
-                    placeholder={aiProvider === "custom_openrouter" ? "e.g. anthropic/claude-3-haiku" : "e.g. gemini-pro"}
-                    value={aiModel} 
-                    onChange={(e) => setAiModel(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {aiProvider === "custom_openrouter" 
-                      ? "See openrouter.ai/models for available models"
-                      : "See cloud.google.com/vertex-ai for available models"}
+            {/* Proctoring Settings Section */}
+            <div className="space-y-2 pt-4">
+              <h4 className="font-semibold text-sm text-slate-900 mt-2">Anti-Cheating Proctoring Rules</h4>
+              <div className="flex items-start gap-3 mt-3">
+                <input
+                  type="checkbox"
+                  id="proctoringEnabled"
+                  checked={proctoringEnabled}
+                  onChange={(e) => setProctoringEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 cursor-pointer"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="proctoringEnabled" className="text-sm font-medium text-slate-700 cursor-pointer">
+                    Enable Web Camera & Microphone Proctoring
+                  </Label>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Insist that students grant camera/microphone permissions to begin taking the exam. If disabled, students can write their exam without webcam surveillance.
                   </p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>API Key</Label>
-                  <Input 
-                    type="password"
-                    placeholder={aiProvider === "custom_openrouter" ? "sk-..." : "AIza..."}
-                    value={customApiKey} 
-                    onChange={(e) => setCustomApiKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Your API key is only used for this exam</p>
-                </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAiSettingsOpen(false)}>Cancel</Button>

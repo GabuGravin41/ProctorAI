@@ -59,6 +59,7 @@ export default function ExamTaking() {
   const exam = sessionWithExam?.exam;
   const session = sessionWithExam?.session;
   const questions = exam?.questions || [];
+  const isProctoringEnabled = exam?.aiConfig?.proctoringEnabled !== false;
 
   const questionsRef = useRef(questions);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -139,7 +140,7 @@ export default function ExamTaking() {
 
   // ── Camera ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || !isProctoringEnabled) return;
     let acquired: MediaStream | null = null;
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then(s => {
@@ -493,12 +494,16 @@ export default function ExamTaking() {
 
             <div className="bg-slate-50 p-6 rounded-lg border mb-8">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <ShieldAlert className="text-primary" /> Proctoring Requirements
+                <ShieldAlert className="text-primary" /> {isProctoringEnabled ? "Proctoring Requirements" : "Exam Rules & Instructions"}
               </h3>
               <ul className="space-y-3 text-sm">
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Camera and microphone access is strictly required throughout the exam.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Ensure your face is clearly visible and well-lit at all times.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />AI monitors for looking away, multiple faces, phones, and other violations.</li>
+                {isProctoringEnabled && (
+                  <>
+                    <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Camera and microphone access is strictly required throughout the exam.</li>
+                    <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Ensure your face is clearly visible and well-lit at all times.</li>
+                    <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />AI monitors for looking away, multiple faces, phones, and other violations.</li>
+                  </>
+                )}
                 <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />The exam runs in fullscreen — exiting fullscreen will be flagged.</li>
                 <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Switching browser tabs will be flagged and reported to your instructor.</li>
               </ul>
@@ -613,6 +618,17 @@ export default function ExamTaking() {
           </div>
         </div>
 
+        {/* LaTeX & Handwritten Upload Advice Banner */}
+        <div className="bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg p-3 sm:p-4 mb-6 text-xs sm:text-sm flex items-start gap-2.5">
+          <span className="shrink-0 text-base">💡</span>
+          <div>
+            <p className="font-semibold mb-0.5">Wrote your solutions on paper?</p>
+            <p className="text-indigo-700 leading-relaxed">
+              If you don't know LaTeX or have written down mathematical derivations on scratch paper, you can leave the answer fields blank (or type a brief note) and <strong>upload photos of your paper sheets after submitting this exam</strong>. You will be given a dedicated upload interface immediately after clicking submit.
+            </p>
+          </div>
+        </div>
+
         {/* Urgent full-width banner */}
         {isUrgent && (
           <div className="bg-red-600 text-white text-center py-2 text-sm font-semibold -mx-4 md:-mx-8 px-4 mb-6 animate-pulse">
@@ -665,6 +681,9 @@ export default function ExamTaking() {
                       value={answers[q.id] || ""}
                       onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                     />
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      💡 <strong>Don't know LaTeX or wrote your work on paper?</strong> You can leave this blank or type a brief note, and <strong>upload photos/scans of your handwritten paper sheets</strong> directly on the next screen after clicking submit!
+                    </p>
                     {answers[q.id] && (
                       <div className="p-4 rounded-lg border bg-slate-50/50">
                         <div className="text-xs font-semibold text-muted-foreground mb-2">Real-time Mathematical Proof Preview:</div>
@@ -690,14 +709,19 @@ export default function ExamTaking() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Submit Exam?</AlertDialogTitle>
-              <AlertDialogDescription>
-                You have answered <strong>{Object.keys(answers).length}</strong> of <strong>{questions.length}</strong> questions.
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  You have answered <strong>{Object.keys(answers).length}</strong> of <strong>{questions.length}</strong> questions.
+                </p>
                 {Object.keys(answers).length < questions.length && (
-                  <span className="block mt-2 text-yellow-700 font-medium">
-                    {questions.length - Object.keys(answers).length} question{questions.length - Object.keys(answers).length > 1 ? "s are" : " is"} unanswered and will receive zero points.
-                  </span>
+                  <p className="text-yellow-700 font-medium bg-yellow-50 p-2.5 rounded border border-yellow-100 text-xs">
+                    ⚠️ {questions.length - Object.keys(answers).length} question{questions.length - Object.keys(answers).length > 1 ? "s are" : " is"} unanswered.
+                    <strong> Note:</strong> If you wrote your derivations or proofs for these questions on scratch paper, you can upload photos of your sheets on the next screen immediately after clicking submit.
+                  </p>
                 )}
-                <span className="block mt-2">Once submitted, you cannot change your answers.</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Once submitted, you cannot change your typed answers. You will have 5 minutes to select and upload any images/photos of your handwritten proofs.
+                </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

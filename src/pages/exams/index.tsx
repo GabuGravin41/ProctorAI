@@ -96,8 +96,21 @@ export default function ExamsList() {
                         {exam.durationMinutes} min
                       </div>
                     </div>
-                    <div className="col-span-2 flex items-center">
-                      {getStatusBadge(exam.status)}
+                    <div className="col-span-2 flex flex-col justify-center items-start gap-1">
+                      <div>{getStatusBadge(exam.status)}</div>
+                      {exam.status === "published" && exam.accessCode && (
+                        <code 
+                          className="text-xs bg-indigo-50 text-indigo-700 px-1 rounded font-mono font-semibold cursor-pointer hover:bg-indigo-100 transition-colors select-all" 
+                          title="Click to copy access code"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(exam.accessCode);
+                            toast({ title: "Access code copied!" });
+                          }}
+                        >
+                          {exam.accessCode}
+                        </code>
+                      )}
                     </div>
                     <div className="col-span-2 text-sm">
                       {exam.questionCount || 0} questions
@@ -160,6 +173,19 @@ export default function ExamsList() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {getStatusBadge(exam.status)}
+                      {exam.status === "published" && exam.accessCode && (
+                        <code 
+                          className="text-xs bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono font-semibold cursor-pointer hover:bg-indigo-100 transition-colors"
+                          title="Click to copy access code"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(exam.accessCode);
+                            toast({ title: "Access code copied!" });
+                          }}
+                        >
+                          Code: {exam.accessCode}
+                        </code>
+                      )}
                       <span className="text-xs sm:text-sm text-muted-foreground">{exam.questionCount || 0} questions</span>
                       <span className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                         <Users className="h-3 w-3" />
