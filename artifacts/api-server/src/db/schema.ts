@@ -71,8 +71,11 @@ export const cheatingFlagsTable = pgTable('cheating_flags', {
   sessionId: integer('session_id').notNull().references(() => examSessionsTable.id, { onDelete: 'cascade' }),
   type: text('type').notNull(), // 'tab_switch' | 'copy_paste' | 'screenshot' | 'focus_loss'
   description: text('description'),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-  reviewed: boolean('reviewed').notNull().default(false),
+  clipData: text('clip_data'),
+  detectedAt: timestamp('detected_at').notNull().defaultNow(),
+  reviewStatus: text('review_status').notNull().default('pending'), // 'pending' | 'confirmed' | 'dismissed'
+  reviewedAt: timestamp('reviewed_at'),
+  reviewNote: text('review_note'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
