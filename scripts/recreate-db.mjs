@@ -64,7 +64,7 @@ CREATE TABLE exam_sessions (
   student_clerk_id  TEXT    NOT NULL,
   student_email     TEXT,
   student_name      TEXT,
-  access_code       TEXT    NOT NULL UNIQUE,
+  access_code       TEXT    NOT NULL,
   status            TEXT    NOT NULL DEFAULT 'not_started',
   started_at        TIMESTAMP,
   completed_at      TIMESTAMP,

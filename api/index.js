@@ -49175,7 +49175,7 @@ var examSessionsTable = pgTable("exam_sessions", {
   studentClerkId: text("student_clerk_id").notNull(),
   studentEmail: text("student_email"),
   studentName: text("student_name"),
-  accessCode: text("access_code").notNull().unique(),
+  accessCode: text("access_code").notNull(),
   status: text("status").notNull().default("not_started"),
   // 'not_started' | 'in_progress' | 'completed' | 'abandoned'
   startedAt: timestamp("started_at"),
