@@ -179,7 +179,8 @@ export function useUpdateMe() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(getGetMeQueryKey(), data);
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
     },
   });
