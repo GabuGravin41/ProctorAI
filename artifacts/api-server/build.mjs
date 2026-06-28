@@ -127,7 +127,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   // pino-http is excluded so logging degrades gracefully on Vercel serverless.
   const { build: esbuildApi } = await import("esbuild");
   await esbuildApi({
-    entryPoints: [path.resolve(artifactDir, "src/app.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
