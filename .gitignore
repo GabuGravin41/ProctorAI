@@ -58,5 +58,6 @@ Thumbs.db
 # API-server build outputs
 artifacts/api-server/api/index.js
 artifacts/api-server/.api-build/
+api/index.js
 
 
