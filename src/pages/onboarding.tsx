@@ -70,8 +70,22 @@ export default function Onboarding() {
   }, [me, isLoadingMe, setLocation]);
 
   const handleComplete = () => {
-    if (!selectedRole || !name.trim() || !institutionName.trim() || !subjectArea.trim() || !trafficSource) return;
-    
+    console.log("[Onboarding] handleComplete called", {
+      selectedRole,
+      name: name.trim(),
+      institutionName: institutionName.trim(),
+      subjectArea: subjectArea.trim(),
+      trafficSource,
+    });
+
+    if (!selectedRole) { console.warn("[Onboarding] BLOCKED: no role selected"); return; }
+    if (!name.trim()) { console.warn("[Onboarding] BLOCKED: name is empty"); return; }
+    if (!institutionName.trim()) { console.warn("[Onboarding] BLOCKED: institutionName is empty"); return; }
+    if (!subjectArea.trim()) { console.warn("[Onboarding] BLOCKED: subjectArea is empty"); return; }
+    if (!trafficSource) { console.warn("[Onboarding] BLOCKED: trafficSource is empty"); return; }
+
+    console.log("[Onboarding] All fields valid — calling updateMe.mutate");
+
     updateMe.mutate({
       data: {
         role: selectedRole,
@@ -81,11 +95,17 @@ export default function Onboarding() {
         trafficSource: trafficSource,
       }
     }, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log("[Onboarding] updateMe succeeded", data);
         setLocation(selectedRole === "instructor" ? "/dashboard" : "/student");
+      },
+      onError: (err: any) => {
+        console.error("[Onboarding] updateMe FAILED", err);
+        alert(`Registration failed: ${err?.message || "Unknown error — check console for details"}`);
       }
     });
   };
+
 
   if (isLoadingMe) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
