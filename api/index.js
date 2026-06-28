@@ -50096,6 +50096,7 @@ router5.get("/:sessionId", requireAuth5, async (req, res) => {
           isCorrect: stored ? Boolean(stored.isCorrect) : false,
           points: stored?.points ?? 0,
           maxPoints: q.points,
+          attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : q.correctAnswer ?? null,
           options: q.options ?? null
         };
@@ -50306,9 +50307,9 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
 });
 router5.post("/:sessionId/upload", requireAuth5, async (req, res) => {
   try {
-    const { filename } = req.body;
+    const { filename, fileData } = req.body;
     res.json({
-      url: `/uploads/${Date.now()}_${filename || "proof.png"}`,
+      url: fileData || `/uploads/${Date.now()}_${filename || "proof.png"}`,
       filename: filename || "proof.png"
     });
   } catch (err) {
@@ -50589,8 +50590,8 @@ try {
 } catch {
 }
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(import_express16.default.json());
-app.use(import_express16.default.urlencoded({ extended: true }));
+app.use(import_express16.default.json({ limit: "50mb" }));
+app.use(import_express16.default.urlencoded({ limit: "50mb", extended: true }));
 app.use(clerkMiddleware());
 app.use("/api", routes_default);
 var app_default = app;

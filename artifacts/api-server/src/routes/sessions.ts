@@ -238,6 +238,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           isCorrect: stored ? Boolean(stored.isCorrect) : false,
           points: stored?.points ?? 0,
           maxPoints: q.points,
+          attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
           options: q.options ?? null,
         };
@@ -491,9 +492,9 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
 // POST /api/sessions/:sessionId/upload
 router.post("/:sessionId/upload", requireAuth, async (req: any, res) => {
   try {
-    const { filename } = req.body;
+    const { filename, fileData } = req.body;
     res.json({
-      url: `/uploads/${Date.now()}_${filename || "proof.png"}`,
+      url: fileData || `/uploads/${Date.now()}_${filename || "proof.png"}`,
       filename: filename || "proof.png"
     });
   } catch (err) {

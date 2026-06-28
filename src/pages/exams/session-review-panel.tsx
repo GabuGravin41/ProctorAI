@@ -275,8 +275,7 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5">
-            <TabsContent value="grading" className="m-0 space-y-6">
+          <TabsContent value="grading" className="m-0 space-y-6 flex-1 overflow-y-auto p-5 min-h-0">
               {/* Score Summary */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <Card>
@@ -335,6 +334,32 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                           </div>
                         </div>
 
+                        {ans.attachments && ans.attachments.length > 0 && (
+                          <div className="text-sm space-y-2">
+                            <div className="font-medium text-muted-foreground text-xs uppercase">Attached Photos/Solutions ({ans.attachments.length})</div>
+                            <div className="grid grid-cols-2 gap-3">
+                              {ans.attachments.map((url: string, i: number) => (
+                                <a 
+                                  key={i} 
+                                  href={url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="border rounded-lg overflow-hidden block hover:ring-2 hover:ring-primary/50 transition-all bg-white relative aspect-[4/3]"
+                                >
+                                  <img 
+                                    src={url} 
+                                    alt={`Solution page ${i + 1}`} 
+                                    className="w-full h-full object-cover" 
+                                  />
+                                  <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                                    Page {i + 1}
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {!isEssay && ans.correctAnswer && (
                           <div className="text-sm">
                             <div className="font-medium text-muted-foreground mb-1 text-xs uppercase">Correct Answer</div>
@@ -386,7 +411,7 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
               </div>
             </TabsContent>
 
-            <TabsContent value="flags" className="m-0 space-y-6">
+            <TabsContent value="flags" className="m-0 space-y-6 flex-1 overflow-y-auto p-5 min-h-0">
               {isLoadingFlags && (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading flags…
@@ -446,7 +471,6 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                 </div>
               )}
             </TabsContent>
-          </div>
         </Tabs>
       </div>
     </div>

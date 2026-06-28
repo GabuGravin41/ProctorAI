@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2 } from "lucide-react";
+import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2, Camera, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LatexRenderer from "@/components/latex-renderer";
 
@@ -41,6 +41,69 @@ export default function ExamTaking() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState("");
+
+  // Camera capture modal state
+  const [startedAtTime, setStartedAtTime] = useState<number | null>(null);
+  const [activeCaptureQId, setActiveCaptureQId] = useState<number | null>(null);
+  const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
+  const captureVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const closeCameraCapture = () => {
+    if (captureStream) {
+      captureStream.getTracks().forEach(track => track.stop());
+    }
+    setCaptureStream(null);
+    setActiveCaptureQId(null);
+  };
+
+  const startCameraCapture = async (qId: number) => {
+    try {
+      setActiveCaptureQId(qId);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+      });
+      setCaptureStream(stream);
+      setTimeout(() => {
+        if (captureVideoRef.current) {
+          captureVideoRef.current.srcObject = stream;
+        }
+      }, 150);
+    } catch (err) {
+      toast({ title: "Camera access failed", description: "Please ensure camera permissions are granted.", variant: "destructive" });
+      setActiveCaptureQId(null);
+    }
+  };
+
+  const capturePhoto = async () => {
+    if (activeCaptureQId === null || !captureStream || !captureVideoRef.current) return;
+    try {
+      const video = captureVideoRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+        const res = await customFetch<{ url: string, filename: string }>(`/sessions/${sessionId}/upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: `camera_capture_${Date.now()}.jpg`, fileData: dataUrl }),
+        });
+
+        setAttachments(prev => ({
+          ...prev,
+          [activeCaptureQId]: [...(prev[activeCaptureQId] || []), res.url]
+        }));
+
+        toast({ title: "Photo captured", description: "Image attached successfully." });
+        closeCameraCapture();
+      }
+    } catch (err) {
+      toast({ title: "Capture failed", description: "Could not capture image from webcam.", variant: "destructive" });
+    }
+  };
 
   // Keep answers, attachments, and upload state in refs so callbacks always see the latest values
   const answersRef = useRef(answers);
@@ -249,6 +312,11 @@ export default function ExamTaking() {
     if (!hasStarted) return;
     const handleVisibilityChange = () => {
       if (isUploadWindowRef.current) return;
+      
+      // 20-second grace period for camera/permission fullscreen toggles
+      const elapsed = startedAtTime ? (Date.now() - startedAtTime) / 1000 : 0;
+      if (elapsed < 20) return;
+
       if (document.hidden) {
         triggerFlag("tab_switch" as FlagInputType, "Student switched away from the exam tab");
         toast({ title: "⚠ Tab Switch Detected", description: "Leaving the exam tab has been flagged.", variant: "destructive" });
@@ -256,7 +324,7 @@ export default function ExamTaking() {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [hasStarted, sessionId, reportFlag, toast]);
+  }, [hasStarted, sessionId, reportFlag, toast, startedAtTime]);
 
   // ── Fullscreen enforcement ──────────────────────────────────────────────────
   useEffect(() => {
@@ -266,6 +334,11 @@ export default function ExamTaking() {
 
     const handleFullscreenChange = () => {
       if (isUploadWindowRef.current) return;
+
+      // 20-second grace period for camera/permission fullscreen toggles
+      const elapsed = startedAtTime ? (Date.now() - startedAtTime) / 1000 : 0;
+      if (elapsed < 20) return;
+
       if (!document.fullscreenElement) {
         setFullscreenWarning(true);
         triggerFlag("fullscreen_exit" as FlagInputType, "Student exited fullscreen mode");
@@ -275,7 +348,7 @@ export default function ExamTaking() {
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [hasStarted, sessionId, reportFlag]);
+  }, [hasStarted, sessionId, reportFlag, startedAtTime]);
 
   // ── Upload Window countdown ──────────────────────────────────────────────────
   useEffect(() => {
@@ -323,8 +396,14 @@ export default function ExamTaking() {
 
   const handleStart = () => {
     startSession.mutate({ sessionId }, {
-      onSuccess: () => setHasStarted(true),
-      onError: () => setHasStarted(true),
+      onSuccess: () => {
+        setStartedAtTime(Date.now());
+        setHasStarted(true);
+      },
+      onError: () => {
+        setStartedAtTime(Date.now());
+        setHasStarted(true);
+      },
     });
   };
 
@@ -389,11 +468,17 @@ export default function ExamTaking() {
               const uploadFiles = async (qId: number, files: File[]) => {
                 for (const file of files) {
                   try {
-                    // Call the mock upload endpoint
+                    const fileData = await new Promise<string>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = (e) => resolve(e.target?.result as string);
+                      reader.onerror = (e) => reject(e);
+                      reader.readAsDataURL(file);
+                    });
+
                     const res = await customFetch<{ url: string, filename: string }>(`/sessions/${sessionId}/upload`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ filename: file.name }),
+                      body: JSON.stringify({ filename: file.name, fileData }),
                     });
                     setAttachments(prev => ({
                       ...prev,
@@ -436,6 +521,18 @@ export default function ExamTaking() {
                       <p className="text-xs text-slate-500 mt-1">or click to browse files (PNG, JPG, JPEG)</p>
                     </div>
 
+                    <div className="flex justify-center">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => startCameraCapture(q.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Take Photo with Device Camera
+                      </Button>
+                    </div>
+
                     {/* Uploaded List */}
                     {qAttachments.length > 0 && (
                       <div className="space-y-2">
@@ -476,6 +573,41 @@ export default function ExamTaking() {
               Finish &amp; Complete Submission
             </Button>
           </div>
+
+          {/* Camera Capture Modal */}
+          {activeCaptureQId !== null && (
+            <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden max-w-lg w-full flex flex-col shadow-2xl">
+                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                  <h3 className="font-semibold text-white">Capture Proof Photo</h3>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white" onClick={closeCameraCapture}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="bg-black relative aspect-video flex items-center justify-center overflow-hidden">
+                  <video 
+                    ref={captureVideoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className="w-full h-full object-cover scale-x-[-1]"
+                  />
+                  <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-md">
+                    Webcam Active
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between bg-slate-950 border-t border-slate-800">
+                  <Button variant="ghost" className="text-slate-400 hover:text-white" onClick={closeCameraCapture}>
+                    Cancel
+                  </Button>
+                  <Button className="bg-primary hover:bg-primary/90 flex items-center gap-2" onClick={capturePhoto}>
+                    <Camera className="h-4 w-4" />
+                    Capture &amp; Attach
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </StudentLayout>
     );
