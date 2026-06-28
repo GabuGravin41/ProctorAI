@@ -66,11 +66,23 @@ const clerkAppearance = {
 const appElement = <App />;
 
 if (!clerkPubKey) {
-  console.warn(
-    "VITE_CLERK_PUBLISHABLE_KEY is not configured. App will run without authentication.",
-  );
-  // Render without Clerk - app should handle missing auth gracefully
-  createRoot(document.getElementById("root")!).render(appElement);
+  // Fail fast with a clear message rather than rendering without ClerkProvider,
+  // which causes useAuth() crashes throughout the app.
+  document.getElementById("root")!.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f172a;color:#f8fafc;">
+      <div style="text-align:center;padding:2rem;border:1px solid #334155;border-radius:0.5rem;max-width:480px;">
+        <h1 style="font-size:1.5rem;margin-bottom:0.5rem;">⚙️ Configuration Missing</h1>
+        <p style="color:#94a3b8;margin-bottom:1rem;">
+          <code style="background:#1e293b;padding:0.2em 0.5em;border-radius:0.25em;font-size:0.9em;">VITE_CLERK_PUBLISHABLE_KEY</code>
+          is not set.
+        </p>
+        <p style="color:#64748b;font-size:0.875rem;">
+          Add it to your <code style="background:#1e293b;padding:0.1em 0.4em;border-radius:0.25em;">.env</code> file locally,
+          or to your Vercel project's Environment Variables.
+        </p>
+      </div>
+    </div>
+  `;
 } else {
   // Render with Clerk
   createRoot(document.getElementById("root")!).render(
