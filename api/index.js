@@ -48893,8 +48893,9 @@ var waitlistTable = pgTable("waitlist", {
 
 // artifacts/api-server/src/db/index.ts
 var { Pool: Pool3 } = esm_default;
+var connectionString = process.env.DATABASE_URL_POSTGRES_URL || process.env.DATABASE_URL_POSTGRES_USER || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING;
 var pool = new Pool3({
-  connectionString: process.env.DATABASE_URL
+  connectionString
 });
 var db = drizzle(pool, { schema: schema_exports });
 

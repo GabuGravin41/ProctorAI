@@ -4,8 +4,16 @@ import * as schema from './schema';
 
 const { Pool } = pg;
 
+const connectionString =
+  process.env.DATABASE_URL_POSTGRES_URL ||
+  process.env.DATABASE_URL_POSTGRES_USER ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.POSTGRES_URL_NON_POOLING;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
 });
 
 export const db = drizzle(pool, { schema });
