@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node artifacts/api-server/build.mjs",
     "serve": "vite preview --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:push": "drizzle-kit push"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -79,7 +80,8 @@
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13.1.3",
     "thread-stream": "3.1.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "drizzle-kit": "^0.30.0"
   },
   "dependencies": {
     "@clerk/express": "^2.1.30",
