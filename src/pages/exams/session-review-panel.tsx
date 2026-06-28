@@ -275,7 +275,8 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
             </TabsList>
           </div>
 
-          <TabsContent value="grading" className="m-0 space-y-6 flex-1 overflow-y-auto p-5 min-h-0">
+          <TabsContent value="grading" className="m-0 focus-visible:outline-none">
+            <div className="h-[calc(100vh-140px)] overflow-y-auto p-5 space-y-6">
               {/* Score Summary */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <Card>
@@ -409,9 +410,11 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                   )
                 })}
               </div>
-            </TabsContent>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="flags" className="m-0 space-y-6 flex-1 overflow-y-auto p-5 min-h-0">
+            <TabsContent value="flags" className="m-0 focus-visible:outline-none">
+            <div className="h-[calc(100vh-140px)] overflow-y-auto p-5 space-y-6">
               {isLoadingFlags && (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading flags…
@@ -470,7 +473,8 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                   ))}
                 </div>
               )}
-            </TabsContent>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
