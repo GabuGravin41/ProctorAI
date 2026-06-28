@@ -18,9 +18,6 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -28994,34 +28991,6 @@ var require_lib5 = __commonJS({
   }
 });
 
-// artifacts/api-server/src/lib/logger.ts
-var logger_exports = {};
-__export(logger_exports, {
-  logger: () => logger2
-});
-import pino from "pino";
-var isProduction, logger2;
-var init_logger = __esm({
-  "artifacts/api-server/src/lib/logger.ts"() {
-    "use strict";
-    isProduction = process.env.NODE_ENV === "production";
-    logger2 = pino({
-      level: process.env.LOG_LEVEL ?? "info",
-      redact: [
-        "req.headers.authorization",
-        "req.headers.cookie",
-        "res.headers['set-cookie']"
-      ],
-      ...isProduction ? {} : {
-        transport: {
-          target: "pino-pretty",
-          options: { colorize: true }
-        }
-      }
-    });
-  }
-});
-
 // artifacts/api-server/src/app.ts
 var import_express16 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
@@ -48545,12 +48514,12 @@ var PgTransaction = class extends PgDatabase {
 // node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/node-postgres/session.js
 var { Pool: Pool2, types: types2 } = esm_default;
 var NodePgPreparedQuery = class extends PgPreparedQuery {
-  constructor(client, queryString, params, logger3, cache2, queryMetadata, cacheConfig, fields, name, _isResponseInArrayMode, customResultMapper) {
+  constructor(client, queryString, params, logger2, cache2, queryMetadata, cacheConfig, fields, name, _isResponseInArrayMode, customResultMapper) {
     super({ sql: queryString, params }, cache2, queryMetadata, cacheConfig);
     this.client = client;
     this.queryString = queryString;
     this.params = params;
-    this.logger = logger3;
+    this.logger = logger2;
     this.fields = fields;
     this._isResponseInArrayMode = _isResponseInArrayMode;
     this.customResultMapper = customResultMapper;
@@ -48778,11 +48747,11 @@ var NodePgDatabase = class extends PgDatabase {
 };
 function construct(client, config = {}) {
   const dialect = new PgDialect({ casing: config.casing });
-  let logger3;
+  let logger2;
   if (config.logger === true) {
-    logger3 = new DefaultLogger();
+    logger2 = new DefaultLogger();
   } else if (config.logger !== false) {
-    logger3 = config.logger;
+    logger2 = config.logger;
   }
   let schema;
   if (config.schema) {
@@ -48796,7 +48765,7 @@ function construct(client, config = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client, dialect, { logger: logger3, cache: config.cache });
+  const driver = new NodePgDriver(client, dialect, { logger: logger2, cache: config.cache });
   const session = driver.createSession(schema);
   const db2 = new NodePgDatabase(dialect, session, schema);
   db2.$client = client;
@@ -50254,34 +50223,21 @@ var routes_default = router9;
 
 // artifacts/api-server/src/app.ts
 var app = (0, import_express16.default)();
+app.use((req, _res, next) => {
+  req.log = {
+    info: (...a) => console.log("[INFO]", ...a),
+    warn: (...a) => console.warn("[WARN]", ...a),
+    error: (...a) => console.error("[ERROR]", ...a),
+    debug: (...a) => console.debug("[DEBUG]", ...a)
+  };
+  next();
+});
 try {
-  const { createRequire } = await import("node:module");
-  const _require = createRequire(import.meta.url);
-  const pinoHttp = _require("pino-http");
-  const { logger: logger3 } = await Promise.resolve().then(() => (init_logger(), logger_exports));
-  app.use(
-    pinoHttp({
-      logger: logger3,
-      serializers: {
-        req(req) {
-          return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
-        },
-        res(res) {
-          return { statusCode: res.statusCode };
-        }
-      }
-    })
-  );
+  const pinoHttpMod = __require("pino-http");
+  const pinoMod = __require("pino");
+  const logger2 = pinoMod({ level: "info" });
+  app.use(pinoHttpMod({ logger: logger2 }));
 } catch {
-  app.use((_req, _res, next) => {
-    _req.log = {
-      info: (...args) => console.log("[INFO]", ...args),
-      warn: (...args) => console.warn("[WARN]", ...args),
-      error: (...args) => console.error("[ERROR]", ...args),
-      debug: (...args) => console.debug("[DEBUG]", ...args)
-    };
-    next();
-  });
 }
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
 app.use(import_express16.default.json());
@@ -50292,18 +50248,10 @@ var app_default = app;
 
 // artifacts/api-server/src/index.ts
 var index_default = app_default;
-var isVercel = !!process.env.VERCEL;
-var isProduction2 = process.env.NODE_ENV === "production";
-if (!isVercel && !isProduction2) {
-  const { logger: logger3 } = await Promise.resolve().then(() => (init_logger(), logger_exports));
-  const rawPort = process.env["PORT"] || 5e3;
-  const port = Number(rawPort);
-  app_default.listen(port, (err) => {
-    if (err) {
-      logger3.error({ err }, "Error listening on port");
-      process.exit(1);
-    }
-    logger3.info({ port }, "Server listening");
+if (!process.env.VERCEL && process.env.NODE_ENV !== "production") {
+  const port = Number(process.env.PORT || 5e3);
+  app_default.listen(port, () => {
+    console.log(`[server] Listening on port ${port}`);
   });
 }
 export {

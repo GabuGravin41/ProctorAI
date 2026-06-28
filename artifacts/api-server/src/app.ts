@@ -5,48 +5,44 @@ import router from "./routes";
 
 const app: Express = express();
 
-// Pino HTTP logging — optional, gracefully skipped on Vercel serverless
-// where pino-http / pino are not bundled to keep the lambda lean.
-// Routes use req.log.error() / req.log.info() — the console fallback below
-// keeps that working without pino.
+// ── req.log fallback ─────────────────────────────────────────────────────────
+// Set this FIRST so every route handler has req.log available, even without pino.
+// pino-http (when available) will override this with a proper logger instance.
+app.use((req: any, _res: any, next: any) => {
+  req.log = {
+    info:  (...a: any[]) => console.log("[INFO]",  ...a),
+    warn:  (...a: any[]) => console.warn("[WARN]",  ...a),
+    error: (...a: any[]) => console.error("[ERROR]", ...a),
+    debug: (...a: any[]) => console.debug("[DEBUG]", ...a),
+  };
+  next();
+});
+
+// ── pino-http logging (optional) ──────────────────────────────────────────────
+// pino/pino-http are externalized in the Vercel bundle and may not be available
+// at runtime.  Synchronous require() works here because the esbuild banner
+// already places globalThis.require = createRequire(import.meta.url).
+// If require throws we simply fall back to the console req.log above.
 try {
-  const { createRequire } = await import("node:module");
-  const _require = createRequire(import.meta.url);
-  const pinoHttp = _require("pino-http") as any;
-  const { logger } = await import("./lib/logger");
-  app.use(
-    pinoHttp({
-      logger,
-      serializers: {
-        req(req: any) {
-          return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
-        },
-        res(res: any) {
-          return { statusCode: res.statusCode };
-        },
-      },
-    }),
-  );
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pinoHttpMod = require("pino-http");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pinoMod = require("pino");
+  const logger = pinoMod({ level: "info" });
+  app.use(pinoHttpMod({ logger }));
 } catch {
-  // pino-http not available — add a console-based req.log so routes don't crash
-  app.use((_req: any, _res: any, next: any) => {
-    _req.log = {
-      info: (...args: any[]) => console.log("[INFO]", ...args),
-      warn: (...args: any[]) => console.warn("[WARN]", ...args),
-      error: (...args: any[]) => console.error("[ERROR]", ...args),
-      debug: (...args: any[]) => console.debug("[DEBUG]", ...args),
-    };
-    next();
-  });
+  // pino not available — console fallback above is already registered
 }
 
+// ── Core middleware ───────────────────────────────────────────────────────────
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Clerk authentication middleware
+// Clerk authentication (reads CLERK_SECRET_KEY from env)
 app.use(clerkMiddleware());
 
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
 export default app;
