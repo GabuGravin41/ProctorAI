@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import LatexRenderer from "@/components/latex-renderer";
 import {
   X, Loader2, ShieldCheck, ShieldX, CheckCircle2,
   AlertTriangle, BookOpen, Clock
@@ -320,7 +321,7 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                         <div className="flex items-start justify-between">
                           <div className="font-medium text-sm">
                             <span className="text-muted-foreground mr-2">Q{idx + 1}.</span> 
-                            {ans.questionText}
+                            <LatexRenderer text={ans.questionText || ""} />
                           </div>
                           <Badge variant="outline" className="ml-2 shrink-0">
                             {ans.points} / {ans.maxPoints} pts
@@ -331,7 +332,11 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                         <div className="text-sm">
                           <div className="font-medium text-muted-foreground mb-1 text-xs uppercase">Student Answer</div>
                           <div className="bg-muted/50 p-3 rounded-md text-foreground min-h-12 border">
-                            {ans.studentAnswer || <span className="italic text-muted-foreground">Not answered</span>}
+                            {ans.studentAnswer ? (
+                              <LatexRenderer text={ans.studentAnswer} />
+                            ) : (
+                              <span className="italic text-muted-foreground">Not answered</span>
+                            )}
                           </div>
                         </div>
 
@@ -365,7 +370,7 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                           <div className="text-sm">
                             <div className="font-medium text-muted-foreground mb-1 text-xs uppercase">Correct Answer</div>
                             <div className="bg-green-50 text-green-800 p-2 rounded-md border border-green-200">
-                              {ans.correctAnswer}
+                              <LatexRenderer text={ans.correctAnswer} />
                             </div>
                           </div>
                         )}

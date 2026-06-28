@@ -15,6 +15,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { format } from "date-fns";
+import LatexRenderer from "@/components/latex-renderer";
 
 function ScoreBadge({ percentage }: { percentage: number }) {
   if (percentage >= 90) return <Badge className="bg-green-600 text-white">Excellent</Badge>;
@@ -188,7 +189,7 @@ export default function StudentResults() {
                               Q{idx + 1}
                             </span>
                             <CardTitle className="text-base font-medium leading-relaxed">
-                              {item.questionText}
+                              <LatexRenderer text={item.questionText} />
                             </CardTitle>
                           </div>
                           {isResultsReleased ? (
@@ -241,7 +242,7 @@ export default function StudentResults() {
                                   ) : (
                                     <span className="h-3.5 w-3.5 shrink-0" />
                                   )}
-                                  {opt}
+                                  <LatexRenderer text={opt} />
                                   {isStudentChoice && (
                                     <span className="ml-auto text-xs font-medium">Your answer</span>
                                   )}
@@ -257,13 +258,13 @@ export default function StudentResults() {
                             <div>
                               <span className="text-muted-foreground">Your answer: </span>
                               <span className={unanswered ? "text-muted-foreground italic" : ""}>
-                                {unanswered ? "Not answered" : item.studentAnswer}
+                                {unanswered ? "Not answered" : <LatexRenderer text={item.studentAnswer || ""} />}
                               </span>
                             </div>
                             {!item.isCorrect && item.correctAnswer && (
                               <div className="text-green-700">
                                 <span className="text-muted-foreground">Correct answer: </span>
-                                {item.correctAnswer}
+                                <LatexRenderer text={item.correctAnswer || ""} />
                               </div>
                             )}
                           </div>
@@ -280,7 +281,7 @@ export default function StudentResults() {
                                 {unanswered ? (
                                   <span className="italic text-muted-foreground">No response</span>
                                 ) : (
-                                  item.studentAnswer
+                                  <LatexRenderer text={item.studentAnswer || ""} />
                                 )}
                               </div>
                             </div>
@@ -291,7 +292,7 @@ export default function StudentResults() {
                                   Reference Solution / Model Answer
                                 </p>
                                 <div className="rounded-md bg-blue-50/50 border border-blue-200 p-3 text-blue-900">
-                                  {item.referenceSolution}
+                                  <LatexRenderer text={item.referenceSolution} />
                                 </div>
                               </div>
                             )}

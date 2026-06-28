@@ -793,7 +793,7 @@ export default function ExamTaking() {
                       <div key={i} className={`flex items-start space-x-2 sm:space-x-3 space-y-0 p-2 sm:p-3 rounded-md border cursor-pointer hover:bg-slate-50 transition-colors ${answers[q.id] === opt ? "bg-primary/5 border-primary/40" : ""}`}>
                         <RadioGroupItem value={opt} id={`q${q.id}-opt${i}`} className="mt-1" />
                         <Label htmlFor={`q${q.id}-opt${i}`} className="font-normal text-sm sm:text-base cursor-pointer flex-1 leading-relaxed">
-                          {opt}
+                          <LatexRenderer text={opt} />
                         </Label>
                       </div>
                     ))}
