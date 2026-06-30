@@ -239,12 +239,11 @@ export default function ExamTaking() {
     if (auto) {
       toast({ title: "⏰ Time's up!", description: "Your exam has been submitted automatically." });
     }
-    const formatted = Object.entries(answersRef.current).map(([qId, ans]) => {
-      const qNum = Number(qId);
+    const formatted = questionsRef.current.map((q) => {
       return {
-        questionId: qNum,
-        answer: ans,
-        attachments: attachmentsRef.current[qNum] || [],
+        questionId: q.id,
+        answer: answersRef.current[q.id] || "",
+        attachments: attachmentsRef.current[q.id] || [],
       };
     });
     submitSession.mutate({ sessionId, data: { answers: formatted } }, {
