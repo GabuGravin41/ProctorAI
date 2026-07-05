@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examsTable, questionsTable, examSessionsTable, cheatingFlagsTable } from "../db";
-import { eq, and, sql, count } from "drizzle-orm";
+import { db, examsTable, questionsTable, examSessionsTable, cheatingFlagsTable, usersTable } from "../db";
+import { eq, and, sql, count, or } from "drizzle-orm";
 
 const router = Router();
 
@@ -25,6 +25,7 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
     accessCode: exam.accessCode ?? null,
+    collaborators: exam.collaborators ?? [],
     questionCount,
     sessionCount,
     flagCount,
@@ -38,8 +39,16 @@ router.get("/", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
     const { status } = req.query;
-    let query = db.select().from(examsTable).where(eq(examsTable.instructorClerkId, clerkId));
-    const exams = await query;
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const exams = await db.select().from(examsTable).where(
+      or(
+        eq(examsTable.instructorClerkId, clerkId),
+        sql`coalesce(${examsTable.collaborators}, '[]'::jsonb) @> ${JSON.stringify([user.email])}::jsonb`
+      )
+    );
     const filtered = status ? exams.filter((e) => e.status === status) : exams;
 
     const result = await Promise.all(
@@ -120,7 +129,7 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { title, description, subject, durationMinutes, gradingMode, status, aiConfig } = req.body;
+    const { title, description, subject, durationMinutes, gradingMode, status, aiConfig, collaborators } = req.body;
     const updates: any = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
@@ -129,6 +138,7 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
     if (gradingMode !== undefined) updates.gradingMode = gradingMode;
     if (status !== undefined) updates.status = status;
     if (aiConfig !== undefined) updates.aiConfig = aiConfig;
+    if (collaborators !== undefined) updates.collaborators = collaborators;
 
     const [exam] = await db.update(examsTable).set(updates).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
     if (!exam) return res.status(404).json({ error: "Exam not found" });
@@ -193,9 +203,17 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
 // GET /api/exams/:examId/results
 router.get("/:examId/results", requireAuth, async (req: any, res) => {
   try {
+    const clerkId = req.clerkUserId;
     const examId = parseInt(req.params.examId);
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden" });
 
     const sessions = await db.select().from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
 
@@ -250,7 +268,13 @@ router.get("/:examId/access-codes", requireAuth, async (req: any, res) => {
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
-    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden" });
 
     const sessions = await db
       .select({
@@ -268,6 +292,63 @@ router.get("/:examId/access-codes", requireAuth, async (req: any, res) => {
     })));
   } catch (err) {
     req.log.error({ err }, "getAccessCodes error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/exams/:examId/invite
+router.post("/:examId/invite", requireAuth, async (req: any, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+    const { emails } = req.body;
+
+    if (!Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: "Invalid request: emails array is required." });
+    }
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden" });
+
+    const results = [];
+    for (const email of emails) {
+      const trimmedEmail = email.trim().toLowerCase();
+      if (!trimmedEmail) continue;
+
+      // Generate unique student code prefixed with S-
+      let code: string = "";
+      while (true) {
+        code = "S-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const existingExam = await db.select({ id: examsTable.id }).from(examsTable).where(eq(examsTable.accessCode, code));
+        const existingSession = await db.select({ id: examSessionsTable.id }).from(examSessionsTable).where(eq(examSessionsTable.accessCode, code));
+        if (existingExam.length === 0 && existingSession.length === 0) break;
+      }
+
+      await db.insert(examSessionsTable).values({
+        examId,
+        studentClerkId: "unclaimed",
+        studentEmail: trimmedEmail,
+        accessCode: code,
+        status: "not_started",
+      });
+
+      results.push({
+        email: trimmedEmail,
+        code,
+        status: "invited",
+      });
+    }
+
+    res.json({ success: true, invitations: results });
+  } catch (err) {
+    req.log.error({ err }, "inviteStudents error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

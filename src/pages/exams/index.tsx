@@ -1,4 +1,4 @@
-import { useListExams, useUpdateExam, getListExamsQueryKey } from "@/lib/api-client";
+import { useListExams, useUpdateExam, getListExamsQueryKey, useGetMe } from "@/lib/api-client";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ExamsList() {
   const { data: exams, isLoading } = useListExams();
+  const { data: me } = useGetMe();
   const updateExam = useUpdateExam();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -97,7 +98,12 @@ export default function ExamsList() {
                       </div>
                     </div>
                     <div className="col-span-2 flex flex-col justify-center items-start gap-1">
-                      <div>{getStatusBadge(exam.status)}</div>
+                      <div className="flex gap-1.5 items-center">
+                        {getStatusBadge(exam.status)}
+                        {me && exam.instructorClerkId !== me.clerkId && (
+                          <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700">Shared</Badge>
+                        )}
+                      </div>
                       {exam.status === "published" && exam.accessCode && (
                         <code 
                           className="text-xs bg-indigo-50 text-indigo-700 px-1 rounded font-mono font-semibold cursor-pointer hover:bg-indigo-100 transition-colors select-all" 
@@ -139,7 +145,7 @@ export default function ExamsList() {
                               <FileBarChart className="mr-2 h-4 w-4" /> View Results
                             </Link>
                           </DropdownMenuItem>
-                          {exam.status === "published" && (
+                          {exam.status === "published" && me && exam.instructorClerkId === me.clerkId && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -173,6 +179,9 @@ export default function ExamsList() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {getStatusBadge(exam.status)}
+                      {me && exam.instructorClerkId !== me.clerkId && (
+                        <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700">Shared</Badge>
+                      )}
                       {exam.status === "published" && exam.accessCode && (
                         <code 
                           className="text-xs bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono font-semibold cursor-pointer hover:bg-indigo-100 transition-colors"
@@ -204,7 +213,7 @@ export default function ExamsList() {
                         <FileBarChart className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Results
                       </Link>
                     </Button>
-                    {exam.status === "published" && (
+                    {exam.status === "published" && me && exam.instructorClerkId === me.clerkId && (
                       <Button
                         variant="outline"
                         size="sm"

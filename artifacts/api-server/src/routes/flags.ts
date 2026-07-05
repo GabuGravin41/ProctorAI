@@ -32,6 +32,7 @@ function formatFlag(f: any) {
     reviewStatus: f.reviewStatus,
     reviewedAt: f.reviewedAt?.toISOString() ?? null,
     reviewNote: f.reviewNote ?? null,
+    screenshotUrl: f.screenshotUrl ?? null,
   };
 }
 
@@ -51,7 +52,7 @@ router.get("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
 router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
   try {
     const sessionId = parseInt(req.params.sessionId);
-    const { type, description, clipData, detectedAt } = req.body;
+    const { type, description, clipData, detectedAt, screenshotUrl } = req.body;
 
     const [flag] = await db
       .insert(cheatingFlagsTable)
@@ -62,6 +63,7 @@ router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => 
         clipData: clipData ?? null,
         detectedAt: new Date(detectedAt),
         reviewStatus: "pending",
+        screenshotUrl: screenshotUrl ?? null,
       })
       .returning();
 

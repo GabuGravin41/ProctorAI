@@ -43,7 +43,12 @@ router.get("/:examId/questions", requireAuth, async (req: any, res) => {
 router.post("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
     const { type, text, options, correctAnswer, referenceSolution, points } = req.body;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
 
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
     const order = existing.length;
@@ -78,6 +83,7 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     // Fetch the exam to check its status
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== req.clerkUserId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
 
     const updates: any = {};
     if (type !== undefined) updates.type = type;
@@ -110,7 +116,14 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
 // DELETE /api/exams/:examId/questions/:questionId
 router.delete("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
+    const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
+    const clerkId = req.clerkUserId;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can delete questions." });
+
     await db.delete(questionsTable).where(eq(questionsTable.id, questionId));
     res.status(204).send();
   } catch (err) {

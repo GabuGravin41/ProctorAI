@@ -73,6 +73,7 @@ export interface Exam {
   aiConfig: any;
   examType: string | null;
   accessCode: string | null;
+  collaborators?: string[];
   questionCount?: number;
   sessionCount?: number;
   createdAt: string;
@@ -119,6 +120,7 @@ export interface CheatingFlag {
   reviewStatus: string;
   reviewedAt: string | null;
   reviewNote: string | null;
+  screenshotUrl?: string | null;
   createdAt: string;
 }
 
@@ -549,5 +551,24 @@ export function useGetExamResults(examId?: string | number, opts?: { query?: Omi
       return res.json();
     },
     ...opts?.query,
+  });
+}
+
+export function useInviteStudents() {
+  const { getToken } = useAuth();
+  return useMutation<any, Error, { examId: number; emails: string[] }>({
+    mutationFn: async ({ examId, emails }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/exams/${examId}/invite`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ emails }),
+      });
+      if (!res.ok) throw new Error(`POST /exams/${examId}/invite failed: ${res.status}`);
+      return res.json();
+    },
   });
 }
