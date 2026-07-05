@@ -14,7 +14,8 @@ import {
   getGetExamQueryKey,
   getListQuestionsQueryKey,
   GenerateQuestionsInputDifficulty,
-  GenerateQuestionsInputQuestionTypesItem
+  GenerateQuestionsInputQuestionTypesItem,
+  useGetMe
 } from "@/lib/api-client";
 import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -68,6 +69,9 @@ export default function ExamBuilder() {
 
   const { data: exam, isLoading: isLoadingExam } = useGetExam(examId, { query: { enabled: !!examId, queryKey: getGetExamQueryKey(examId) } });
   const { data: questions, isLoading: isLoadingQuestions, refetch: refetchQuestions } = useListQuestions(examId, { query: { enabled: !!examId, queryKey: getListQuestionsQueryKey(examId) } });
+  const { data: me } = useGetMe();
+
+  const isOwner = exam && me && exam.instructorClerkId === me.clerkId;
 
   const publishExam = usePublishExam();
   const generateQuestions = useGenerateQuestions();
@@ -95,6 +99,10 @@ export default function ExamBuilder() {
   const [aiProvider, setAiProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
   const [aiModel, setAiModel] = useState("deepseek/deepseek-chat");
   const [customApiKey, setCustomApiKey] = useState("");
+  
+  // Collaborators management state
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [collaboratorInput, setCollaboratorInput] = useState("");
   
   // Edit Question State
   const [editQuestionOpen, setEditQuestionOpen] = useState(false);
@@ -456,7 +464,8 @@ Generate ${aiCount} questions that follow these specifications exactly.
           model: aiModel,
           customApiKey: customApiKey || undefined,
           proctoringEnabled: proctoringEnabled,
-        }
+        },
+        collaborators,
       }
     }, {
       onSuccess: () => {
@@ -472,13 +481,16 @@ Generate ${aiCount} questions that follow these specifications exactly.
 
   // Initialize AI settings from exam when dialog opens
   useEffect(() => {
-    if (aiSettingsOpen && exam?.aiConfig) {
-      setAiProvider(exam.aiConfig.provider as any);
-      setAiModel(exam.aiConfig.model);
-      setCustomApiKey(exam.aiConfig.customApiKey || "");
-      setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
+    if (aiSettingsOpen && exam) {
+      if (exam.aiConfig) {
+        setAiProvider(exam.aiConfig.provider as any);
+        setAiModel(exam.aiConfig.model);
+        setCustomApiKey(exam.aiConfig.customApiKey || "");
+        setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
+      }
+      setCollaborators(exam.collaborators || []);
     }
-  }, [aiSettingsOpen, exam?.aiConfig]);
+  }, [aiSettingsOpen, exam]);
 
   const handlePublish = () => {
     publishExam.mutate({
@@ -521,11 +533,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 )}
               </p>
             </div>
-          </div>
-          
-          {/* Action Buttons - Mobile Responsive */}
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {exam.status === 'draft' && (
+                  {exam.status === 'draft' && (
               <>
                 <Button
                   variant="outline"
@@ -535,25 +543,29 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 >
                   <Settings className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Exam Settings</span><span className="sm:hidden">Settings</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-destructive hover:text-destructive flex-1 sm:flex-none"
-                  onClick={() => setDeleteAllOpen(true)}
-                  disabled={!questions || questions.length === 0}
-                >
-                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
-                  onClick={() => setRegenerateOpen(true)}
-                  disabled={!questions || questions.length === 0}
-                >
-                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Regenerate</span><span className="sm:hidden">Regen</span>
-                </Button>
+                {isOwner && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-destructive hover:text-destructive flex-1 sm:flex-none"
+                      onClick={() => setDeleteAllOpen(true)}
+                      disabled={!questions || questions.length === 0}
+                    >
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
+                      onClick={() => setRegenerateOpen(true)}
+                      disabled={!questions || questions.length === 0}
+                    >
+                      <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Regenerate</span><span className="sm:hidden">Regen</span>
+                    </Button>
+                  </>
+                )}
               </>
             )}
-            {exam.status === 'published' && (
+            {exam.status === 'published' && isOwner && (
               <Button
                 variant="outline"
                 className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-muted-foreground flex-1 sm:flex-none"
@@ -563,7 +575,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 <Archive className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Archive</span>
               </Button>
             )}
-            {exam.status === 'draft' && (
+            {exam.status === 'draft' && isOwner && (
               <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none">
@@ -602,7 +614,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-8">
           <h2 className="text-lg sm:text-xl font-bold">Questions ({questions?.length || 0})</h2>
           
-          {exam.status === 'draft' && (
+          {exam.status === 'draft' && isOwner && (
             <div className="flex gap-2">
               <Dialog open={aiGenerateOpen} onOpenChange={setAiGenerateOpen}>
                 <DialogTrigger asChild>
@@ -976,7 +988,7 @@ Example: Chapter 3 covers photosynthesis...
                       <span className="text-xs bg-slate-100 rounded px-1.5 py-0.5 shrink-0">{q.points || 1} pt{(q.points || 1) !== 1 ? "s" : ""}</span>
                     </CardDescription>
                   </div>
-                  {exam.status === 'draft' && (
+                  {exam.status === 'draft' && isOwner && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1014,7 +1026,7 @@ Example: Chapter 3 covers photosynthesis...
                     </div>
                   </CardContent>
                 )}
-                {exam.status === 'draft' ? (
+                {exam.status === 'draft' && isOwner ? (
                   <CardContent className="py-2 flex gap-2 justify-between items-center border-t bg-slate-50/20">
                     <div className="flex gap-1.5">
                       <Button
@@ -1476,13 +1488,86 @@ Example: Chapter 3 covers photosynthesis...
                 </div>
               </div>
             </div>
+
+            {/* Collaborators Settings Section */}
+            <div className="space-y-4 pt-4">
+              <h4 className="font-semibold text-sm text-slate-900">Collaborators (Shared Access)</h4>
+              <p className="text-xs text-muted-foreground">
+                Instructors added below will be able to access the results, view student submissions, and grade answers.
+              </p>
+              
+              {isOwner ? (
+                <div className="flex gap-2">
+                  <Input 
+                    type="email"
+                    placeholder="instructor@example.com"
+                    value={collaboratorInput} 
+                    onChange={(e) => setCollaboratorInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const email = collaboratorInput.trim().toLowerCase();
+                        if (email && !collaborators.includes(email)) {
+                          setCollaborators([...collaborators, email]);
+                          setCollaboratorInput("");
+                        }
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      const email = collaboratorInput.trim().toLowerCase();
+                      if (email && !collaborators.includes(email)) {
+                        setCollaborators([...collaborators, email]);
+                        setCollaboratorInput("");
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600 font-medium bg-amber-50 p-2 rounded-md border border-amber-200">
+                  Only the exam owner can add or remove collaborators.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {collaborators.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No collaborators added yet.</p>
+                ) : (
+                  collaborators.map((email) => (
+                    <Badge 
+                      key={email} 
+                      variant="secondary" 
+                      className="flex items-center gap-1.5 py-1 px-2.5 text-xs font-normal"
+                    >
+                      {email}
+                      {isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => setCollaborators(collaborators.filter((c) => c !== email))}
+                          className="rounded-full outline-none hover:bg-slate-200 p-0.5"
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      )}
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAiSettingsOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateAiSettings} disabled={updateExam.isPending}>
-              {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Settings
-            </Button>
+            {isOwner && (
+              <Button onClick={handleUpdateAiSettings} disabled={updateExam.isPending}>
+                {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Settings
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
