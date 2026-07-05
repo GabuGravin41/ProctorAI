@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examsTable, examSessionsTable, cheatingFlagsTable } from "@workspace/db";
-import { eq, count, sql } from "drizzle-orm";
+import { db, examsTable, examSessionsTable, cheatingFlagsTable, usersTable } from "../db";
+import { eq, count, sql, or } from "drizzle-orm";
 
 const router = Router();
 
@@ -18,7 +18,15 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
 
-    const exams = await db.select().from(examsTable).where(eq(examsTable.instructorClerkId, clerkId));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const exams = await db.select().from(examsTable).where(
+      or(
+        eq(examsTable.instructorClerkId, clerkId),
+        sql`coalesce(${examsTable.collaborators}, '[]'::jsonb) @> ${JSON.stringify([user.email])}::jsonb`
+      )
+    );
     const examIds = exams.map((e) => e.id);
 
     const publishedExams = exams.filter((e) => e.status === "published").length;

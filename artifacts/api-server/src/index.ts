@@ -1,25 +1,15 @@
 import app from "./app";
-import { logger } from "./lib/logger";
 
-const rawPort = process.env["PORT"];
+// Vercel serverless: export the Express app as the default handler.
+// Vercel calls app(req, res) directly — no listen() needed.
+export default app;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+// Local development only — never bind a port in Vercel or production
+if (!process.env.VERCEL && process.env.NODE_ENV !== "production") {
+  const port = Number(process.env.PORT || 5000);
+  // Use require so this synchronous log works even without top-level await
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  app.listen(port, () => {
+    console.log(`[server] Listening on port ${port}`);
+  });
 }
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-});

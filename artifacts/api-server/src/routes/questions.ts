@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, questionsTable, examsTable } from "@workspace/db";
+import { db, questionsTable, examsTable } from "../db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -23,7 +23,7 @@ function formatQuestion(q: any) {
     correctAnswer: q.correctAnswer ?? null,
     referenceSolution: q.referenceSolution ?? null,
     points: q.points,
-    orderIndex: q.orderIndex,
+    order: q.order,
   };
 }
 
@@ -31,7 +31,7 @@ function formatQuestion(q: any) {
 router.get("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.order);
     res.json(questions.map(formatQuestion));
   } catch (err) {
     req.log.error({ err }, "listQuestions error");
@@ -43,10 +43,15 @@ router.get("/:examId/questions", requireAuth, async (req: any, res) => {
 router.post("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
     const { type, text, options, correctAnswer, referenceSolution, points } = req.body;
 
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
+
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
-    const orderIndex = existing.length;
+    const order = existing.length;
 
     const [q] = await db
       .insert(questionsTable)
@@ -58,7 +63,7 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
         correctAnswer: correctAnswer ?? null, 
         referenceSolution: referenceSolution ?? null, 
         points: points ?? 1, 
-        orderIndex 
+        order 
       })
       .returning();
     res.status(201).json(formatQuestion(q));
@@ -71,8 +76,15 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
 // PATCH /api/exams/:examId/questions/:questionId
 router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
+    const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
-    const { type, text, options, correctAnswer, referenceSolution, points, orderIndex } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points, order } = req.body;
+    
+    // Fetch the exam to check its status
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== req.clerkUserId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
+
     const updates: any = {};
     if (type !== undefined) updates.type = type;
     if (text !== undefined) updates.text = text;
@@ -80,7 +92,17 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (correctAnswer !== undefined) updates.correctAnswer = correctAnswer;
     if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
     if (points !== undefined) updates.points = points;
-    if (orderIndex !== undefined) updates.orderIndex = orderIndex;
+    if (order !== undefined) updates.order = order;
+
+    if (exam.status !== "draft") {
+      // If the exam is published/archived, only referenceSolution is allowed to be modified
+      const allowedKeys = ["referenceSolution"];
+      const attemptedKeys = Object.keys(updates);
+      const isAttemptingOtherUpdates = attemptedKeys.some(k => !allowedKeys.includes(k));
+      if (isAttemptingOtherUpdates) {
+        return res.status(400).json({ error: "Cannot modify question structure of a published exam. Only reference solutions can be edited." });
+      }
+    }
 
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });
@@ -94,7 +116,14 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
 // DELETE /api/exams/:examId/questions/:questionId
 router.delete("/:examId/questions/:questionId", requireAuth, async (req: any, res) => {
   try {
+    const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
+    const clerkId = req.clerkUserId;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can delete questions." });
+
     await db.delete(questionsTable).where(eq(questionsTable.id, questionId));
     res.status(204).send();
   } catch (err) {
@@ -345,7 +374,7 @@ router.post("/:examId/generate-questions", requireAuth, async (req: any, res) =>
         correctAnswer: q.correctAnswer ?? null,
         referenceSolution: q.referenceSolution ?? null,
         points: q.points ?? 1,
-        orderIndex: startIndex + i,
+        order: startIndex + i,
       }).returning();
       generated.push(formatQuestion(saved));
     }

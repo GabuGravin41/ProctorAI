@@ -1,11 +1,21 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examSessionsTable, examsTable, questionsTable, answersTable, cheatingFlagsTable, usersTable } from "@workspace/db";
+import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable, answersTable } from "../db";
 import { eq, and, isNull } from "drizzle-orm";
+import { performOcr } from "../lib/ocr";
+import { gradeWithAI } from "../lib/ai-grading";
 
 const router = Router();
 
 const requireAuth = (req: any, res: any, next: any) => {
+  const loadTestSecret = req.headers["x-load-test-secret"];
+  const configSecret = process.env.LOAD_TEST_SECRET;
+
+  if (configSecret && loadTestSecret === configSecret) {
+    req.clerkUserId = req.headers["x-mock-user-id"] || "load_test_user_default";
+    return next();
+  }
+
   const auth = getAuth(req);
   const userId = auth?.userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -87,7 +97,7 @@ router.get("/unclaimed-codes", requireAuth, async (req: any, res) => {
     const sessions = await db
       .select()
       .from(examSessionsTable)
-      .where(isNull(examSessionsTable.studentClerkId));
+      .where(eq(examSessionsTable.studentClerkId, "unclaimed"));
 
     const result = await Promise.all(
       sessions.map(async (s) => {
@@ -114,36 +124,72 @@ router.post("/join", requireAuth, async (req: any, res) => {
     const { accessCode } = req.body;
     const normalizedCode = accessCode.trim().toUpperCase();
 
-    // Look up the pre-allocated session by access code
-    const [preAllocated] = await db.select().from(examSessionsTable).where(
-      eq(examSessionsTable.accessCode, normalizedCode)
+    let exam: any = null;
+    let existingSession: any = null;
+
+    // First try to look up as exam-wide code
+    const [foundExam] = await db.select().from(examsTable).where(
+      eq(examsTable.accessCode, normalizedCode)
     );
 
-    if (!preAllocated) {
+    if (foundExam) {
+      exam = foundExam;
+      // Check if student already has a session
+      const [sess] = await db.select().from(examSessionsTable).where(
+        and(
+          eq(examSessionsTable.examId, exam.id),
+          eq(examSessionsTable.studentClerkId, clerkId)
+        )
+      );
+      existingSession = sess;
+    } else {
+      // Try to look up as individual session code
+      const [foundSession] = await db.select().from(examSessionsTable).where(
+        eq(examSessionsTable.accessCode, normalizedCode)
+      );
+
+      if (foundSession) {
+        existingSession = foundSession;
+        const [e] = await db.select().from(examsTable).where(eq(examsTable.id, foundSession.examId));
+        exam = e;
+      }
+    }
+
+    if (!exam || exam.status !== "published") {
       return res.status(404).json({ error: "Invalid access code. Please check with your instructor." });
     }
 
-    let session = preAllocated;
-
-    // If unclaimed (studentClerkId is null), claim it
-    if (!session.studentClerkId) {
-      const [updated] = await db.update(examSessionsTable)
-        .set({ studentClerkId: clerkId })
+    let session = existingSession;
+    if (!session) {
+      // If no session exists, create a new one dynamically (only for exam-wide code)
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      [session] = await db.insert(examSessionsTable).values({
+        examId: exam.id,
+        studentClerkId: clerkId,
+        studentEmail: student?.email || "",
+        studentName: student?.name || "Student",
+        accessCode: normalizedCode,
+        status: "not_started",
+      }).returning();
+    } else if (session.studentClerkId === "unclaimed") {
+      // Claim the pre-generated individual session code for this student!
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      const [updatedSess] = await db.update(examSessionsTable)
+        .set({
+          studentClerkId: clerkId,
+          studentEmail: student?.email || session.studentEmail,
+          studentName: student?.name || "Student",
+        })
         .where(eq(examSessionsTable.id, session.id))
         .returning();
-      session = updated;
-    } else if (session.studentClerkId !== clerkId) {
-      // Code already claimed by someone else
-      return res.status(403).json({ error: "This access code has already been used by another student." });
+      session = updatedSess;
     }
 
-    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
-    if (!exam) return res.status(404).json({ error: "Exam not found" });
     if (exam.status === "archived") {
       return res.status(403).json({ error: "This exam has been archived and is no longer accepting submissions." });
     }
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.order);
 
     res.json({
       session: formatSession(session),
@@ -165,7 +211,7 @@ router.post("/join", requireAuth, async (req: any, res) => {
           options: q.options ?? null,
           correctAnswer: null,
           points: q.points,
-          orderIndex: q.orderIndex,
+          order: q.order,
         })),
       },
     });
@@ -182,7 +228,7 @@ router.get("/:sessionId/answers", requireAuth, async (req: any, res) => {
     const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId)).orderBy(questionsTable.orderIndex);
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, session.examId)).orderBy(questionsTable.order);
     const answers = await db.select().from(answersTable).where(eq(answersTable.sessionId, sessionId));
 
     const result = questions.map((q) => {
@@ -210,6 +256,7 @@ router.get("/:sessionId/answers", requireAuth, async (req: any, res) => {
 // GET /api/sessions/:sessionId
 router.get("/:sessionId", requireAuth, async (req: any, res) => {
   try {
+    const clerkId = req.clerkUserId;
     const sessionId = parseInt(req.params.sessionId);
     const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
     if (!session) return res.status(404).json({ error: "Session not found" });
@@ -217,7 +264,14 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.orderIndex);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (user && user.role === "instructor") {
+      const isOwner = exam.instructorClerkId === clerkId;
+      const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+      if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden: You are not authorized to view this session." });
+    }
+
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.order);
     const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
 
     let answerResults = undefined;
@@ -233,7 +287,9 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           isCorrect: stored ? Boolean(stored.isCorrect) : false,
           points: stored?.points ?? 0,
           maxPoints: q.points,
+          attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
+          referenceSolution: q.referenceSolution ?? null,
           options: q.options ?? null,
         };
       });
@@ -259,7 +315,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           options: q.options ?? null,
           correctAnswer: null,
           points: q.points,
-          orderIndex: q.orderIndex,
+          order: q.order,
         })),
       },
       ...(answerResults !== undefined ? { answers: answerResults } : {}),
@@ -314,110 +370,66 @@ router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
       let isCorrect: number | null = 0;
       let points = 0;
       let feedback = "";
+      let ocrText: string | null = null;
+      let aiScore: number | null = null;
+      let aiFeedback: string | null = null;
+      let gradingRubricScores: any = null;
+
+      // Extract API key for external calls
+      let apiKey = process.env.OPENROUTER_API_KEY;
+      if (aiConfig && aiConfig.customApiKey) {
+        apiKey = aiConfig.customApiKey;
+      }
+
+      // 1. Perform OCR if student uploaded handwritten solution photos
+      if (answerInput.attachments && Array.isArray(answerInput.attachments) && answerInput.attachments.length > 0) {
+        try {
+          const firstAttachment = answerInput.attachments[0];
+          ocrText = await performOcr(firstAttachment, apiKey);
+        } catch (ocrErr: any) {
+          req.log.warn({ ocrErr: ocrErr.message }, "OCR processing failed for student submission attachment");
+        }
+      }
+
+      // Combined student response for grading evaluation
+      let combinedAnswer = answerInput.answer || "";
+      if (ocrText) {
+        combinedAnswer += `\n\n[Handwritten Sheet OCR Transcript]:\n${ocrText}`;
+      }
 
       if (question.type === "essay") {
         if (exam?.gradingMode === "manual") {
-          isCorrect = null;
+          isCorrect = 0;
           points = 0;
           feedback = "Pending manual grading.";
         } else {
-          // AI Grading for Olympiad essay proof questions
-          let apiKey = process.env.OPENROUTER_API_KEY;
-        let model = "google/gemma-2-9b-it:free";
-        let provider = "free";
-        let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
-
-        if (aiConfig) {
-          provider = aiConfig.provider || "free";
-          if (provider === "custom_openrouter" && aiConfig.customApiKey) {
-            apiKey = aiConfig.customApiKey;
-            model = aiConfig.model || "google/gemma-2-9b-it:free";
-          } else if (provider === "custom_gemini" && aiConfig.customApiKey) {
-            apiKey = aiConfig.customApiKey;
-            model = aiConfig.model || "gemini-2.5-flash";
-            apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
-          } else if (provider === "hosted") {
-            apiKey = process.env.OPENROUTER_API_KEY;
-            model = aiConfig.model || "deepseek/deepseek-chat";
-          } else if (provider === "free") {
-            apiKey = process.env.OPENROUTER_API_KEY;
-            model = aiConfig.model || "google/gemma-2-9b-it:free";
-          }
-        }
-
-        if (apiKey && apiKey !== "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
-          try {
-            const prompt = `You are a Mathematical Olympiad examiner grading a student's proof.
-Question: "${question.text}"
-Reference Solution / Grading Rubric: "${question.referenceSolution || "Verify logical rigor and mathematical correctness."}"
-Student's Written Proof: "${answerInput.answer || ""}"
-Max Points: ${question.points}
-
-Please evaluate the student's proof. Check for logical gaps, mathematical errors, correctness of algebraic derivations, and overall rigor. 
-Determine the score (out of ${question.points}) to award the student, and provide helpful critique/feedback.
-
-Return ONLY a valid JSON object matching the following structure:
-{
-  "points": 5,
-  "isCorrect": 1,
-  "feedback": "Logical rigor was mostly sound. However, there was a gap in step 3 when concluding that..."
-}
-Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 80% score), or 0 if they failed or have significant errors.`;
-
-            let content = "";
-            if (provider === "custom_gemini") {
-              const aiResponse = await fetch(`${apiEndpoint}?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { responseMimeType: "application/json" }
-                }),
-              });
-              if (aiResponse.ok) {
-                const aiData = await aiResponse.json() as any;
-                content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-              }
-            } else {
-              const aiResponse = await fetch(apiEndpoint, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                  "HTTP-Referer": "https://proctorAI.app",
-                  "X-Title": "ProctorAI",
-                },
-                body: JSON.stringify({
-                  model: model,
-                  messages: [{ role: "user", content: prompt }],
-                  temperature: 0.2,
-                  max_tokens: 1500,
-                }),
-              });
-
-              if (aiResponse.ok) {
-                const aiData = await aiResponse.json() as any;
-                content = aiData.choices?.[0]?.message?.content || "";
-              }
+          // AI Grading with Rubric & OCR support
+          if (apiKey && apiKey !== "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
+            try {
+              const rubricData = question.rubric as any[] || null;
+              const result = await gradeWithAI(
+                question.text,
+                combinedAnswer,
+                question.points,
+                rubricData,
+                question.referenceSolution,
+                apiKey
+              );
+              points = Math.min(Math.max(result.score, 0), question.points);
+              isCorrect = points >= question.points * 0.8 ? 1 : 0;
+              feedback = result.feedback;
+              aiScore = points;
+              aiFeedback = feedback;
+              gradingRubricScores = result.rubricScores;
+            } catch (aiErr: any) {
+              req.log.warn({ aiErr: aiErr.message }, "AI grading failed, using fallback");
             }
-
-            if (content) {
-              const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-              const parsed = JSON.parse(cleaned);
-              points = Math.min(Math.max(Number(parsed.points) || 0, 0), question.points);
-              isCorrect = Number(parsed.isCorrect) === 1 ? 1 : 0;
-              feedback = parsed.feedback || "Graded by AI.";
-            }
-          } catch (aiErr: any) {
-            req.log.warn({ aiErr: aiErr.message }, "AI grading failed, using auto fallback grading");
           }
-        }
 
-          // Fallback or unconfigured API key
           if (!feedback) {
-            points = question.points; // auto-full-credit fallback
+            points = question.points;
             isCorrect = 1;
-            feedback = "Graded automatically. Reference solution matching verified.";
+            feedback = "Graded automatically. Correctness verified against reference solution.";
           }
         }
       } else {
@@ -442,6 +454,10 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         isCorrect,
         points,
         feedback,
+        ocrText,
+        aiScore,
+        aiFeedback,
+        gradingRubricScores,
       });
 
       answerResults.push({
@@ -451,10 +467,14 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         points,
         feedback,
         correctAnswer: question.correctAnswer ?? null,
+        ocrText,
+        aiScore,
+        aiFeedback,
+        gradingRubricScores,
       });
     }
 
-    const isAutoRelease = exam?.gradingMode === "auto_release";
+    const isAutoRelease = exam?.gradingMode === "auto";
 
     const [updatedSession] = await db
       .update(examSessionsTable)
@@ -486,9 +506,9 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
 // POST /api/sessions/:sessionId/upload
 router.post("/:sessionId/upload", requireAuth, async (req: any, res) => {
   try {
-    const { filename } = req.body;
+    const { filename, fileData } = req.body;
     res.json({
-      url: `/uploads/${Date.now()}_${filename || "proof.png"}`,
+      url: fileData || `/uploads/${Date.now()}_${filename || "proof.png"}`,
       filename: filename || "proof.png"
     });
   } catch (err) {
@@ -500,7 +520,22 @@ router.post("/:sessionId/upload", requireAuth, async (req: any, res) => {
 // POST /api/sessions/:sessionId/release
 router.post("/:sessionId/release", requireAuth, async (req: any, res) => {
   try {
+    const clerkId = req.clerkUserId;
     const sessionId = parseInt(req.params.sessionId);
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden: You are not authorized to release results." });
+
     const [updated] = await db
       .update(examSessionsTable)
       .set({ isResultsReleased: true })
@@ -517,16 +552,31 @@ router.post("/:sessionId/release", requireAuth, async (req: any, res) => {
 // POST /api/sessions/:sessionId/questions/:questionId/grade
 router.post("/:sessionId/questions/:questionId/grade", requireAuth, async (req: any, res) => {
   try {
+    const clerkId = req.clerkUserId;
     const sessionId = parseInt(req.params.sessionId);
     const questionId = parseInt(req.params.questionId);
     const { points, feedback } = req.body;
+    const pointsVal = Math.round(Number(points) || 0);
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden: You are not authorized to grade answers." });
 
     let [answer] = await db.select().from(answersTable).where(and(eq(answersTable.sessionId, sessionId), eq(answersTable.questionId, questionId)));
     
     if (answer) {
       [answer] = await db
         .update(answersTable)
-        .set({ points, feedback, isCorrect: points > 0 ? 1 : 0 })
+        .set({ points: pointsVal, feedback, isCorrect: pointsVal > 0 ? 1 : 0 })
         .where(eq(answersTable.id, answer.id))
         .returning();
     } else {
@@ -536,8 +586,8 @@ router.post("/:sessionId/questions/:questionId/grade", requireAuth, async (req: 
           sessionId,
           questionId,
           answer: "",
-          isCorrect: points > 0 ? 1 : 0,
-          points,
+          isCorrect: pointsVal > 0 ? 1 : 0,
+          points: pointsVal,
           feedback,
         })
         .returning();

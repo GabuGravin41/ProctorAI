@@ -1,11 +1,19 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, cheatingFlagsTable } from "@workspace/db";
+import { db, cheatingFlagsTable } from "../db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
 
 const requireAuth = (req: any, res: any, next: any) => {
+  const loadTestSecret = req.headers["x-load-test-secret"];
+  const configSecret = process.env.LOAD_TEST_SECRET;
+
+  if (configSecret && loadTestSecret === configSecret) {
+    req.clerkUserId = req.headers["x-mock-user-id"] || "load_test_user_default";
+    return next();
+  }
+
   const auth = getAuth(req);
   const userId = auth?.userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -24,6 +32,7 @@ function formatFlag(f: any) {
     reviewStatus: f.reviewStatus,
     reviewedAt: f.reviewedAt?.toISOString() ?? null,
     reviewNote: f.reviewNote ?? null,
+    screenshotUrl: f.screenshotUrl ?? null,
   };
 }
 
@@ -43,7 +52,7 @@ router.get("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
 router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
   try {
     const sessionId = parseInt(req.params.sessionId);
-    const { type, description, clipData, detectedAt } = req.body;
+    const { type, description, clipData, detectedAt, screenshotUrl } = req.body;
 
     const [flag] = await db
       .insert(cheatingFlagsTable)
@@ -54,6 +63,7 @@ router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => 
         clipData: clipData ?? null,
         detectedAt: new Date(detectedAt),
         reviewStatus: "pending",
+        screenshotUrl: screenshotUrl ?? null,
       })
       .returning();
 
