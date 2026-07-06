@@ -50649,6 +50649,48 @@ var waitlist_default = router8;
 // artifacts/api-server/src/routes/audit.ts
 var import_express15 = __toESM(require_express2(), 1);
 init_dist2();
+
+// artifacts/api-server/src/lib/audit-export.ts
+function formatAuditEventsCsv(rows) {
+  const headers = [
+    "id",
+    "sessionId",
+    "type",
+    "description",
+    "reviewStatus",
+    "reviewNote",
+    "detectedAt",
+    "reviewedAt",
+    "studentName",
+    "studentEmail",
+    "accessCode",
+    "examTitle"
+  ];
+  const escape2 = (value) => {
+    const text2 = value ?? "";
+    return `"${text2.replace(/"/g, '""')}"`;
+  };
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    lines.push([
+      row.id,
+      row.sessionId,
+      escape2(row.type),
+      escape2(row.description),
+      escape2(row.reviewStatus),
+      escape2(row.reviewNote),
+      escape2(row.detectedAt),
+      escape2(row.reviewedAt),
+      escape2(row.studentName),
+      escape2(row.studentEmail),
+      escape2(row.accessCode),
+      escape2(row.examTitle)
+    ].join(","));
+  }
+  return lines.join("\n");
+}
+
+// artifacts/api-server/src/routes/audit.ts
 var router9 = (0, import_express15.Router)();
 var requireAuth8 = (req, res, next) => {
   const auth = getAuth(req);
@@ -50698,6 +50740,48 @@ router9.get("/audit/events", requireAuth8, async (req, res) => {
     res.json(enriched);
   } catch (err) {
     req.log.error({ err }, "listAuditEvents error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router9.get("/audit/events/export", requireAuth8, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user || user.role !== "instructor") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const events = await db.select({
+      id: cheatingFlagsTable.id,
+      sessionId: cheatingFlagsTable.sessionId,
+      type: cheatingFlagsTable.type,
+      description: cheatingFlagsTable.description,
+      reviewStatus: cheatingFlagsTable.reviewStatus,
+      reviewNote: cheatingFlagsTable.reviewNote,
+      detectedAt: cheatingFlagsTable.detectedAt,
+      reviewedAt: cheatingFlagsTable.reviewedAt
+    }).from(cheatingFlagsTable).orderBy(desc(cheatingFlagsTable.detectedAt)).limit(500);
+    const enriched = await Promise.all(events.map(async (event) => {
+      const [session] = await db.select({
+        studentName: examSessionsTable.studentName,
+        studentEmail: examSessionsTable.studentEmail,
+        accessCode: examSessionsTable.accessCode
+      }).from(examSessionsTable).where(eq(examSessionsTable.id, event.sessionId));
+      const [exam] = await db.select({ title: examsTable.title }).from(examsTable).where(eq(examsTable.id, event.sessionId));
+      return {
+        ...event,
+        detectedAt: event.detectedAt?.toISOString() ?? null,
+        reviewedAt: event.reviewedAt?.toISOString() ?? null,
+        studentName: session?.studentName ?? null,
+        studentEmail: session?.studentEmail ?? null,
+        accessCode: session?.accessCode ?? null,
+        examTitle: exam?.title ?? null
+      };
+    }));
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=proctoring-audit.csv");
+    res.send(formatAuditEventsCsv(enriched));
+  } catch (err) {
+    req.log.error({ err }, "exportAuditEvents error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

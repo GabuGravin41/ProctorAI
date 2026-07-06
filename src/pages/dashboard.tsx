@@ -5,10 +5,12 @@ import { FileText, Users, AlertTriangle, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
   const { data: auditEvents = [], isLoading: isLoadingAudit } = useListAuditEvents();
+  const exportUrl = useMemo(() => "/api/audit/events/export", []);
 
   if (isLoading) {
     return (
@@ -119,9 +121,14 @@ export default function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Incident Timeline</CardTitle>
-              <CardDescription className="text-xs md:text-sm">A chronological view of proctoring events that need attention</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg md:text-xl">Incident Timeline</CardTitle>
+                <CardDescription className="text-xs md:text-sm">A chronological view of proctoring events that need attention</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <a href={exportUrl} target="_blank" rel="noreferrer">Export CSV</a>
+              </Button>
             </CardHeader>
             <CardContent>
               {isLoadingAudit ? (
