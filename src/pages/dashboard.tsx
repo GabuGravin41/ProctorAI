@@ -1,4 +1,4 @@
-import { useGetDashboardStats } from "@/lib/api-client";
+import { useGetDashboardStats, useListAuditEvents } from "@/lib/api-client";
 import InstructorLayout from "@/components/layout/instructor-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { FileText, Users, AlertTriangle, Activity } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
+  const { data: auditEvents = [], isLoading: isLoadingAudit } = useListAuditEvents();
 
   if (isLoading) {
     return (
@@ -119,26 +120,33 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Recent Flags</CardTitle>
-              <CardDescription className="text-xs md:text-sm">AI-detected anomalies needing review</CardDescription>
+              <CardTitle className="text-lg md:text-xl">Incident Timeline</CardTitle>
+              <CardDescription className="text-xs md:text-sm">A chronological view of proctoring events that need attention</CardDescription>
             </CardHeader>
             <CardContent>
-              {stats?.recentFlags?.length ? (
+              {isLoadingAudit ? (
+                <div className="text-sm text-muted-foreground">Loading timeline...</div>
+              ) : auditEvents.length ? (
                 <div className="space-y-3 md:space-y-4">
-                  {stats.recentFlags.map((flag: any) => (
-                    <div key={flag.id} className="flex flex-col p-3 md:p-4 border rounded-md bg-red-50/50 border-red-100 gap-2">
+                  {auditEvents.slice(0, 8).map((event) => (
+                    <div key={event.id} className="flex flex-col p-3 md:p-4 border rounded-md bg-red-50/50 border-red-100 gap-2">
                       <div className="flex items-start md:items-center justify-between gap-2">
                         <span className="font-medium capitalize text-destructive flex items-center gap-1 text-xs md:text-sm">
                           <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
-                          <span className="truncate">{flag.type.replace(/_/g, " ")}</span>
+                          <span className="truncate">{event.type.replace(/_/g, " ")}</span>
                         </span>
                         <span className="text-xs text-muted-foreground shrink-0">
-                          {format(new Date(flag.detectedAt), "MMM d, h:mm a")}
+                          {format(new Date(event.detectedAt), "MMM d, h:mm a")}
                         </span>
                       </div>
-                      <p className="text-xs md:text-sm text-muted-foreground">{flag.description || "Suspicious behavior detected"}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">{event.description || "Suspicious behavior detected"}</p>
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
+                        {event.studentName && <span>{event.studentName}</span>}
+                        {event.accessCode && <span>• Code {event.accessCode}</span>}
+                        {event.examTitle && <span>• {event.examTitle}</span>}
+                      </div>
                       <Button variant="secondary" size="sm" asChild className="self-start text-xs">
-                        <Link href={`/exams/${flag.sessionId}/results`}>Review Session</Link>
+                        <Link href={`/exams/${event.sessionId}/results`}>Review Session</Link>
                       </Button>
                     </div>
                   ))}
@@ -148,7 +156,7 @@ export default function Dashboard() {
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
                     <Activity className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
                   </div>
-                  <p className="text-sm">No pending flags to review.</p>
+                  <p className="text-sm">No incident history to review.</p>
                   <p className="text-xs text-muted-foreground">Your exams are running smoothly.</p>
                 </div>
               )}

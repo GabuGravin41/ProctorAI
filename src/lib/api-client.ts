@@ -122,6 +122,13 @@ export interface CheatingFlag {
   createdAt: string;
 }
 
+export interface AuditEvent extends CheatingFlag {
+  studentName: string | null;
+  studentEmail: string | null;
+  accessCode: string | null;
+  examTitle: string | null;
+}
+
 export type FlagInputType = string;
 
 export interface SessionDetails {
@@ -144,6 +151,7 @@ export const getGetExamResultsQueryKey = (id?: string | number) => ['getExamResu
 export const getListQuestionsQueryKey = (id?: string | number) => ['listQuestions', id?.toString()] as const;
 export const getListSessionFlagsQueryKey = (id?: number) => ['listSessionFlags', id] as const;
 export const getGetExamQueryKey = (id?: string | number) => ['getExam', id?.toString()] as const;
+export const getAuditEventsQueryKey = () => ['auditEvents'] as const;
 
 // ─── User hooks ──────────────────────────────────────────────────────────────
 
@@ -491,6 +499,22 @@ export function useReportFlag() {
       if (!res.ok) throw new Error(`POST /flags failed: ${res.status}`);
       return res.json();
     },
+  });
+}
+
+export function useListAuditEvents(opts?: { query?: Omit<UseQueryOptions<AuditEvent[], Error, AuditEvent[], any>, 'queryFn'> }) {
+  const { getToken } = useAuth();
+  return useQuery<AuditEvent[]>({
+    queryKey: getAuditEventsQueryKey(),
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/audit/events`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /audit/events failed: ${res.status}`);
+      return res.json();
+    },
+    ...opts?.query,
   });
 }
 

@@ -20501,27 +20501,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router10;
+    module.exports = Router11;
     module.exports.Route = Route;
-    function Router10(options) {
-      if (!(this instanceof Router10)) {
-        return new Router10(options);
+    function Router11(options) {
+      if (!(this instanceof Router11)) {
+        return new Router11(options);
       }
       const opts = options || {};
-      function router10(req, res, next) {
-        router10.handle(req, res, next);
+      function router11(req, res, next) {
+        router11.handle(req, res, next);
       }
-      Object.setPrototypeOf(router10, this);
-      router10.caseSensitive = opts.caseSensitive;
-      router10.mergeParams = opts.mergeParams;
-      router10.params = {};
-      router10.strict = opts.strict;
-      router10.stack = [];
-      return router10;
+      Object.setPrototypeOf(router11, this);
+      router11.caseSensitive = opts.caseSensitive;
+      router11.mergeParams = opts.mergeParams;
+      router11.params = {};
+      router11.strict = opts.strict;
+      router11.stack = [];
+      return router11;
     }
-    Router10.prototype = function() {
+    Router11.prototype = function() {
     };
-    Router10.prototype.param = function param(name, fn) {
+    Router11.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20541,7 +20541,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router10.prototype.handle = function handle(req, res, callback) {
+    Router11.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20668,7 +20668,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router10.prototype.use = function use(handler) {
+    Router11.prototype.use = function use(handler) {
       let offset = 0;
       let path = "/";
       if (typeof handler !== "function") {
@@ -20701,7 +20701,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router10.prototype.route = function route(path) {
+    Router11.prototype.route = function route(path) {
       const route2 = new Route(path);
       const layer = new Layer(path, {
         sensitive: this.caseSensitive,
@@ -20716,7 +20716,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router10.prototype[method] = function(path) {
+      Router11.prototype[method] = function(path) {
         const route = this.route(path);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20899,13 +20899,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router10 = require_router();
+    var Router11 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router10 = null;
+      var router11 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20914,13 +20914,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router10 === null) {
-            router10 = new Router10({
+          if (router11 === null) {
+            router11 = new Router11({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router10;
+          return router11;
         }
       });
     };
@@ -20991,15 +20991,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router10 = this.router;
+      var router11 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router10.use(path, fn2);
+          return router11.use(path, fn2);
         }
         debug(".use app under %s", path);
         fn2.mountpath = path;
         fn2.parent = this;
-        router10.use(path, function mounted_app(req, res, next) {
+        router11.use(path, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23572,7 +23572,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router10 = require_router();
+    var Router11 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23594,8 +23594,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router10.Route;
-    exports.Router = Router10;
+    exports.Route = Router11.Route;
+    exports.Router = Router11;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -38081,12 +38081,12 @@ var require_lib5 = __commonJS({
 });
 
 // artifacts/api-server/src/app.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 init_dist2();
 
 // artifacts/api-server/src/routes/index.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 
 // artifacts/api-server/src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -50646,20 +50646,78 @@ router8.get("/waitlist/count", async (req, res) => {
 });
 var waitlist_default = router8;
 
-// artifacts/api-server/src/routes/index.ts
+// artifacts/api-server/src/routes/audit.ts
+var import_express15 = __toESM(require_express2(), 1);
+init_dist2();
 var router9 = (0, import_express15.Router)();
-router9.use(health_default);
-router9.use("/users", users_default);
-router9.use("/exams", exams_default);
-router9.use("/exams", questions_default);
-router9.use("/sessions", sessions_default);
-router9.use(flags_default);
-router9.use("/dashboard", dashboard_default);
-router9.use(waitlist_default);
-var routes_default = router9;
+var requireAuth8 = (req, res, next) => {
+  const auth = getAuth(req);
+  const userId = auth?.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  req.clerkUserId = userId;
+  next();
+};
+router9.get("/audit/events", requireAuth8, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user || user.role !== "instructor") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const events = await db.select({
+      id: cheatingFlagsTable.id,
+      sessionId: cheatingFlagsTable.sessionId,
+      type: cheatingFlagsTable.type,
+      description: cheatingFlagsTable.description,
+      reviewStatus: cheatingFlagsTable.reviewStatus,
+      detectedAt: cheatingFlagsTable.detectedAt,
+      reviewNote: cheatingFlagsTable.reviewNote,
+      reviewedAt: cheatingFlagsTable.reviewedAt
+    }).from(cheatingFlagsTable).orderBy(desc(cheatingFlagsTable.detectedAt)).limit(100);
+    const enriched = await Promise.all(events.map(async (event) => {
+      const [session] = await db.select({
+        id: examSessionsTable.id,
+        studentName: examSessionsTable.studentName,
+        studentEmail: examSessionsTable.studentEmail,
+        accessCode: examSessionsTable.accessCode
+      }).from(examSessionsTable).where(eq(examSessionsTable.id, event.sessionId));
+      const [exam] = await db.select({
+        id: examsTable.id,
+        title: examsTable.title
+      }).from(examsTable).where(eq(examsTable.id, session?.id ? void 0 : void 0));
+      return {
+        ...event,
+        detectedAt: event.detectedAt?.toISOString() ?? null,
+        reviewedAt: event.reviewedAt?.toISOString() ?? null,
+        studentName: session?.studentName ?? null,
+        studentEmail: session?.studentEmail ?? null,
+        accessCode: session?.accessCode ?? null,
+        examTitle: exam?.title ?? null
+      };
+    }));
+    res.json(enriched);
+  } catch (err) {
+    req.log.error({ err }, "listAuditEvents error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+var audit_default = router9;
+
+// artifacts/api-server/src/routes/index.ts
+var router10 = (0, import_express17.Router)();
+router10.use(health_default);
+router10.use("/users", users_default);
+router10.use("/exams", exams_default);
+router10.use("/exams", questions_default);
+router10.use("/sessions", sessions_default);
+router10.use(flags_default);
+router10.use("/dashboard", dashboard_default);
+router10.use(audit_default);
+router10.use(waitlist_default);
+var routes_default = router10;
 
 // artifacts/api-server/src/app.ts
-var app = (0, import_express16.default)();
+var app = (0, import_express18.default)();
 app.use((req, _res, next) => {
   req.log = {
     info: (...a) => console.log("[INFO]", ...a),
@@ -50677,8 +50735,8 @@ try {
 } catch {
 }
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(import_express16.default.json({ limit: "50mb" }));
-app.use(import_express16.default.urlencoded({ limit: "50mb", extended: true }));
+app.use(import_express18.default.json({ limit: "50mb" }));
+app.use(import_express18.default.urlencoded({ limit: "50mb", extended: true }));
 app.use(clerkMiddleware());
 app.use("/api", routes_default);
 var app_default = app;
