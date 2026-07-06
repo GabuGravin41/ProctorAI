@@ -50379,6 +50379,29 @@ var sessions_default = router5;
 // artifacts/api-server/src/routes/flags.ts
 var import_express10 = __toESM(require_express2(), 1);
 init_dist2();
+
+// artifacts/api-server/src/lib/proctoring.ts
+var FLAG_COOLDOWN_MS = 3e4;
+var ALLOWED_FLAG_TYPES = /* @__PURE__ */ new Set([
+  "tab_switch",
+  "fullscreen_exit",
+  "face_not_visible",
+  "looking_away",
+  "multiple_faces"
+]);
+function normalizeFlagType(type) {
+  if (typeof type !== "string") return null;
+  const normalized = type.trim().toLowerCase();
+  return ALLOWED_FLAG_TYPES.has(normalized) ? normalized : null;
+}
+function shouldThrottleFlag(lastDetectedAt, now = /* @__PURE__ */ new Date()) {
+  if (!lastDetectedAt) return false;
+  const last = lastDetectedAt instanceof Date ? lastDetectedAt : new Date(lastDetectedAt);
+  if (Number.isNaN(last.getTime())) return false;
+  return now.getTime() - last.getTime() < FLAG_COOLDOWN_MS;
+}
+
+// artifacts/api-server/src/routes/flags.ts
 var router6 = (0, import_express10.Router)();
 var requireAuth6 = (req, res, next) => {
   const loadTestSecret = req.headers["x-load-test-secret"];
@@ -50420,12 +50443,28 @@ router6.post("/sessions/:sessionId/flags", requireAuth6, async (req, res) => {
   try {
     const sessionId = parseInt(req.params.sessionId);
     const { type, description, clipData, detectedAt } = req.body;
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return res.status(400).json({ error: "Invalid session id" });
+    }
+    const normalizedType = normalizeFlagType(type);
+    if (!normalizedType) {
+      return res.status(400).json({ error: "Unsupported flag type" });
+    }
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+    const [latestFlag] = await db.select({ detectedAt: cheatingFlagsTable.detectedAt }).from(cheatingFlagsTable).where(and(eq(cheatingFlagsTable.sessionId, sessionId), eq(cheatingFlagsTable.type, normalizedType))).orderBy(desc(cheatingFlagsTable.detectedAt)).limit(1);
+    const now = detectedAt ? new Date(detectedAt) : /* @__PURE__ */ new Date();
+    if (shouldThrottleFlag(latestFlag?.detectedAt, now)) {
+      return res.status(429).json({ error: "Flag suppressed due to cooldown", retryAfterSeconds: Math.ceil(FLAG_COOLDOWN_MS / 1e3) });
+    }
     const [flag] = await db.insert(cheatingFlagsTable).values({
       sessionId,
-      type,
+      type: normalizedType,
       description: description ?? null,
       clipData: clipData ?? null,
-      detectedAt: new Date(detectedAt),
+      detectedAt: now,
       reviewStatus: "pending"
     }).returning();
     res.status(201).json(formatFlag(flag));

@@ -186,9 +186,10 @@ export default function ExamTaking() {
 
   // Helper helper to trigger flags with clips
   const triggerFlag = async (type: FlagInputType, description: string) => {
+    if (!sessionId || !Number.isInteger(sessionId) || sessionId <= 0) return;
+
     setLiveFlags((n) => n + 1);
-    
-    // Asynchronously capture the clip and report
+
     const clip = await captureVideoClip();
     reportFlag.mutate({
       sessionId,
@@ -198,6 +199,13 @@ export default function ExamTaking() {
         description,
         clipData: clip || undefined,
       },
+    }, {
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : "Unable to report flag";
+        if (!message.includes("cooldown") && !message.includes("Unsupported")) {
+          toast({ title: "Flag reporting failed", description: message, variant: "destructive" });
+        }
+      }
     });
   };
 
@@ -375,16 +383,16 @@ export default function ExamTaking() {
 
   // ── AI monitoring simulation ────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasStarted || !stream || cameraError || isUploadWindow) return;
-    const id = setInterval(() => {
-      if (Math.random() < 0.15) {
+    if (!hasStarted || !stream || cameraError || isUploadWindow || !isProctoringEnabled) return;
+    const id = window.setInterval(() => {
+      if (Math.random() < 0.05) {
         const types: FlagInputType[] = ["face_not_visible", "looking_away", "multiple_faces"];
         const type = types[Math.floor(Math.random() * types.length)];
-        triggerFlag(type, `AI detected: ${type.replace(/_/g, " ")}`);
+        void triggerFlag(type, `AI detected: ${type.replace(/_/g, " ")}`);
       }
-    }, 30000);
-    return () => clearInterval(id);
-  }, [hasStarted, stream, cameraError, sessionId, reportFlag, isUploadWindow]);
+    }, 60000);
+    return () => window.clearInterval(id);
+  }, [hasStarted, stream, cameraError, sessionId, reportFlag, isUploadWindow, isProctoringEnabled]);
 
   // ── Redirect if already submitted ──────────────────────────────────────────
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, cheatingFlagsTable } from "../db";
-import { eq } from "drizzle-orm";
+import { db, cheatingFlagsTable, examSessionsTable } from "../db";
+import { eq, and, desc } from "drizzle-orm";
+import { normalizeFlagType, shouldThrottleFlag, FLAG_COOLDOWN_MS } from "../lib/proctoring";
 
 const router = Router();
 
@@ -53,14 +54,40 @@ router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => 
     const sessionId = parseInt(req.params.sessionId);
     const { type, description, clipData, detectedAt } = req.body;
 
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return res.status(400).json({ error: "Invalid session id" });
+    }
+
+    const normalizedType = normalizeFlagType(type);
+    if (!normalizedType) {
+      return res.status(400).json({ error: "Unsupported flag type" });
+    }
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const [latestFlag] = await db
+      .select({ detectedAt: cheatingFlagsTable.detectedAt })
+      .from(cheatingFlagsTable)
+      .where(and(eq(cheatingFlagsTable.sessionId, sessionId), eq(cheatingFlagsTable.type, normalizedType)))
+      .orderBy(desc(cheatingFlagsTable.detectedAt))
+      .limit(1);
+
+    const now = detectedAt ? new Date(detectedAt) : new Date();
+    if (shouldThrottleFlag(latestFlag?.detectedAt, now)) {
+      return res.status(429).json({ error: "Flag suppressed due to cooldown", retryAfterSeconds: Math.ceil(FLAG_COOLDOWN_MS / 1000) });
+    }
+
     const [flag] = await db
       .insert(cheatingFlagsTable)
       .values({
         sessionId,
-        type,
+        type: normalizedType,
         description: description ?? null,
         clipData: clipData ?? null,
-        detectedAt: new Date(detectedAt),
+        detectedAt: now,
         reviewStatus: "pending",
       })
       .returning();
