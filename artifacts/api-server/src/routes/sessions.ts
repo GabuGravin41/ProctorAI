@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable, answersTable } from "../db";
 import { eq, and, isNull } from "drizzle-orm";
+import { normalizeSessionStatus } from "../lib/session-status";
 
 const router = Router();
 
@@ -29,7 +30,7 @@ function formatSession(s: any, flagCount = 0) {
     studentEmail: s.studentEmail ?? null,
     studentName: s.studentName ?? null,
     accessCode: s.accessCode,
-    status: s.status,
+    status: normalizeSessionStatus(s.status),
     score: s.score ?? null,
     maxScore: s.maxScore ?? null,
     flagCount,
@@ -148,7 +149,7 @@ router.post("/join", requireAuth, async (req: any, res) => {
         studentEmail: student?.email || "",
         studentName: student?.name || "Student",
         accessCode: normalizedCode,
-        status: "not_started",
+        status: "pending",
       }).returning();
     }
 
@@ -470,6 +471,7 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
     }
 
     const isAutoRelease = exam?.gradingMode === "auto";
+    const canReleaseResults = exam?.gradingMode === "auto" || exam?.gradingMode === "review_release";
 
     const [updatedSession] = await db
       .update(examSessionsTable)
@@ -478,7 +480,7 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         score: totalScore, 
         maxScore, 
         submittedAt: new Date(),
-        isResultsReleased: isAutoRelease
+        isResultsReleased: canReleaseResults ? isAutoRelease : false
       })
       .where(eq(examSessionsTable.id, sessionId))
       .returning();

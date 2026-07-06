@@ -49907,6 +49907,29 @@ var questions_default = router4;
 // artifacts/api-server/src/routes/sessions.ts
 var import_express8 = __toESM(require_express2(), 1);
 init_dist2();
+
+// artifacts/api-server/src/lib/session-status.ts
+function normalizeSessionStatus(status) {
+  if (!status) return "pending";
+  const normalized = status.trim().toLowerCase();
+  switch (normalized) {
+    case "active":
+    case "in_progress":
+      return "active";
+    case "submitted":
+    case "completed":
+      return "submitted";
+    case "not_started":
+    case "pending":
+      return "pending";
+    case "abandoned":
+      return "abandoned";
+    default:
+      return normalized;
+  }
+}
+
+// artifacts/api-server/src/routes/sessions.ts
 var router5 = (0, import_express8.Router)();
 var requireAuth5 = (req, res, next) => {
   const loadTestSecret = req.headers["x-load-test-secret"];
@@ -49929,7 +49952,7 @@ function formatSession(s2, flagCount = 0) {
     studentEmail: s2.studentEmail ?? null,
     studentName: s2.studentName ?? null,
     accessCode: s2.accessCode,
-    status: s2.status,
+    status: normalizeSessionStatus(s2.status),
     score: s2.score ?? null,
     maxScore: s2.maxScore ?? null,
     flagCount,
@@ -50028,7 +50051,7 @@ router5.post("/join", requireAuth5, async (req, res) => {
         studentEmail: student?.email || "",
         studentName: student?.name || "Student",
         accessCode: normalizedCode,
-        status: "not_started"
+        status: "pending"
       }).returning();
     }
     if (exam.status === "archived") {
@@ -50303,12 +50326,13 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
       });
     }
     const isAutoRelease = exam?.gradingMode === "auto";
+    const canReleaseResults = exam?.gradingMode === "auto" || exam?.gradingMode === "review_release";
     const [updatedSession] = await db.update(examSessionsTable).set({
       status: "submitted",
       score: totalScore,
       maxScore,
       submittedAt: /* @__PURE__ */ new Date(),
-      isResultsReleased: isAutoRelease
+      isResultsReleased: canReleaseResults ? isAutoRelease : false
     }).where(eq(examSessionsTable.id, sessionId)).returning();
     const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
     res.json({

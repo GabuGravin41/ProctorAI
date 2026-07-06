@@ -11,7 +11,7 @@ export default function StudentHome() {
   // Fetch sessions for this student
   const { data: sessions, isLoading } = useListSessions(undefined, { query: { queryKey: getListSessionsQueryKey(undefined), enabled: !!me?.clerkId } });
 
-  const activeSessions = sessions?.filter(s => s.session.status === 'pending' || s.session.status === 'active') || [];
+  const activeSessions = sessions?.filter(s => ['pending', 'active'].includes(s.session.status)) || [];
   const completedSessions = sessions?.filter(s => s.session.status === 'submitted') || [];
 
   return (
