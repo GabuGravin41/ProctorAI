@@ -59,6 +59,24 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "essay", label: "Essay/Proof" },
 ];
 
+interface OpenRouterModel {
+  id: string;
+  name: string;
+  description: string;
+  pricing: {
+    prompt: number;
+    completion: number;
+  };
+  context_length: number;
+}
+
+const FALLBACK_OPENROUTER_MODELS: OpenRouterModel[] = [
+  { id: "openai/gpt-4o-mini", name: "GPT-4o mini", description: "Fast general-purpose model", pricing: { prompt: 0.15, completion: 0.6 }, context_length: 128000 },
+  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", description: "Low-latency reasoning", pricing: { prompt: 0.8, completion: 4 }, context_length: 200000 },
+  { id: "deepseek/deepseek-chat", name: "DeepSeek Chat", description: "Strong value model", pricing: { prompt: 0.14, completion: 0.28 }, context_length: 128000 },
+  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", description: "Fast multimodal model", pricing: { prompt: 0.1, completion: 0.4 }, context_length: 1000000 },
+];
+
 export default function ExamBuilder() {
   const params = useParams();
   const examId = Number(params.examId);
@@ -95,6 +113,9 @@ export default function ExamBuilder() {
   const [aiProvider, setAiProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
   const [aiModel, setAiModel] = useState("deepseek/deepseek-chat");
   const [customApiKey, setCustomApiKey] = useState("");
+  const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModel[]>(FALLBACK_OPENROUTER_MODELS);
+  const [loadingOpenRouterModels, setLoadingOpenRouterModels] = useState(false);
+  const [openRouterModelError, setOpenRouterModelError] = useState("");
   
   // Edit Question State
   const [editQuestionOpen, setEditQuestionOpen] = useState(false);
@@ -479,6 +500,41 @@ Generate ${aiCount} questions that follow these specifications exactly.
       setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
     }
   }, [aiSettingsOpen, exam?.aiConfig]);
+
+  useEffect(() => {
+    if (!aiSettingsOpen || aiProvider !== "custom_openrouter") return;
+
+    let isActive = true;
+    const loadModels = async () => {
+      setLoadingOpenRouterModels(true);
+      setOpenRouterModelError("");
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/models?sort=intelligence-high-to-low");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const fetchedModels = Array.isArray(data?.data) ? data.data : [];
+        if (isActive) {
+          setOpenRouterModels(fetchedModels.length > 0 ? fetchedModels : FALLBACK_OPENROUTER_MODELS);
+          if (fetchedModels.length === 0) {
+            setOpenRouterModelError("Using common presets because the live catalog was empty.");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch OpenRouter models:", error);
+        if (isActive) {
+          setOpenRouterModels(FALLBACK_OPENROUTER_MODELS);
+          setOpenRouterModelError("Live model list unavailable. You can still paste any OpenRouter model ID.");
+        }
+      } finally {
+        if (isActive) setLoadingOpenRouterModels(false);
+      }
+    };
+
+    loadModels();
+    return () => {
+      isActive = false;
+    };
+  }, [aiSettingsOpen, aiProvider]);
 
   const handlePublish = () => {
     publishExam.mutate({
@@ -1429,16 +1485,43 @@ Example: Chapter 3 covers photosynthesis...
                 <>
                   <div className="space-y-2">
                     <Label>Model ID</Label>
+                    {aiProvider === "custom_openrouter" && (
+                      loadingOpenRouterModels ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Loading models...
+                        </div>
+                      ) : (
+                        <Select value={aiModel} onValueChange={setAiModel}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Pick a model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {openRouterModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{model.name}</span>
+                                  <span className="text-xs text-muted-foreground">{model.id}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )
+                    )}
                     <Input 
-                      placeholder={aiProvider === "custom_openrouter" ? "e.g. anthropic/claude-3-haiku" : "e.g. gemini-pro"}
+                      placeholder={aiProvider === "custom_openrouter" ? "Or paste any OpenRouter model ID" : "e.g. gemini-pro"}
                       value={aiModel} 
                       onChange={(e) => setAiModel(e.target.value)}
+                      className={aiProvider === "custom_openrouter" ? "mt-2" : ""}
                     />
                     <p className="text-xs text-muted-foreground">
                       {aiProvider === "custom_openrouter" 
-                        ? "See openrouter.ai/models for available models"
+                        ? "Pick a recommended model or paste any compatible OpenRouter model ID."
                         : "See cloud.google.com/vertex-ai for available models"}
                     </p>
+                    {aiProvider === "custom_openrouter" && openRouterModelError ? (
+                      <p className="text-xs text-amber-600">{openRouterModelError}</p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">

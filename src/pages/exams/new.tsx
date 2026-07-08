@@ -39,12 +39,20 @@ interface OpenRouterModel {
   context_length: number;
 }
 
+const FALLBACK_OPENROUTER_MODELS: OpenRouterModel[] = [
+  { id: "openai/gpt-4o-mini", name: "GPT-4o mini", description: "Fast general-purpose model", pricing: { prompt: 0.15, completion: 0.6 }, context_length: 128000 },
+  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", description: "Low-latency reasoning", pricing: { prompt: 0.8, completion: 4 }, context_length: 200000 },
+  { id: "deepseek/deepseek-chat", name: "DeepSeek Chat", description: "Strong value model", pricing: { prompt: 0.14, completion: 0.28 }, context_length: 128000 },
+  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", description: "Fast multimodal model", pricing: { prompt: 0.1, completion: 0.4 }, context_length: 1000000 },
+];
+
 export default function NewExam() {
   const [, setLocation] = useLocation();
   const createExam = useCreateExam();
   const [selectedProvider, setSelectedProvider] = useState<"free" | "custom_openrouter" | "custom_gemini">("free");
-  const [models, setModels] = useState<OpenRouterModel[]>([]);
+  const [models, setModels] = useState<OpenRouterModel[]>(FALLBACK_OPENROUTER_MODELS);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState("");
   const [examType, setExamType] = useState<"mixed" | "proof_only">("mixed");
 
   const form = useForm<FormValues>({
@@ -66,12 +74,20 @@ export default function NewExam() {
     const fetchModels = async () => {
       if (selectedProvider !== "custom_openrouter") return;
       setLoadingModels(true);
+      setModelsError("");
       try {
         const response = await fetch("https://openrouter.ai/api/v1/models?sort=intelligence-high-to-low");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        setModels(data.data || []);
+        const fetchedModels = Array.isArray(data?.data) ? data.data : [];
+        setModels(fetchedModels.length > 0 ? fetchedModels : FALLBACK_OPENROUTER_MODELS);
+        if (fetchedModels.length === 0) {
+          setModelsError("Live catalog was empty, so common presets are being shown.");
+        }
       } catch (error) {
         console.error("Failed to fetch models:", error);
+        setModels(FALLBACK_OPENROUTER_MODELS);
+        setModelsError("Live model list unavailable. You can still paste any OpenRouter model ID.");
       } finally {
         setLoadingModels(false);
       }
@@ -363,7 +379,10 @@ export default function NewExam() {
                               </Select>
                             )}
                           </FormControl>
-                          <FormDescription>Choose from top models by intelligence</FormDescription>
+                          <FormDescription>
+                            Choose a model from the catalog or paste a different OpenRouter model ID.
+                            {modelsError ? <span className="mt-1 block text-amber-600">{modelsError}</span> : null}
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
