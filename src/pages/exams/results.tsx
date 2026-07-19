@@ -94,7 +94,14 @@ export default function ExamResults() {
                     className="space-y-3 p-4 md:grid md:grid-cols-12 md:gap-4 md:items-center md:space-y-0 hover:bg-slate-50/70 transition-colors"
                   >
                     <div className="md:col-span-3 min-w-0">
-                      <div className="font-medium truncate">{session.studentName || "—"}</div>
+                      <div className="font-medium truncate flex items-center gap-2">
+                        {session.studentName || "—"}
+                        {session.reviewRequested && (
+                          <Badge className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] h-4 px-1.5 font-semibold animate-pulse shrink-0">
+                            Review Requested
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">{session.studentEmail || session.accessCode}</div>
                     </div>
                     <div className="flex items-center justify-between gap-3 md:col-span-2 md:block">

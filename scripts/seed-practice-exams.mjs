@@ -188,12 +188,12 @@ for (let pNum = 1; pNum <= 3; pNum++) {
         `${parseFloat(finalAns) + 12}`
       ],
       correctAnswer: finalAns,
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Identify the topic: **${topicData.topic}**.
 Read the question carefully, formulate the equations or apply the relevant theorems.
 Try to use algebraic properties, prime factorizations, or geometric drawing tools to find the answer.
 
-### Part 2: Polished Formal Proof
+Proof
 ${finalSol}`,
       points: 1,
       difficulty: idx <= 8 ? 'easy' : idx <= 16 ? 'medium' : 'hard',
@@ -233,7 +233,7 @@ EXAMS_DATA.push({
       text: 'Solve for real \\(x\\): \\(\\sqrt{x + 3 - 4\\sqrt{x-1}} + \\sqrt{x + 8 - 6\\sqrt{x-1}} = 1\\).',
       type: 'short_answer',
       correctAnswer: '5 <= x <= 10',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Notice the nested radicals. Try to rewrite the terms under the square roots as perfect squares.
 Let \\(u = \\sqrt{x-1}\\). Then \\(x-1 = u^2 \\implies x = u^2+1\\).
 Substitute \\(x\\) into the expressions under the radicals:
@@ -241,7 +241,7 @@ Substitute \\(x\\) into the expressions under the radicals:
 - \\(x+8-6\\sqrt{x-1} = u^2 - 6u + 9 = (u-3)^2\\)
 This simplifies the equation to \\(|u-2| + |u-3| = 1\\). Solve this inequality for \\(u\\), and then substitute back to find the range of \\(x\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(u = \\sqrt{x-1}\\) (with \\(u \\ge 0\\)). The equation becomes:
 \\[\\sqrt{(u-2)^2} + \\sqrt{(u-3)^2} = 1 \\implies |u-2| + |u-3| = 1\\]
 By the triangle inequality, \\(|u-2| + |3-u| \\ge |(u-2)+(3-u)| = 1\\).
@@ -258,13 +258,13 @@ Thus, the solution is the real interval \\([5, 10]\\).`,
       text: 'Find all positive integers \\(n\\) such that \\(n^2 + 19n + 92\\) is a perfect square.',
       type: 'short_answer',
       correctAnswer: 'No positive integers',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Set the expression equal to a square: \\(n^2 + 19n + 92 = k^2\\).
 Analyze the equation modulo 4 by completing the square and multiplying by 4:
 \\[4n^2 + 76n + 368 = (2n+19)^2 + 7 = 4k^2 \\implies 4k^2 - (2n+19)^2 = 7\\].
 Factorize the difference of squares and check divisors.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(n^2 + 19n + 92 = k^2\\). Completing the square:
 \\[(2n+19)^2 + 7 = 4k^2 \\implies 4k^2 - (2n+19)^2 = 7\\]
 Factorizing:
@@ -282,13 +282,13 @@ Thus, no positive integer solutions exist.`,
       text: 'In triangle \\(ABC\\), \\(AB = 13\\), \\(BC = 14\\), and \\(CA = 15\\). Find the distance from the orthocenter to the circumcenter.',
       type: 'short_answer',
       correctAnswer: 'sqrt(265)/8',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Recall Euler's Phase relation in triangles: the distance \\(d\\) between the orthocenter \\(H\\) and circumcenter \\(O\\) satisfies:
 \\[OH^2 = 9R^2 - (a^2+b^2+c^2)\\]
 Calculate the circumradius \\(R\\) using the area \\(\\text{Area} = \\frac{abc}{4R}\\).
 We know the side lengths \\(a=14, b=15, c=13\\) and can compute the area using Heron's formula (84).
 
-### Part 2: Polished Formal Proof
+Proof
 Using Heron's formula, \\(\\text{Area}(\\triangle ABC) = 84\\).
 The circumradius \\(R\\) is:
 \\[R = \\frac{abc}{4 \\times \\text{Area}} = \\frac{13 \\times 14 \\times 15}{4 \\times 84} = \\frac{2730}{336} = \\frac{65}{8}\\]
@@ -305,13 +305,13 @@ Thus, the distance is:
       text: 'Find the number of paths from \\((0,0)\\) to \\((6,6)\\) on a grid of unit squares that do not cross above the diagonal line \\(y = x\\).',
       type: 'short_answer',
       correctAnswer: '132',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 This problem is a classic application of Catalan numbers.
 A path from \\((0,0)\\) to \\((n,n)\\) that does not cross the line \\(y=x\\) is given by the \\(n\\)-th Catalan number:
 \\[C_n = \\frac{1}{n+1}\\binom{2n}{n}\\]
 For \\(n=6\\), we evaluate \\(C_6\\).
 
-### Part 2: Polished Formal Proof
+Proof
 The number of valid paths is given by the 6th Catalan number:
 \\[C_6 = \\frac{1}{7}\\binom{12}{6} = \\frac{1}{7} \\times 924 = 132\\]
 Thus, there are 132 paths.`,
@@ -323,13 +323,13 @@ Thus, there are 132 paths.`,
       text: 'Let \\(a, b, c\\) be real numbers satisfying \\(a+b+c=3\\) and \\(ab+bc+ca=3\\). Prove that \\(a=b=c=1\\).',
       type: 'essay',
       correctAnswer: 'Proof by algebraic identities',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Consider the algebraic identity:
 \\[(a-b)^2 + (b-c)^2 + (c-a)^2 = 2(a^2+b^2+c^2 - (ab+bc+ca))\\]
 Express \\(a^2+b^2+c^2\\) in terms of \\(a+b+c\\) and \\(ab+bc+ca\\).
 Substitute the given values to show that the sum of squares \\((a-b)^2+(b-c)^2+(c-a)^2\\) must be zero, which forces \\(a=b=c\\).
 
-### Part 2: Polished Formal Proof
+Proof
 We know that:
 \\[(a+b+c)^2 = a^2+b^2+c^2 + 2(ab+bc+ca)\\]
 Substitute the given values:
@@ -349,11 +349,11 @@ Thus, \\(a = b = c = 1\\).`,
       text: 'Find the remainder when \\(2^{2026}\\) is divided by 17.',
       type: 'short_answer',
       correctAnswer: '4',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use Fermat's Little Theorem. Since 17 is prime, \\(2^{16} \\equiv 1 \\pmod{17}\\).
 Express the exponent 2026 modulo 16 and simplify the expression.
 
-### Part 2: Polished Formal Proof
+Proof
 By Fermat's Little Theorem:
 \\[2^{16} \\equiv 1 \\pmod{17}\\]
 We divide the exponent 2026 by 16:
@@ -387,11 +387,11 @@ EXAMS_DATA.push({
       text: 'Solve the system of real equations: \\(x^2 + y^2 = 25\\) and \\(xy = 12\\). Find all possible values of \\(x+y\\).',
       type: 'short_answer',
       correctAnswer: '7, -7',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Notice the algebraic identity \\((x+y)^2 = x^2 + y^2 + 2xy\\).
 We are given \\(x^2 + y^2 = 25\\) and \\(xy = 12\\). Substitute these into the identity to find \\((x+y)^2\\), and then take the square root.
 
-### Part 2: Polished Formal Proof
+Proof
 Using the identity:
 \\[(x+y)^2 = (x^2 + y^2) + 2xy\\]
 Substituting \\(x^2+y^2 = 25\\) and \\(xy = 12\\):
@@ -407,12 +407,12 @@ Thus, the possible values of \\(x+y\\) are 7 and -7.`,
       text: 'A circle is tangent to the two legs of a right triangle with legs 3 and 4, and its center lies on the hypotenuse. Find the radius of the circle.',
       type: 'short_answer',
       correctAnswer: '12/7',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Let the vertices of the right triangle be \\(A(0,3)\\), \\(B(0,0)\\), and \\(C(4,0)\\).
 The center of the circle lies on the hypotenuse \\(AC\\). Let its coordinates be \\((r, r)\\) since it is tangent to both axes (the legs of the triangle).
 Write the equation of the line representing the hypotenuse \\(AC\\) and substitute \\((r,r)\\) into it to solve for the radius \\(r\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let the legs lie on the positive x and y axes. The line representing the hypotenuse passes through \\((0,3)\\) and \\((4,0)\\), which has equation:
 \\[\\frac{x}{4} + \\frac{y}{3} = 1\\]
 Since the circle is tangent to both axes, its center \\((h, k)\\) satisfies \\(h = k = r\\) in the first quadrant.
@@ -427,12 +427,12 @@ The radius of the circle is 12/7.`,
       text: 'Find the number of integers \\(n\\) between 1 and 1000 such that \\(n\\) is divisible by 6 but not by 8.',
       type: 'short_answer',
       correctAnswer: '125',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Find the number of integers divisible by 6.
 An integer is divisible by both 6 and 8 if and only if it is divisible by their least common multiple, \\(\\text{LCM}(6,8) = 24\\).
 Subtract the number of integers divisible by 24 from the number of integers divisible by 6.
 
-### Part 2: Polished Formal Proof
+Proof
 The number of integers divisible by 6 is:
 \\[N_6 = \\lfloor\\frac{1000}{6}\\rfloor = 166\\]
 The number of integers divisible by both 6 and 8 (i.e. divisible by 24) is:
@@ -447,12 +447,12 @@ The number of integers divisible by 6 but not by 8 is:
       text: 'Find the coefficient of \\(x^5\\) in the expansion of \\((1 + x + x^2)^6\\).',
       type: 'short_answer',
       correctAnswer: '126',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use the multinomial expansion formula or algebraic manipulation:
 \\[(1+x+x^2)^6 = \\left(\\frac{1-x^3}{1-x}\\right)^6 = (1-x^3)^6 (1-x)^{-6}\\]
 Expand each term and find the coefficient of \\(x^5\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Using the identity:
 \\[(1+x+x^2)^6 = (1-x^3)^6 (1-x)^{-6}\\]
 Expanding the terms:
@@ -472,11 +472,11 @@ Thus, the coefficient of \\(x^5\\) is 126.`,
       text: 'Prove that for any positive real numbers \\(x, y\\), \\(\\frac{x}{y} + \\frac{y}{x} \\ge 2\\).',
       type: 'essay',
       correctAnswer: 'Proof by AM-GM inequality',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Apply the AM-GM inequality to the two positive terms \\(x/y\\) and \\(y/x\\).
 The arithmetic mean is at least the geometric mean.
 
-### Part 2: Polished Formal Proof
+Proof
 By the AM-GM inequality for positive real numbers \\(A = \\frac{x}{y}\\) and \\(B = \\frac{y}{x}\\):
 \\[\\frac{A+B}{2} \\ge \\sqrt{A \\times B}\\]
 Substituting \\(A\\) and \\(B\\):
@@ -492,12 +492,12 @@ Equality holds if and only if \\(x = y\\).`,
       text: 'Find all positive integer solutions \\((x, y)\\) to \\(3^x - 2^y = 1\\).',
       type: 'short_answer',
       correctAnswer: '(1, 1), (2, 3)',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Test small integer values for \\(x\\) and \\(y\\).
 Analyze the equation modulo 3 and modulo 4 to find constraints on the exponents.
 This is a special case of Catalan's Conjecture (proven by Mihailescu).
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(3^x - 2^y = 1\\).
 - If \\(y=1\\), then \\(3^x = 2 + 1 = 3 \\implies x=1\\). This gives the solution \\((1,1)\\).
 - If \\(y \\ge 2\\), then \\(2^y\\) is divisible by 4.
@@ -539,10 +539,10 @@ EXAMS_DATA.push({
       text: 'An arithmetic progression has 10 terms. The sum of the first 5 terms is 30, and the sum of the last 5 terms is 130. Find the common difference.',
       type: 'short_answer',
       correctAnswer: '4',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Write the terms of the AP as \\(a, a+d, \\dots, a+9d\\). Sum the first 5 and the last 5 terms. Solve the resulting system of equations to isolate \\(d\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let first term be \\(a\\) and common difference be \\(d\\).
 First 5 sum:
 \\[5a + 10d = 30\\]
@@ -558,10 +558,10 @@ Subtracting the first equation from the second:
       text: 'A circle of radius 5 is inscribed in a right triangle. If the hypotenuse has length 25, find the area of the triangle.',
       type: 'short_answer',
       correctAnswer: '150',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use \\(r = \\frac{a+b-c}{2}\\) to find \\(a+b\\), and \\(a^2+b^2=c^2\\) to isolate the area.
 
-### Part 2: Polished Formal Proof
+Proof
 With \\(r=5\\) and \\(c=25\\), \\(a+b = 35\\).
 Since \\(a^2+b^2=625\\), \\((a+b)^2 = 1225 \\implies 2ab = 600 \\implies ab=300\\).
 Area = \\(ab/2 = 150\\).`,
@@ -573,10 +573,10 @@ Area = \\(ab/2 = 150\\).`,
       text: 'Find all integer solutions \\((x,y)\\) such that \\(x^2 - y^2 = 2026\\).',
       type: 'short_answer',
       correctAnswer: 'No integer solutions',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Factorize as \\((x-y)(x+y) = 2026\\). Look at the equation modulo 4.
 
-### Part 2: Polished Formal Proof
+Proof
 Assume integers \\(x, y\\) satisfy \\(x^2 - y^2 = 2026\\).
 Perfect squares mod 4 are only 0 or 1.
 So \\(x^2 - y^2 \\pmod{4}\\) must be 0, 1, or 3.
@@ -590,10 +590,10 @@ Thus, no such integers exist.`,
       text: 'Determine the number of subsets of \\(\\{1, 2, \\dots, 10\\}\\) containing no consecutive integers.',
       type: 'short_answer',
       correctAnswer: '144',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use the Fibonacci recurrence relations \\(f(n) = f(n-1) + f(n-2)\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Recurrence computes to:
 \\(f(1)=2\\), \\(f(2)=3\\), \\(f(3)=5\\), \\(f(4)=8\\), \\(f(5)=13\\), \\(f(6)=21\\), \\(f(7)=34\\), \\(f(8)=55\\), \\(f(9)=89\\), \\(f(10)=144\\).`,
       points: 5,
@@ -604,10 +604,10 @@ Recurrence computes to:
       text: 'Solve for real \\(x\\): \\(x + \\sqrt{x - 1} = 7\\).',
       type: 'short_answer',
       correctAnswer: '5',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Substitute \\(u = \\sqrt{x-1}\\) (\\(u \\ge 0\\)).
 
-### Part 2: Polished Formal Proof
+Proof
 \\(u^2 + u - 6 = 0 \\implies (u+3)(u-2)=0 \\implies u=2 \\implies x-1=4 \\implies x=5\\).`,
       points: 5,
       difficulty: 'easy',
@@ -617,12 +617,12 @@ Substitute \\(u = \\sqrt{x-1}\\) (\\(u \\ge 0\\)).
       text: 'Prove that the equation \\(x^2 + y^2 = 3z^2\\) has no integer solutions other than \\(x=y=z=0\\).',
       type: 'essay',
       correctAnswer: 'Proof by infinite descent',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Analyze the equation modulo 3. Squares modulo 3 are only 0 or 1.
 If \\(x^2+y^2\\) is divisible by 3, both \\(x\\) and \\(y\\) must be divisible by 3.
 This allows us to set up an infinite descent argument.
 
-### Part 2: Polished Formal Proof
+Proof
 Assume non-zero solutions exist, and let \\((x, y, z)\\) be a solution with minimal positive \\(|z|\\).
 Modulo 3:
 \\[x^2 + y^2 \\equiv 0 \\pmod{3}\\]
@@ -661,12 +661,12 @@ EXAMS_DATA.push({
       text: 'Find all functions \\(f: \\mathbb{R} \\to \\mathbb{R}\\) satisfying:\n\\[f(1 + xy) - f(x + y) = f(x)\\,f(y)\\]\nfor all \\(x, y \\in \\mathbb{R}\\), subject to the condition \\(f(-1) \\neq 0\\).',
       type: 'essay',
       correctAnswer: 'f(x) = x - 1',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 We want to test simple values first to check the behavior of the function. Substituting \\(x=1\\) eliminates one of the terms and lets us deduce \\(f(1) = 0\\). Using \\(x=0\\) then gives \\(f(0) = -1\\).
 By setting \\(x=-1\\), we can relate \\(f(-n)\\) and \\(f(n)\\) to build an induction on integers.
 Try to guess the function form: \\(f(x) = x-1\\) matches the values.
 
-### Part 2: Polished Formal Proof
+Proof
 1. **Find f(1)**: Substitute \\(x = 1\\) to get \\(f(1+y) - f(1+y) = f(1)f(y) \\implies 0 = f(1)f(y)\\). Since \\(f(-1) \\ne 0\\), \\(f\\) is not identically zero, hence \\(f(1) = 0\\).
 2. **Find f(0)**: Substitute \\(x = 0 \\implies f(1) - f(y) = f(0)f(y) \\implies -f(y) = f(0)f(y)\\). Since \\(f\\) is not identically zero, \\(f(0) = -1\\).
 3. **Determine f(-1)**: Let \\(f(-1) = d \\ne 0\\). Setting \\(x = -1, y = n\\) yields the recurrence relation \\(f(-n) - f(n) = d \\cdot f(n+1)\\). Evaluating on integers pins \\(f(n) = n-1\\).
@@ -679,12 +679,12 @@ Try to guess the function form: \\(f(x) = x-1\\) matches the values.
       text: 'Let \\(a, b, c\\) be positive real numbers such that \\(abc = 1\\). Prove that:\n\\[\\frac{1}{a^3(b+c)} + \\frac{1}{b^3(c+a)} + \\frac{1}{c^3(a+b)} \\ge \\frac{3}{2}\\]',
       type: 'essay',
       correctAnswer: 'Proof by substitution and Cauchy-Schwarz',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Notice the terms in the denominators have high exponents. An algebraic substitution of variables might simplify the expression.
 Let \\(x = 1/a, y = 1/b, z = 1/c\\). The constraint \\(abc=1\\) becomes \\(xyz=1\\).
 Rewrite the sum in terms of \\(x, y, z\\). Then apply the Cauchy-Schwarz Inequality in its fractional (Engel) form to obtain a simpler fraction, and use AM-GM to bound the terms.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(x = 1/a, y = 1/b, z = 1/c\\). The constraint \\(abc=1\\) translates to \\(xyz=1\\).
 The sum becomes:
 \\[\\sum_{\\text{cyc}} \\frac{1}{a^3(b+c)} = \\sum_{\\text{cyc}} \\frac{x^2}{y+z}\\]
@@ -702,11 +702,11 @@ Thus:
       text: 'Prove that there are infinitely many primes of the form \\(4k + 3\\).',
       type: 'essay',
       correctAnswer: 'Proof by Euclid-like contradiction',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use a proof by contradiction modeled after Euclid's proof for the infinitude of primes.
 Assume there are only finitely many primes of the form \\(4k+3\\) and list them. Construct a number \\(N = 4p_1p_2\\dots p_r - 1\\). Show that \\(N\\) must have at least one prime factor of the form \\(4k+3\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Assume there are only finitely many primes of the form \\(4k+3\\), say \\(p_1, p_2, \\dots, p_r\\).
 Consider the integer:
 \\[N = 4p_1p_2\\dots p_r - 1\\]
@@ -724,12 +724,12 @@ This implies \\(q\\) divides both \\(4p_1\\dots p_r\\) and \\(N = 4p_1\\dots p_r
       text: 'In an election, there are two candidates \\(A\\) and \\(B\\) who receive \\(a\\) and \\(b\\) votes respectively (with \\(a > b\\)). If the ballot papers are counted one by one, find the probability that \\(A\\) is strictly ahead of \\(B\\) throughout the count.',
       type: 'essay',
       correctAnswer: '(a - b) / (a + b)',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 This is Bertrand's Ballot Theorem. We can model the vote counts as paths in a grid.
 Let the count path start at \\((0,0)\\) and end at \\((a+b, a-b)\\). We want to find the number of paths that stay strictly above the x-axis after the start.
 Use the reflection principle.
 
-### Part 2: Polished Formal Proof
+Proof
 The number of good paths is:
 \\[\\text{Good Paths} = \\binom{a+b}{a} - 2\\binom{a+b-1}{a}\\]
 Expanding the binomial coefficients yields:
@@ -756,11 +756,11 @@ EXAMS_DATA.push({
       text: 'Let \\(ABC\\) be an acute triangle, and let \\(D, E, F\\) be the feet of the altitudes. Prove that the orthocenter of \\(ABC\\) is the incenter of \\(DEF\\).',
       type: 'essay',
       correctAnswer: 'Proof by cyclic quadrilaterals',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Identify cyclic quadrilaterals formed by the altitudes and vertices. 
 For example, since \\(\\angle AEH = \\angle AFH = 90^\\circ\\), \\(AEHF\\) is cyclic. Use this to relate angles in \\(\\triangle ABC\\) to angles in the orthic triangle \\(DEF\\). Show that the altitudes bisect the angles of \\(\\triangle DEF\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(H\\) be the orthocenter.
 Because \\(\\angle HDC = \\angle HEC = 90^\\circ\\), quadrilateral \\(CDHE\\) is cyclic.
 Thus, \\(\\angle HDE = \\angle HCE = 90^\\circ - A\\).
@@ -776,11 +776,11 @@ Thus, the intersection of the altitudes \\(H\\) is the incenter of the orthic tr
       text: 'Determine all pairs of integers \\((x, y)\\) satisfying the equation \\(y^2 = x^3 + 16\\).',
       type: 'essay',
       correctAnswer: '(0, 4), (0, -4)',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Rearrange the equation as a factorization: \\(y^2 - 16 = x^3 \\implies (y-4)(y+4) = x^3\\).
 Consider the greatest common divisor of \\(y-4\\) and \\(y+4\\). Analyze the prime factorization and cases for when the factors are coprime or share small factors.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\((y-4)(y+4) = x^3\\).
 Let \\(d = \\gcd(y-4, y+4)\\). Then \\(d\\) must divide \\((y+4) - (y-4) = 8\\).
 - If \\(d = 1\\), then both factors \\(y-4\\) and \\(y+4\\) must be perfect cubes of integers.
@@ -798,12 +798,12 @@ Thus, the only integer solutions are \\((0, \\pm 4)\\).`,
       text: 'A board of size \\(8 \\times 8\\) is tiled with dominoes of size \\(2 \\times 1\\). Show that for any tiling, there is at least one "fault line" (a horizontal or vertical line cutting the board without cutting any domino).',
       type: 'essay',
       correctAnswer: 'Proof by parity grid counting',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Assume the contrary: there are no fault lines on the board.
 There are 7 horizontal and 7 vertical grid lines. If none of them are fault lines, then each grid line must cut at least one domino.
 Use parity.
 
-### Part 2: Polished Formal Proof
+Proof
 Assume a tiling exists with no fault lines.
 Let the board be cut by 7 horizontal and 7 vertical internal lines.
 If a line cuts a domino, it must cut an even number of dominoes because the area on either side of the line is a multiple of 8, which is even.
@@ -824,11 +824,11 @@ Thus, there must be at least one fault line.`,
       text: 'Solve the system of equations in real numbers: \\(x_1 + 1/x_2 = 4\\), \\(x_2 + 1/x_3 = 1\\), \\(x_3 + 1/x_1 = 7/3\\).',
       type: 'essay',
       correctAnswer: 'x_1 = 3/2, x_2 = 2/5, x_3 = 5/3',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Express \\(x_1\\) in terms of \\(x_2\\) from the first equation. Express \\(x_2\\) in terms of \\(x_3\\) from the second equation.
 Substitute these expressions back into the third equation to yield a single rational equation in terms of \\(x_3\\). Convert it to a polynomial and solve for its roots.
 
-### Part 2: Polished Formal Proof
+Proof
 From the first equation:
 \\[x_1 = 4 - \\frac{1}{x_2}\\]
 From the second equation:
@@ -867,13 +867,13 @@ EXAMS_DATA.push({
       text: 'Find all functions \\(f: \\mathbb{R} \\to \\mathbb{R}\\) such that \\(f(x^2 + f(y)) = y + f(x)^2\\) for all \\(x, y \\in \\mathbb{R}\\).',
       type: 'essay',
       correctAnswer: 'f(x) = x',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 This is a classic IMO equation.
 First, prove that \\(f\\) is injective by setting \\(f(y_1) = f(y_2)\\) and showing \\(y_1 = y_2\\).
 Prove that \\(f\\) is surjective. Find the value \\(f(0)\\). Show that \\(f(x)^2 = f(-x)^2\\).
 Conclude the unique function is \\(f(x) = x\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(P(x,y)\\) be the assertion \\(f(x^2 + f(y)) = y + f(x)^2\\).
 - **Injectivity**: If \\(f(y_1) = f(y_2)\\), then \\(P(x, y_1) \\implies y_1 + f(x)^2 = f(x^2 + f(y_1)) = f(x^2 + f(y_2)) = y_2 + f(x)^2 \\implies y_1 = y_2\\). Thus \\(f\\) is injective.
 - **Surjectivity**: From the RHS, \\(y + f(x)^2\\) can take any real value as \\(y\\) varies, so \\(f\\) is surjective.
@@ -889,12 +889,12 @@ Let \\(P(x,y)\\) be the assertion \\(f(x^2 + f(y)) = y + f(x)^2\\).
       text: 'Let \\(ABC\\) be a triangle. Show that the angle bisector of \\(A\\), the perpendicular bisector of \\(BC\\), and the circumcircle of \\(ABC\\) concur.',
       type: 'essay',
       correctAnswer: 'Concurrence at the midpoint of arc BC',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Let \\(M\\) be the midpoint of the arc \\(BC\\) of the circumcircle not containing \\(A\\).
 Show that \\(M\\) lies on the angle bisector of \\(A\\) because the inscribed angles subtending equal arcs must be equal.
 Show that \\(M\\) lies on the perpendicular bisector of \\(BC\\) because any point equidistant from two points on a circle lies on the perpendicular bisector of the chord connecting them.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(M\\) be the midpoint of arc \\(BC\\) not containing \\(A\\).
 1. Since \\(M\\) is the midpoint of the arc \\(BC\\), the arc \\(BM\\) is equal to arc \\(MC\\).
 2. The inscribed angles subtending these arcs are \\(\\angle BAM\\) and \\(\\angle CAM\\).
@@ -912,14 +912,14 @@ Since \\(M\\) lies on the circumcircle, the angle bisector of \\(A\\), and the p
       text: 'Prove that \\(n^2 + 3n + 5\\) is never divisible by 121 for any integer \\(n\\).',
       type: 'essay',
       correctAnswer: 'Proof by contradiction modulo 11',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Assume for contradiction that \\(n^2 + 3n + 5\\) is divisible by 121 (which is \\(11^2\\)).
 This implies the expression is divisible by 11.
 Analyze the quadratic expression modulo 11 by completing the square:
 \\[4(n^2+3n+5) = (2n+3)^2 + 11\\].
 Find what this implies for \\((2n+3)^2\\) modulo 11, and then show that divisibility by 121 is impossible.
 
-### Part 2: Polished Formal Proof
+Proof
 Assume there exists an integer \\(n\\) such that:
 \\[n^2 + 3n + 5 \\equiv 0 \\pmod{121}\\]
 This implies:
@@ -946,13 +946,13 @@ Thus, \\(n^2 + 3n + 5\\) is never divisible by 121.`,
       text: 'In a group of 6 people, prove that there are either 3 mutual acquaintances or 3 mutual strangers.',
       type: 'essay',
       correctAnswer: 'Proof by Pigeonhole Principle (Ramsey Theory)',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 This is a classic problem in Ramsey Theory (proving \\(R(3,3) = 6\\)).
 Select one person, say \\(A\\). \\(A\\) has 5 relations with the other 5 people (each is either an acquaintance or a stranger).
 By the Pigeonhole Principle, at least 3 of these relations must be of the same type.
 Analyze the two cases (3 acquaintances or 3 strangers) to show that a triangle of the same type is formed.
 
-### Part 2: Polished Formal Proof
+Proof
 Let the 6 people be represented as vertices of a complete graph \\(K_6\\). Color the edges red (acquaintances) or blue (strangers). We want to show there exists a monochromatic triangle.
 Select a vertex \\(v\\). It is incident to 5 edges.
 By the Pigeonhole Principle, among these 5 edges, at least 3 must have the same color.
@@ -987,12 +987,12 @@ EXAMS_DATA.push({
       text: 'Find all functions \\(f: \\mathbb{R} \\to \\mathbb{R}\\) satisfying:\n\\[f(1 + xy) - f(x + y) = f(x)\\,f(y)\\]\nfor all \\(x, y \\in \\mathbb{R}\\), subject to the condition \\(f(-1) \\neq 0\\).',
       type: 'essay',
       correctAnswer: 'f(x) = x - 1',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 We want to test simple values first to check the behavior of the function. Substituting \\(x=1\\) eliminates one of the terms and lets us deduce \\(f(1) = 0\\). Using \\(x=0\\) then gives \\(f(0) = -1\\).
 By setting \\(x=-1\\), we can relate \\(f(-n)\\) and \\(f(n)\\) to build an induction on integers.
 Try to guess the function form: \\(f(x) = x-1\\) matches the values.
 
-### Part 2: Polished Formal Proof
+Proof
 1. **Find f(1)**: Substitute \\(x = 1\\) to get \\(f(1+y) - f(1+y) = f(1)f(y) \\implies 0 = f(1)f(y)\\). Since \\(f(-1) \\ne 0\\), \\(f\\) is not identically zero, hence \\(f(1) = 0\\).
 2. **Find f(0)**: Substitute \\(x = 0 \\implies f(1) - f(y) = f(0)f(y) \\implies -f(y) = f(0)f(y)\\). Since \\(f\\) is not identically zero, \\(f(0) = -1\\).
 3. **Determine f(-1)**: Let \\(f(-1) = d \\ne 0\\). Setting \\(x = -1, y = n\\) yields the recurrence relation \\(f(-n) - f(n) = d \\cdot f(n+1)\\). Evaluating on integers pins \\(f(n) = n-1\\).
@@ -1005,13 +1005,13 @@ Try to guess the function form: \\(f(x) = x-1\\) matches the values.
       text: 'Let \\(ABC\\) be an isosceles triangle with \\(BC = CA\\), and let \\(D\\) be a point inside side \\(AB\\) such that \\(AD < DB\\). Let \\(P\\) and \\(Q\\) be two points inside sides \\(BC\\) and \\(CA\\), respectively, such that \\(D\\widehat{P}B = D\\widehat{Q}A = 90^\\circ\\). Let the perpendicular bisector of \\(PQ\\) meet line segment \\(CQ\\) at \\(E\\), and let the circumcircles of triangles \\(ABC\\) and \\(CPQ\\) meet again at point \\(F\\), different from \\(C\\).\n\nSuppose that \\(P, E, F\\) are collinear. Prove that \\(A\\widehat{C}B = 90^\\circ\\).',
       type: 'essay',
       correctAnswer: 'Proof by cyclic quadrilaterals and symmetry',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Identify cyclic quadrilaterals formed by the right angles. Notice that \\(C, P, D, Q\\) lie on a circle with diameter \\(CD\\).
 Let \\(M\\) be the midpoint of \\(AB\\). Find the relation between \\(M\\) and this circle.
 Show that \\(M\\) lies on the perpendicular bisector of \\(PQ\\) using the symmetry of the isosceles triangle.
 Then use the collinearity of \\(P, E, F\\) to show that \\(C\\) and \\(F\\) are symmetric about \\(\\ell\\), which means \\(\\ell\\) passes through the circumcenter \\(O\\).
 
-### Part 2: Polished Formal Proof
+Proof
 1. **Identify Cyclic Quadrilateral**: Since \\(DP \\perp BC\\) and \\(DQ \\perp AC\\), the quadrilateral \\(CPDQ\\) has opposite right angles and is cyclic, lying on a circle \\(\\omega\\) with diameter \\(CD\\).
 2. **Identify Altitudes**: Since \\(ABC\\) is isosceles with \\(AC = BC\\), the altitude/median \\(CM\\) from \\(C\\) to \\(AB\\) satisfies \\(CM \\perp AB\\). Therefore, \\(M\\) (midpoint of \\(AB\\)) lies on \\(\\omega\\).
 3. **Apply Symmetry**: The angle bisector of \\(\\angle ACB\\) is \\(CM\\). In \\(\\omega\\), the inscribed angles \\(\\angle MCP\\) and \\(\\angle MCQ\\) are equal, which implies \\(MP = MQ\\). Thus, \\(M\\) lies on \\(\\ell\\), the perpendicular bisector of \\(PQ\\).
@@ -1026,13 +1026,13 @@ Then use the collinearity of \\(P, E, F\\) to show that \\(C\\) and \\(F\\) are 
       text: 'Let \\(ABCD\\) be a parallelogram such that \\(AC = BC\\). A point \\(P\\) is chosen on the extension of the segment \\(AB\\) beyond \\(B\\). The circumcircle of the triangle \\(ACD\\) meets the segment \\(PD\\) again at \\(Q\\), and the circumcircle of the triangle \\(APQ\\) meets the segment \\(PC\\) again at \\(R\\).\n\nProve that the lines \\(CD\\), \\(AQ\\), and \\(BR\\) are concurrent.',
       type: 'essay',
       correctAnswer: 'Proof by cyclic quadrilaterals and alternate interior angles',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Start by noting that in a parallelogram with \\(AC = BC\\), we also have \\(AD = AC\\).
 Use the cyclic quadrilateral \\(ACDQ\\) to relate \\(\\angle DQA\\) to \\(\\angle DCA\\).
 Use cyclic quadrilateral \\(APQR\\) to relate \\(\\angle AQP\\) to \\(\\angle ARP\\). This will prove that \\(A, B, C, R\\) are concyclic.
 Define the intersection point \\(X = AQ \\cap CD\\). Establish that \\(C, Q, R, X\\) are concyclic, and then perform angle chasing to show that \\(B, R, X\\) are collinear, completing the proof.
 
-### Part 2: Polished Formal Proof
+Proof
 1. **Apply Congruence**: Since \\(ABCD\\) is a parallelogram and \\(AC = BC\\), we have \\(AD = BC = AC\\). Thus, \\(\\triangle ACD\\) is isosceles and its circumcircle passes through \\(A, C, D, Q\\).
 2. **Concyclicity of A, B, C, R**: 
    - Cyclic quad \\(ACDQ \\implies \\angle DQA = \\angle DCA\\).
@@ -1064,12 +1064,12 @@ EXAMS_DATA.push({
       text: 'Let \\(n\\) be a positive integer. A deck of \\(2n\\) cards contains two copies of cards numbered \\(1, 2, \\dots, n\\). The deck is shuffled. Prove that there exists a card value \\(c\\) such that the distance between the two copies of \\(c\\) is at least \\(n\\).',
       type: 'essay',
       correctAnswer: 'Proof by Pigeonhole Principle',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Assume the contrary: the distance between any two matching cards is strictly less than \\(n\\).
 This means for all card values \\(c\\), if their positions are \\(p_c\\) and \\(q_c\\) with \\(p_c < q_c\\), then \\(q_c - p_c \\le n - 1\\).
 Sum these differences over all \\(n\\) card values and apply the Pigeonhole Principle or double counting to show a contradiction.
 
-### Part 2: Polished Formal Proof
+Proof
 Let the positions of the cards be indexed from 1 to \\(2n\\).
 For each card value \\(i \\in \\{1, \\dots, n\\}\\), let \\(x_i\\) and \\(y_i\\) be the indices of the two copies, where \\(x_i < y_i\\).
 Assume for contradiction that \\(y_i - x_i \\le n-1\\) for all \\(i\\).
@@ -1091,11 +1091,11 @@ Hence, there must exist a card value \\(c\\) with distance at least \\(n\\).`,
       text: 'Let \\(ABC\\) be a triangle with circumcircle \\(\\Gamma\\). Let \\(I\\) be the incenter, and let \\(M\\) be the midpoint of arc \\(BC\\) not containing \\(A\\). Prove that \\(MB = MI = MC\\).',
       type: 'essay',
       correctAnswer: 'Proof by angle chasing (Incenter-Excenter Lemma)',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 This is the Incenter-Excenter Lemma. Since \\(M\\) is the midpoint of the arc \\(BC\\) of \\(\\Gamma\\), the chords \\(MB\\) and \\(MC\\) subtend equal arcs, so \\(MB = MC\\).
 To prove \\(MB = MI\\), analyze the angles of \\(\\triangle MBI\\). Show that this triangle is isosceles by proving \\(\\angle MBI = \\angle MIB\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Since \\(M\\) is the midpoint of the arc \\(BC\\) of \\(\\Gamma\\), the chords \\(MB\\) and \\(MC\\) subtend equal arcs, so \\(MB = MC\\).
 Now let's compute \\(\\angle MBI\\):
 \\[\\angle MBI = \\angle MBC + \\angle CBI\\]
@@ -1118,14 +1118,14 @@ Therefore, \\(MB = MI = MC\\).`,
       text: 'Show that for any positive integer \\(n\\), the number \\(2^{2^n} - 1\\) has at least \\(n\\) distinct prime factors.',
       type: 'essay',
       correctAnswer: 'Proof by induction using Fermat numbers',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Notice the algebraic factorization:
 \\[2^{2^n} - 1 = (2^{2^{n-1}} + 1)(2^{2^{n-2}} + 1)\\dots(2+1)(2-1)\\]
 Let \\(F_k = 2^{2^k} + 1\\) be the \\(k\\)-th Fermat number.
 Show that any two Fermat numbers \\(F_i\\) and \\(F_j\\) are pairwise coprime.
 This guarantees that each factor in the product contributes at least one unique prime factor.
 
-### Part 2: Polished Formal Proof
+Proof
 The number \\(2^{2^n} - 1\\) factorizes as:
 \\[2^{2^n} - 1 = \\prod_{k=0}^{n-1} (2^{2^k} + 1) = \\prod_{k=0}^{n-1} F_k\\]
 Let \\(F_i\\) and \\(F_j\\) be two Fermat numbers with \\(0 \\le i < j \\le n-1\\).
@@ -1158,11 +1158,11 @@ EXAMS_DATA.push({
       text: 'Find all functions \\(f: \\mathbb{R} \\to \\mathbb{R}\\) such that \\(f(xf(x) + f(y)) = f(x)^2 + y\\) for all \\(x, y \\in \\mathbb{R}\\).',
       type: 'essay',
       correctAnswer: 'f(x) = x, f(x) = -x',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Establish injectivity and surjectivity of \\(f\\). Find \\(f(0)\\).
 Determine the value of \\(f(f(y))\\) and perform algebraic transformations to show \\(f(x) = \\pm x\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Let the assertion be \\(P(x,y)\\).
 - **Injectivity**: If \\(f(y_1) = f(y_2)\\), then \\(P(x, y_1) \\implies f(x)^2 + y_1 = f(x)^2 + y_2 \\implies y_1 = y_2\\).
 - **Surjectivity**: Follows directly from the term \\(f(x)^2 + y\\) on the RHS.
@@ -1179,12 +1179,12 @@ Let the assertion be \\(P(x,y)\\).
       text: 'Let \\(ABC\\) be a triangle, and let \\(P\\) be a point. Let \\(D, E, F\\) be the projections of \\(P\\) onto sides \\(BC, CA, AB\\) respectively. Prove that \\(D, E, F\\) are collinear if and only if \\(P\\) lies on the circumcircle of \\(ABC\\). (This line is the Simson Line).',
       type: 'essay',
       correctAnswer: 'Proof by cyclic quadrilaterals angle chasing',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Identify cyclic quadrilaterals formed by the projections. Since \\(/_PEC = /_PDC = 90^\\circ\\), \\(PECD\\) is cyclic.
 Similarly, \\(PFBD\\) and \\(PFAE\\) are cyclic.
 Use these circles to chase angles to show that \\(/_FDE + /_FDB = 180^\\circ\\) if and only if \\(P\\) lies on the circumcircle of \\(ABC\\).
 
-### Part 2: Polished Formal Proof
+Proof
 Assume \\(P\\) lies on the circumcircle.
 Since \\(PECD\\) is cyclic:
 \\[\\angle PDE = \\angle PCE = \\angle PCA\\]
@@ -1202,11 +1202,11 @@ The converse holds by reversing the logical implications.`,
       text: 'Show that for any prime \\(p > 3\\), the number \\(p^2 - 1\\) is divisible by 24.',
       type: 'essay',
       correctAnswer: 'Proof modulo 3 and modulo 8',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Since \\(24 = 3 \\times 8\\) and \\(\\gcd(3,8) = 1\\), it suffices to prove \\(p^2 - 1\\) is divisible by both 3 and 8.
 Since \\(p > 3\\) is prime, it is not divisible by 3 and is odd.
 
-### Part 2: Polished Formal Proof
+Proof
 1. **Divisibility by 3**:
    Since \\(p\\) is prime and \\(p > 3\\), \\(p \\not\\equiv 0 \\pmod{3}\\).
    Thus \\(p \\equiv \\pm 1 \\pmod{3} \\implies p^2 \\equiv 1 \\pmod{3} \\implies p^2 - 1 \\equiv 0 \\pmod{3}\\).
@@ -1237,11 +1237,11 @@ EXAMS_DATA.push({
       text: 'Prove that for any positive real numbers \\(a, b, c\\), the inequality \\((a+b)(b+c)(c+a) \\ge 8abc\\) holds.',
       type: 'essay',
       correctAnswer: 'Proof by AM-GM inequality multiplication',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Apply the AM-GM inequality to each factor: \\(a+b\\), \\(b+c\\), and \\(c+a\\).
 Multiply the three resulting inequalities together.
 
-### Part 2: Polished Formal Proof
+Proof
 By the AM-GM inequality:
 \\[a+b \\ge 2\\sqrt{ab}\\]
 \\[b+c \\ge 2\\sqrt{bc}\\]
@@ -1257,13 +1257,13 @@ Equality holds if and only if \\(a = b = c\\).`,
       text: 'Let \\(AD, BE, CF\\) be three cevians of triangle \\(ABC\\). Prove Ceva\'s Theorem: the lines \\(AD, BE, CF\\) concur at a single point if and only if \\(\\frac{AF}{FB} \\cdot \\frac{BD}{DC} \\cdot \\frac{CE}{EA} = 1\\).',
       type: 'essay',
       correctAnswer: 'Proof by area ratios',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Let the cevians concur at point \\(P\\).
 Use the ratio of areas of triangles sharing the same altitude to express the ratios of segment lengths.
 Specifically, \\(\\frac{BD}{DC} = \\frac{\\text{Area}(\\triangle ABD)}{\\text{Area}(\\triangle ACD)} = \\frac{\\text{Area}(\\triangle PBD)}{\\text{Area}(\\triangle PCD)} = \\frac{\\text{Area}(\\triangle ABP)}{\\text{Area}(\\triangle ACP)}\\).
 Do this for all three ratios and multiply them.
 
-### Part 2: Polished Formal Proof
+Proof
 Assume the cevians concur at \\(P\\).
 Using the area ratio lemma:
 \\[\\frac{BD}{DC} = \\frac{\\text{Area}(\\triangle ABP)}{\\text{Area}(\\triangle ACP)}\\]
@@ -1280,12 +1280,12 @@ The converse is proven by assuming two cevians meet at \\(P\\), constructing a t
       text: 'Show that in any group of \\(n\\) people (with \\(n \\ge 2\\)), there are at least two people who have the same number of friends within the group.',
       type: 'essay',
       correctAnswer: 'Proof by Pigeonhole Principle on degrees',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Represent the people as vertices in a graph. The number of friends a person has is their degree.
 The possible degrees in a graph of \\(n\\) vertices are \\(0, 1, \\dots, n-1\\).
 Notice that it is impossible to have both a person with 0 friends and a person with \\(n-1\\) friends in the same group. Use the Pigeonhole Principle.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(G\\) be a graph of \\(n\\) vertices.
 The degree of each vertex \\(v\\) belongs to the set \\(\\{0, 1, \\dots, n-1\\}\\).
 - Case 1: There is no vertex of degree 0.
@@ -1317,12 +1317,12 @@ EXAMS_DATA.push({
       text: 'Solve the equation \\(x^4 + y^4 + z^4 = 2(x^2y^2 + y^2z^2 + z^2x^2)\\) in positive integers.',
       type: 'essay',
       correctAnswer: 'Any positive integers where one is the sum of the other two',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Rearrange the equation into a factored form:
 \\[(x+y+z)(x+y-z)(x-y+z)(-x+y+z) = 0\\].
 Analyze what this implies for the side lengths of a degenerate triangle.
 
-### Part 2: Polished Formal Proof
+Proof
 We can rewrite the given equation as:
 \\[x^4 + y^4 + z^4 - 2x^2y^2 - 2y^2z^2 - 2z^2x^2 = 0\\]
 This is the expansion of Heron's formula for the area of a triangle:
@@ -1342,11 +1342,11 @@ Any positive integers satisfying this relation (e.g. \\(x=1, y=1, z=2\\)) are so
       text: 'Prove Ptolemy\'s Theorem: for a cyclic quadrilateral \\(ABCD\\), the product of the diagonals is equal to the sum of the products of the opposite sides: \\(AC \\cdot BD = AB \\cdot CD + BC \\cdot AD\\).',
       type: 'essay',
       correctAnswer: 'Proof by similar triangles construction',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Construct a point \\(K\\) on the diagonal \\(BD\\) such that \\(\\angle BAK = \\angle CAD\\).
 Use similar triangles \\(\\triangle ABK \\sim \\triangle ACD\\) and \\(\\triangle BCK \\sim \\triangle BDA\\) to write segment relations. Sum these relations to yield the result.
 
-### Part 2: Polished Formal Proof
+Proof
 Let \\(K\\) be on diagonal \\(BD\\) such that \\(\\angle BAK = \\angle CAD\\).
 Since \\(\\angle ABK = \\angle ACD\\) (subtending the same arc \\(AD\\)):
 \\[\\triangle ABK \\sim \\triangle ACD \\implies \\frac{BK}{AB} = \\frac{CD}{AC} \\implies BK \\cdot AC = AB \\cdot CD\\]
@@ -1364,10 +1364,10 @@ Since \\(BK + KD = BD\\):
       text: 'Prove Fermat\'s Little Theorem: for any prime \\(p\\) and integer \\(a\\), \\(a^p \\equiv a \\pmod{p}\\).',
       type: 'essay',
       correctAnswer: 'Proof by mathematical induction or modular arithmetic',
-      referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
+      referenceSolution: `Walkthrough
 Use mathematical induction on \\(a\\) for positive integers, utilizing the binomial expansion of \\((a+1)^p\\) and the fact that prime \\(p\\) divides the binomial coefficients \\(\\binom{p}{k}\\) for \\(0 < k < p\\).
 
-### Part 2: Polished Formal Proof
+Proof
 We prove the theorem for positive \\(a\\) by induction.
 - Base case: For \\(a=1\\), \\(1^p \\equiv 1 \\pmod{p}\\), which holds.
 - Inductive step: Assume \\(a^p \\equiv a \\pmod{p}\\). We evaluate \\((a+1)^p\\):

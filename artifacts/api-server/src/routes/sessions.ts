@@ -34,6 +34,8 @@ function formatSession(s: any, flagCount = 0) {
     score: s.score ?? null,
     maxScore: s.maxScore ?? null,
     flagCount,
+    reviewRequested: s.reviewRequested ?? false,
+    coachFeedback: s.coachFeedback ?? null,
     startedAt: s.startedAt?.toISOString() ?? null,
     submittedAt: s.submittedAt?.toISOString() ?? null,
     createdAt: s.createdAt.toISOString(),
@@ -209,6 +211,7 @@ router.get("/:sessionId/answers", requireAuth, async (req: any, res) => {
         isCorrect: answer ? Boolean(answer.isCorrect) : false,
         points: answer?.points ?? 0,
         maxPoints: q.points,
+        feedback: answer?.feedback ?? null,
         correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
         options: q.options ?? null,
       };
@@ -247,6 +250,7 @@ router.get("/:sessionId", requireAuth, async (req: any, res) => {
           isCorrect: stored ? Boolean(stored.isCorrect) : false,
           points: stored?.points ?? 0,
           maxPoints: q.points,
+          feedback: stored?.feedback ?? null,
           attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : (q.correctAnswer ?? null),
           referenceSolution: q.referenceSolution ?? null,
@@ -686,6 +690,58 @@ router.post("/join-public", requireAuth, async (req: any, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "joinPublicExam error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/request-review
+router.post("/:sessionId/request-review", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const [updated] = await db
+      .update(examSessionsTable)
+      .set({ reviewRequested: true })
+      .where(eq(examSessionsTable.id, sessionId))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+    
+    const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
+    res.json(formatSession(updated, flags.length));
+  } catch (err) {
+    req.log.error({ err }, "requestReview error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/coach-feedback
+router.post("/:sessionId/coach-feedback", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const { feedback } = req.body;
+    
+    // Check if user is instructor
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user || user.role !== "instructor") {
+      return res.status(403).json({ error: "Forbidden: Only instructors can submit feedback." });
+    }
+
+    const [updated] = await db
+      .update(examSessionsTable)
+      .set({ 
+        coachFeedback: feedback, 
+        reviewRequested: false,
+        isResultsReleased: true 
+      })
+      .where(eq(examSessionsTable.id, sessionId))
+      .returning();
+      
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+
+    const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
+    res.json(formatSession(updated, flags.length));
+  } catch (err) {
+    req.log.error({ err }, "coachFeedback error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

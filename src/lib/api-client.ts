@@ -107,6 +107,8 @@ export interface ExamSession {
   answers: Record<number, string> | null;
   score: number | null;
   maxScore: number | null;
+  reviewRequested?: boolean;
+  coachFeedback?: string | null;
   createdAt: string;
 }
 

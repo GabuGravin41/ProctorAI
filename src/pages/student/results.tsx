@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetSession, getGetSessionQueryKey } from "@/lib/api-client";
+import { useGetSession, getGetSessionQueryKey, customFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,15 +13,27 @@ import {
   MinusCircle,
   Clock,
   BookOpen,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import LatexRenderer from "@/components/latex-renderer";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 function ScoreBadge({ percentage }: { percentage: number }) {
   if (percentage >= 90) return <Badge className="bg-green-600 text-white">Excellent</Badge>;
   if (percentage >= 75) return <Badge className="bg-blue-600 text-white">Good</Badge>;
   if (percentage >= 60) return <Badge className="bg-yellow-500 text-white">Pass</Badge>;
   return <Badge className="bg-red-600 text-white">Needs Improvement</Badge>;
+}
+
+function useRequestSessionReview() {
+  return useMutation({
+    mutationFn: async (sessionId: number) => {
+      return await customFetch(`/sessions/${sessionId}/request-review`, { method: "POST" });
+    }
+  });
 }
 
 export default function StudentResults() {
@@ -51,6 +63,30 @@ export default function StudentResults() {
   }
 
   const { session, exam, answers } = sessionData;
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const requestReviewMutation = useRequestSessionReview();
+  const isRequestingReview = requestReviewMutation.isPending;
+
+  const handleRequestReview = async () => {
+    try {
+      await requestReviewMutation.mutateAsync(sessionId, {
+        onSuccess: () => {
+          toast({
+            title: "Review Request Submitted",
+            description: "Your session review request has been sent to the Chief Coach.",
+          });
+          queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
+        }
+      });
+    } catch (e: any) {
+      toast({
+        title: "Error requesting review",
+        description: e.message || "Something went wrong.",
+        variant: "destructive"
+      });
+    }
+  };
   const isResultsReleased = (session as any).isResultsReleased;
   const isSubmitted = session.status === "submitted";
   const percentage =
@@ -160,6 +196,59 @@ export default function StudentResults() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {session.coachFeedback && (
+              <Card className="border-indigo-200 bg-indigo-50/20 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-indigo-900 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-indigo-600 animate-pulse" /> Chief Coach's Overall Evaluation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-indigo-950 text-sm leading-relaxed whitespace-pre-wrap">
+                  <LatexRenderer text={session.coachFeedback} />
+                </CardContent>
+              </Card>
+            )}
+
+            {exam.isPublic && !session.coachFeedback && (
+              <>
+                {!session.reviewRequested ? (
+                  <Card className="border-indigo-100 bg-indigo-50/10">
+                    <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h3 className="font-bold text-indigo-900">Want feedback from the Chief Coach?</h3>
+                        <p className="text-xs text-indigo-800/80 mt-0.5">
+                          If you are confused about this practice set or want a manual evaluation of your proof, request a review from daltonomondi04@gmail.com.
+                        </p>
+                      </div>
+                      <Button onClick={handleRequestReview} disabled={isRequestingReview} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold self-start sm:self-auto shrink-0 shadow-sm">
+                        {isRequestingReview ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...
+                          </>
+                        ) : (
+                          "Request Coach Review"
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-indigo-100 bg-indigo-50/10">
+                    <CardContent className="py-6 flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-700">
+                        <Clock className="h-5 w-5 animate-spin" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-indigo-950 font-display">Review Request Submitted</h3>
+                        <p className="text-xs text-indigo-800/80 mt-0.5">
+                          The Chief Coach (daltonomondi04@gmail.com) has been notified. We will review your proof solutions shortly and post comments here.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
 
             <div className="space-y-4">
@@ -297,10 +386,15 @@ export default function StudentResults() {
                               </div>
                             )}
 
-                            {isResultsReleased && (
-                              <p className="text-xs text-blue-600">
-                                Open-ended questions receive full marks automatically.
-                              </p>
+                            {item.feedback && (
+                              <div className="rounded-md bg-slate-50 border p-3 mt-3 text-slate-800">
+                                <p className="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-1">
+                                  Feedback &amp; Critique
+                                </p>
+                                <div className="leading-relaxed text-sm whitespace-pre-wrap">
+                                  <LatexRenderer text={item.feedback} />
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}

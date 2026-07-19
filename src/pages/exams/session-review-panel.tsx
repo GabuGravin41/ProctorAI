@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   useListSessionFlags, 
   useReviewFlag, 
@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import LatexRenderer from "@/components/latex-renderer";
 import {
   X, Loader2, ShieldCheck, ShieldX, CheckCircle2,
-  AlertTriangle, BookOpen, Clock
+  AlertTriangle, BookOpen, Clock, Sparkles
 } from "lucide-react";
 import { customFetch } from "@/lib/api-client";
 
@@ -39,6 +39,18 @@ function useGradeSessionAnswer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ points, feedback })
+      });
+    }
+  });
+}
+
+function useSaveCoachFeedback() {
+  return useMutation({
+    mutationFn: async ({ sessionId, feedback }: { sessionId: number, feedback: string }) => {
+      return await customFetch(`/sessions/${sessionId}/coach-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedback })
       });
     }
   });
@@ -149,11 +161,35 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
   const reviewFlag = useReviewFlag();
   const releaseResults = useReleaseSessionResults();
   const gradeAnswer = useGradeSessionAnswer();
+  const saveCoachFeedback = useSaveCoachFeedback();
 
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [acting, setActing] = useState<number | null>(null);
   const [gradingPoints, setGradingPoints] = useState<Record<number, string>>({});
   const [gradingFeedback, setGradingFeedback] = useState<Record<number, string>>({});
+  const [coachFeedbackText, setCoachFeedbackText] = useState("");
+
+  useEffect(() => {
+    if (sessionData?.session?.coachFeedback) {
+      setCoachFeedbackText(sessionData.session.coachFeedback);
+    }
+  }, [sessionData?.session?.coachFeedback]);
+
+  const handleSaveCoachFeedback = () => {
+    saveCoachFeedback.mutate(
+      { sessionId, feedback: coachFeedbackText },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
+          queryClient.invalidateQueries({ queryKey: ["getExamResults", examId] });
+          toast({ title: "Coach feedback saved successfully" });
+        },
+        onError: () => {
+          toast({ title: "Failed to save coach feedback", variant: "destructive" });
+        }
+      }
+    );
+  };
 
   const handleReview = (flagId: number, reviewStatus: "confirmed" | "dismissed") => {
     setActing(flagId);
@@ -258,6 +294,18 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
           </button>
         </div>
       </div>
+
+      {session.reviewRequested && (
+        <div className="bg-indigo-600 text-white px-5 py-3 flex items-center justify-between gap-3 text-sm font-medium shrink-0 shadow-inner">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            <span>Student has requested coach review on this attempt.</span>
+          </div>
+          <Badge className="bg-white/20 text-white hover:bg-white/25 border-none text-[10px]">
+            Action Required
+          </Badge>
+        </div>
+      )}
 
       {/* Body Tabs */}
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -415,6 +463,42 @@ export default function SessionReviewPanel({ sessionId, examId, onClose }: { ses
                   )
                 })}
               </div>
+
+              {/* Overall Coach Feedback */}
+              <Card className="border-indigo-200 bg-indigo-50/10 shadow-sm mt-6">
+                <CardHeader className="pb-3 bg-indigo-50/20 border-b">
+                  <CardTitle className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-indigo-600" /> Overall Coach Evaluation Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-indigo-950">
+                      Chief Coach Comments &amp; Recommendations (Supports LaTeX / Markdown)
+                    </label>
+                    <Textarea
+                      placeholder="Write feedback summary, logic suggestions, or grading details here..."
+                      className="min-h-24 font-normal text-sm bg-white"
+                      value={coachFeedbackText}
+                      onChange={(e) => setCoachFeedbackText(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                    onClick={handleSaveCoachFeedback}
+                    disabled={saveCoachFeedback.isPending}
+                  >
+                    {saveCoachFeedback.isPending ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Saving...
+                      </>
+                    ) : (
+                      "Save Summary Feedback"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

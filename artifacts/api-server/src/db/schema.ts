@@ -30,6 +30,7 @@ export const examsTable = pgTable('exams', {
   examType: text('exam_type'), // 'mixed' | 'proof_only'
   accessCode: text('access_code').unique(),
   isPublic: boolean('is_public').notNull().default(false),
+  collaborators: jsonb('collaborators').$type<string[]>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -45,6 +46,7 @@ export const questionsTable = pgTable('questions', {
   points: integer('points').notNull().default(1),
   difficulty: text('difficulty'), // 'easy' | 'medium' | 'hard'
   order: integer('order').notNull().default(0),
+  rubric: jsonb('rubric'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -64,6 +66,8 @@ export const examSessionsTable = pgTable('exam_sessions', {
   score: integer('score'),
   maxScore: integer('max_score'),
   isResultsReleased: boolean('is_results_released').notNull().default(false),
+  reviewRequested: boolean('review_requested').notNull().default(false),
+  coachFeedback: text('coach_feedback'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -78,6 +82,7 @@ export const cheatingFlagsTable = pgTable('cheating_flags', {
   reviewStatus: text('review_status').notNull().default('pending'), // 'pending' | 'confirmed' | 'dismissed'
   reviewedAt: timestamp('reviewed_at'),
   reviewNote: text('review_note'),
+  screenshotUrl: text('screenshot_url'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -97,6 +102,10 @@ export const answersTable = pgTable('answers', {
   isCorrect: integer('is_correct').notNull().default(0), // 0 | 1
   points: integer('points').notNull().default(0),
   feedback: text('feedback'),
+  ocrText: text('ocr_text'),
+  aiScore: integer('ai_score'),
+  aiFeedback: text('ai_feedback'),
+  gradingRubricScores: jsonb('grading_rubric_scores'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 

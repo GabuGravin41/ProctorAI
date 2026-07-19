@@ -49151,6 +49151,7 @@ var examsTable = pgTable("exams", {
   // 'mixed' | 'proof_only'
   accessCode: text("access_code").unique(),
   isPublic: boolean("is_public").notNull().default(false),
+  collaborators: jsonb("collaborators").$type(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -49167,6 +49168,7 @@ var questionsTable = pgTable("questions", {
   difficulty: text("difficulty"),
   // 'easy' | 'medium' | 'hard'
   order: integer("order").notNull().default(0),
+  rubric: jsonb("rubric"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -49186,6 +49188,8 @@ var examSessionsTable = pgTable("exam_sessions", {
   score: integer("score"),
   maxScore: integer("max_score"),
   isResultsReleased: boolean("is_results_released").notNull().default(false),
+  reviewRequested: boolean("review_requested").notNull().default(false),
+  coachFeedback: text("coach_feedback"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -49201,6 +49205,7 @@ var cheatingFlagsTable = pgTable("cheating_flags", {
   // 'pending' | 'confirmed' | 'dismissed'
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
+  screenshotUrl: text("screenshot_url"),
   createdAt: timestamp("created_at").notNull().defaultNow()
 });
 var waitlistTable = pgTable("waitlist", {
@@ -49220,6 +49225,10 @@ var answersTable = pgTable("answers", {
   // 0 | 1
   points: integer("points").notNull().default(0),
   feedback: text("feedback"),
+  ocrText: text("ocr_text"),
+  aiScore: integer("ai_score"),
+  aiFeedback: text("ai_feedback"),
+  gradingRubricScores: jsonb("grading_rubric_scores"),
   createdAt: timestamp("created_at").notNull().defaultNow()
 });
 
@@ -49975,6 +49984,8 @@ function formatSession(s2, flagCount = 0) {
     score: s2.score ?? null,
     maxScore: s2.maxScore ?? null,
     flagCount,
+    reviewRequested: s2.reviewRequested ?? false,
+    coachFeedback: s2.coachFeedback ?? null,
     startedAt: s2.startedAt?.toISOString() ?? null,
     submittedAt: s2.submittedAt?.toISOString() ?? null,
     createdAt: s2.createdAt.toISOString()
@@ -50123,6 +50134,7 @@ router5.get("/:sessionId/answers", requireAuth5, async (req, res) => {
         isCorrect: answer ? Boolean(answer.isCorrect) : false,
         points: answer?.points ?? 0,
         maxPoints: q.points,
+        feedback: answer?.feedback ?? null,
         correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : q.correctAnswer ?? null,
         options: q.options ?? null
       };
@@ -50155,6 +50167,7 @@ router5.get("/:sessionId", requireAuth5, async (req, res) => {
           isCorrect: stored ? Boolean(stored.isCorrect) : false,
           points: stored?.points ?? 0,
           maxPoints: q.points,
+          feedback: stored?.feedback ?? null,
           attachments: stored?.attachments ?? [],
           correctAnswer: q.type === "short_answer" || q.type === "essay" ? null : q.correctAnswer ?? null,
           referenceSolution: q.referenceSolution ?? null,
@@ -50502,6 +50515,40 @@ router5.post("/join-public", requireAuth5, async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "joinPublicExam error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router5.post("/:sessionId/request-review", requireAuth5, async (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const [updated] = await db.update(examSessionsTable).set({ reviewRequested: true }).where(eq(examSessionsTable.id, sessionId)).returning();
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+    const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
+    res.json(formatSession(updated, flags.length));
+  } catch (err) {
+    req.log.error({ err }, "requestReview error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router5.post("/:sessionId/coach-feedback", requireAuth5, async (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const { feedback } = req.body;
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user || user.role !== "instructor") {
+      return res.status(403).json({ error: "Forbidden: Only instructors can submit feedback." });
+    }
+    const [updated] = await db.update(examSessionsTable).set({
+      coachFeedback: feedback,
+      reviewRequested: false,
+      isResultsReleased: true
+    }).where(eq(examSessionsTable.id, sessionId)).returning();
+    if (!updated) return res.status(404).json({ error: "Session not found" });
+    const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, sessionId));
+    res.json(formatSession(updated, flags.length));
+  } catch (err) {
+    req.log.error({ err }, "coachFeedback error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
