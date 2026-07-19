@@ -63,6 +63,7 @@ export const examSessionsTable = pgTable('exam_sessions', {
   answers: jsonb('answers').$type<Record<number, string>>(),
   score: integer('score'),
   maxScore: integer('max_score'),
+  isResultsReleased: boolean('is_results_released').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

@@ -73,6 +73,7 @@ export interface Exam {
   aiConfig: any;
   examType: string | null;
   accessCode: string | null;
+  isPublic?: boolean;
   questionCount?: number;
   sessionCount?: number;
   createdAt: string;

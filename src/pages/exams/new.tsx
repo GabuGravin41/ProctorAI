@@ -21,6 +21,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
   examType: z.enum(["mixed", "proof_only"]),
+  gradingMode: z.enum(["auto", "review_release", "manual"]),
   aiProvider: z.enum(["free", "custom_openrouter", "custom_gemini"]),
   aiModel: z.string(),
   customApiKey: z.string().optional(),
@@ -63,6 +64,7 @@ export default function NewExam() {
       description: "",
       durationMinutes: 60,
       examType: "mixed",
+      gradingMode: "auto",
       aiProvider: "free",
       aiModel: "deepseek/deepseek-chat",
       customApiKey: "",
@@ -102,6 +104,7 @@ export default function NewExam() {
       description: data.description || "",
       durationMinutes: data.durationMinutes,
       examType: data.examType,
+      gradingMode: data.gradingMode,
       aiConfig: {
         provider: data.aiProvider,
         model: data.aiModel,
@@ -252,6 +255,34 @@ export default function NewExam() {
                       </FormItem>
                     )}
                   />
+ 
+                <FormField
+                  control={form.control}
+                  name="gradingMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Grading & Results Release Mode</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="bg-slate-50/50 focus:bg-white">
+                            <SelectValue placeholder="Select grading mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto">Auto-Mark (AI grades, results released immediately)</SelectItem>
+                            <SelectItem value="review_release">AI-Assisted (AI grades, results held until coach reviews)</SelectItem>
+                            <SelectItem value="manual">Manual (AI disabled, coach grades all essays manually)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        {field.value === "auto" && "The AI will automatically grade objective and essay questions. Results are immediately visible to students."}
+                        {field.value === "review_release" && "The AI will grade the submissions, but results are kept hidden. You can review, adjust scores, and release them when ready."}
+                        {field.value === "manual" && "All essays/proofs are marked manually by you. AI grading is disabled for this exam."}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

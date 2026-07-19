@@ -122,6 +122,7 @@ export default function ExamBuilder() {
   const [editTargetId, setEditTargetId] = useState<number | null>(null);
   const [editQuestionForm, setEditQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
   const [proctoringEnabled, setProctoringEnabled] = useState(true);
+  const [gradingMode, setGradingMode] = useState<"auto" | "manual" | "review_release">("auto");
   
   // Enhanced AI generation state
   const [learningObjectives, setLearningObjectives] = useState("");
@@ -472,6 +473,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
     updateExam.mutate({
       examId,
       data: {
+        gradingMode,
         aiConfig: {
           provider: aiProvider,
           model: aiModel,
@@ -493,13 +495,16 @@ Generate ${aiCount} questions that follow these specifications exactly.
 
   // Initialize AI settings from exam when dialog opens
   useEffect(() => {
-    if (aiSettingsOpen && exam?.aiConfig) {
-      setAiProvider(exam.aiConfig.provider as any);
-      setAiModel(exam.aiConfig.model);
-      setCustomApiKey(exam.aiConfig.customApiKey || "");
-      setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
+    if (aiSettingsOpen && exam) {
+      if (exam.aiConfig) {
+        setAiProvider(exam.aiConfig.provider as any || "free");
+        setAiModel(exam.aiConfig.model || "google/gemma-2-9b-it:free");
+        setCustomApiKey(exam.aiConfig.customApiKey || "");
+        setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
+      }
+      setGradingMode(exam.gradingMode as any || "auto");
     }
-  }, [aiSettingsOpen, exam?.aiConfig]);
+  }, [aiSettingsOpen, exam]);
 
   useEffect(() => {
     if (!aiSettingsOpen || aiProvider !== "custom_openrouter") return;
@@ -1557,6 +1562,27 @@ Example: Chapter 3 covers photosynthesis...
                     Insist that students grant camera/microphone permissions to begin taking the exam. If disabled, students can write their exam without webcam surveillance.
                   </p>
                 </div>
+              </div>
+            </div>
+ 
+            {/* Grading Mode Settings Section */}
+            <div className="space-y-3 pt-4">
+              <h4 className="font-semibold text-sm text-slate-900">Grading & Results Release Mode</h4>
+              <div className="space-y-2">
+                <Label htmlFor="gradingMode">Evaluation Flow</Label>
+                <Select value={gradingMode} onValueChange={(v: any) => setGradingMode(v)}>
+                  <SelectTrigger id="gradingMode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-Mark (AI grades, results released immediately)</SelectItem>
+                    <SelectItem value="review_release">AI-Assisted (AI grades, results held until coach reviews)</SelectItem>
+                    <SelectItem value="manual">Manual (AI disabled, coach grades all essays manually)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {gradingMode === "auto" && "The AI will automatically grade objective and essay questions. Results are immediately visible to students."}
+                  {gradingMode === "review_release" && "The AI will grade the submissions, but results are kept hidden. You can review, adjust scores, and release them when ready."}
+                  {gradingMode === "manual" && "All essays/proofs are marked manually by you. AI grading is disabled for this exam."}
+                </p>
               </div>
             </div>
           </div>

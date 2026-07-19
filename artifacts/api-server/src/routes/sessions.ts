@@ -339,37 +339,37 @@ router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
         } else {
           // AI Grading for Olympiad essay proof questions
           let apiKey = process.env.OPENROUTER_API_KEY;
-        let model = "google/gemma-2-9b-it:free";
-        let provider = "free";
-        let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
+          let model = "google/gemini-2.0-flash-exp:free";
+          let provider = "free";
+          let apiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
 
-        if (aiConfig) {
-          provider = aiConfig.provider || "free";
-          if (provider === "custom_openrouter" && aiConfig.customApiKey) {
-            apiKey = aiConfig.customApiKey;
-            model = aiConfig.model || "google/gemma-2-9b-it:free";
-          } else if (provider === "custom_gemini" && aiConfig.customApiKey) {
-            apiKey = aiConfig.customApiKey;
-            model = aiConfig.model || "gemini-2.5-flash";
-            apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
-          } else if (provider === "hosted") {
-            apiKey = process.env.OPENROUTER_API_KEY;
-            model = aiConfig.model || "deepseek/deepseek-chat";
-          } else if (provider === "free") {
-            apiKey = process.env.OPENROUTER_API_KEY;
-            model = aiConfig.model || "google/gemma-2-9b-it:free";
+          if (aiConfig) {
+            provider = aiConfig.provider || "free";
+            if (provider === "custom_openrouter" && aiConfig.customApiKey) {
+              apiKey = aiConfig.customApiKey;
+              model = aiConfig.model || "google/gemini-2.0-flash-exp:free";
+            } else if (provider === "custom_gemini" && aiConfig.customApiKey) {
+              apiKey = aiConfig.customApiKey;
+              model = aiConfig.model || "gemini-2.5-flash";
+              apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+            } else if (provider === "hosted") {
+              apiKey = process.env.OPENROUTER_API_KEY;
+              model = aiConfig.model || "deepseek/deepseek-chat";
+            } else if (provider === "free") {
+              apiKey = process.env.OPENROUTER_API_KEY;
+              model = aiConfig.model || "google/gemini-2.0-flash-exp:free";
+            }
           }
-        }
 
-        if (apiKey && apiKey !== "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
-          try {
-            const prompt = `You are a Mathematical Olympiad examiner grading a student's proof.
+          if (apiKey && apiKey !== "REPLACE_WITH_YOUR_OPENROUTER_KEY") {
+            try {
+              const prompt = `You are a Mathematical Olympiad examiner grading a student's proof.
 Question: "${question.text}"
 Reference Solution / Grading Rubric: "${question.referenceSolution || "Verify logical rigor and mathematical correctness."}"
-Student's Written Proof: "${answerInput.answer || ""}"
+Student's Written Proof (if typed): "${answerInput.answer || ""}"
 Max Points: ${question.points}
 
-Please evaluate the student's proof. Check for logical gaps, mathematical errors, correctness of algebraic derivations, and overall rigor. 
+Please evaluate the student's proof (which may be typed above or uploaded as photos of handwritten sheets). Check for logical gaps, mathematical errors, correctness of algebraic derivations, and overall rigor. 
 Determine the score (out of ${question.points}) to award the student, and provide helpful critique/feedback.
 
 Return ONLY a valid JSON object matching the following structure:
@@ -380,54 +380,97 @@ Return ONLY a valid JSON object matching the following structure:
 }
 Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 80% score), or 0 if they failed or have significant errors.`;
 
-            let content = "";
-            if (provider === "custom_gemini") {
-              const aiResponse = await fetch(`${apiEndpoint}?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { responseMimeType: "application/json" }
-                }),
-              });
-              if (aiResponse.ok) {
-                const aiData = await aiResponse.json() as any;
-                content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-              }
-            } else {
-              const aiResponse = await fetch(apiEndpoint, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                  "HTTP-Referer": "https://proctorAI.app",
-                  "X-Title": "ProctorAI",
-                },
-                body: JSON.stringify({
-                  model: model,
-                  messages: [{ role: "user", content: prompt }],
-                  temperature: 0.2,
-                  max_tokens: 1500,
-                }),
-              });
+              let content = "";
+              if (provider === "custom_gemini") {
+                const parts: any[] = [{ text: prompt }];
+                if (answerInput.attachments && Array.isArray(answerInput.attachments)) {
+                  for (const attachment of answerInput.attachments) {
+                    if (typeof attachment === "string" && attachment.startsWith("data:image/")) {
+                      const match = attachment.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+                      if (match) {
+                        parts.push({
+                          inlineData: {
+                            mimeType: match[1],
+                            data: match[2],
+                          },
+                        });
+                      }
+                    }
+                  }
+                }
 
-              if (aiResponse.ok) {
-                const aiData = await aiResponse.json() as any;
-                content = aiData.choices?.[0]?.message?.content || "";
-              }
-            }
+                const aiResponse = await fetch(`${apiEndpoint}?key=${apiKey}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    contents: [{ parts }],
+                    generationConfig: { responseMimeType: "application/json" }
+                  }),
+                });
+                if (aiResponse.ok) {
+                  const aiData = await aiResponse.json() as any;
+                  content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                } else {
+                  const textErr = await aiResponse.text();
+                  req.log.warn({ textErr }, "Gemini API call failed");
+                }
+              } else {
+                // OpenRouter / OpenAI format
+                let messages: any[] = [];
+                if (answerInput.attachments && Array.isArray(answerInput.attachments) && answerInput.attachments.some(a => typeof a === "string" && a.startsWith("data:image/"))) {
+                  const contentArray: any[] = [{ type: "text", text: prompt }];
+                  for (const attachment of answerInput.attachments) {
+                    if (typeof attachment === "string" && attachment.startsWith("data:image/")) {
+                      contentArray.push({
+                        type: "image_url",
+                        image_url: {
+                          url: attachment,
+                        },
+                      });
+                    }
+                  }
+                  messages = [{ role: "user", content: contentArray }];
+                } else {
+                  messages = [{ role: "user", content: prompt }];
+                }
 
-            if (content) {
-              const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-              const parsed = JSON.parse(cleaned);
-              points = Math.min(Math.max(Number(parsed.points) || 0, 0), question.points);
-              isCorrect = Number(parsed.isCorrect) === 1 ? 1 : 0;
-              feedback = parsed.feedback || "Graded by AI.";
+                const aiResponse = await fetch(apiEndpoint, {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://proctorAI.app",
+                    "X-Title": "ProctorAI",
+                  },
+                  body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.2,
+                    max_tokens: 1500,
+                    response_format: { type: "json_object" }
+                  }),
+                });
+
+                if (aiResponse.ok) {
+                  const aiData = await aiResponse.json() as any;
+                  content = aiData.choices?.[0]?.message?.content || "";
+                } else {
+                  const textErr = await aiResponse.text();
+                  req.log.warn({ textErr }, "OpenRouter API call failed");
+                }
+              }
+
+              if (content) {
+                const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                const parsed = JSON.parse(cleaned);
+                points = Math.min(Math.max(Number(parsed.points) || 0, 0), question.points);
+                isCorrect = Number(parsed.isCorrect) === 1 ? 1 : 0;
+                feedback = parsed.feedback || "Graded by AI.";
+              }
+            } catch (aiErr: any) {
+              req.log.warn({ aiErr: aiErr.message }, "AI grading failed, using auto fallback grading");
             }
-          } catch (aiErr: any) {
-            req.log.warn({ aiErr: aiErr.message }, "AI grading failed, using auto fallback grading");
           }
-        }
 
           // Fallback or unconfigured API key
           if (!feedback) {
@@ -440,7 +483,7 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         // Auto-grade MCQs, True/False, and short answers
         const isAnswerCorrect =
           question.type === "short_answer"
-            ? true
+            ? (question.correctAnswer ? question.correctAnswer.trim().toLowerCase() === answerInput.answer?.trim().toLowerCase() : true)
             : question.correctAnswer?.toLowerCase() === answerInput.answer?.toLowerCase();
         
         points = isAnswerCorrect ? question.points : 0;
