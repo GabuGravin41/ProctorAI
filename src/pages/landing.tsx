@@ -191,6 +191,7 @@ export default function Landing() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
           <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
+          <Link href="/student" className="hover:text-slate-900 transition-colors">Practice Exams</Link>
           <a href="#waitlist" className="hover:text-slate-900 transition-colors">Waitlist</a>
         </nav>
         <div className="flex items-center gap-3">
@@ -241,12 +242,12 @@ export default function Landing() {
               >
                 Start for Free <ArrowRight className="h-5 w-5" />
               </Link>
-              <a
-                href="#waitlist"
-                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-lg px-8 py-4 rounded-xl border border-white/20 transition-all"
+              <Link
+                href="/student"
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-lg px-8 py-4 rounded-xl border border-white/20 transition-all hover:scale-105"
               >
-                Join the Waitlist
-              </a>
+                Practice Olympiad Exams
+              </Link>
             </div>
 
             {/* Stats row */}
@@ -346,27 +347,58 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Waitlist CTA Section */}
-        <section id="waitlist" className="py-24 px-6 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white relative overflow-hidden">
+        {/* Onboarding & Practice CTA Section */}
+        <section id="get-started" className="py-24 px-6 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-10 right-20 w-72 h-72 bg-indigo-600/20 rounded-full blur-3xl" />
             <div className="absolute bottom-10 left-20 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl" />
           </div>
-          <div className="relative max-w-2xl mx-auto text-center">
+          <div className="relative max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 rounded-full px-4 py-1.5 text-indigo-300 text-sm font-medium mb-8">
-              <Lock className="h-3.5 w-3.5" />
-              Limited early access
+              <Sparkles className="h-3.5 w-3.5" />
+              Get Started Today
             </div>
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">
-              Be First to Try ProctorAI
+              Step Into the Testing Portal
             </h2>
-            <p className="text-xl text-slate-300 mb-10">
-              Join the waitlist for early access, priority onboarding, and founding member pricing. We'll reach out personally.
+            <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">
+              Choose your role below to access proctored exams, mock rounds, and practice question sets.
             </p>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+
+            <div className="grid md:grid-cols-2 gap-8 mb-16 text-left">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm flex flex-col justify-between hover:border-indigo-500/50 transition-all">
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Educators & Coaches</h3>
+                  <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                    Set up examinations, configure AI-proctoring settings, manage secure student codes, and view real-time cheating logs.
+                  </p>
+                </div>
+                <Link href="/sign-up" className="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition-all">
+                  Create Coach Account
+                </Link>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm flex flex-col justify-between hover:border-indigo-500/50 transition-all">
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Students & Contestants</h3>
+                  <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                    Practice with mock selection tests, Bebras logic puzzles, and training papers for the KMO and KIO contests.
+                  </p>
+                </div>
+                <Link href="/student" className="inline-flex items-center justify-center bg-white text-slate-900 hover:bg-slate-100 font-semibold py-3 px-6 rounded-xl transition-all">
+                  Open Practice Portal
+                </Link>
+              </div>
+            </div>
+
+            {/* Waitlist fallback */}
+            <div id="waitlist" className="max-w-xl mx-auto bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+              <h3 className="text-xl font-bold mb-2">Request Early Beta Access</h3>
+              <p className="text-slate-300 text-sm mb-6">
+                Are you an institution looking for early deployment support or custom integrations? Join the list.
+              </p>
               <WaitlistForm />
               <p className="text-xs text-slate-400 mt-4">
-                No spam, ever. Your email is only used to give you access.
+                No spam, ever. Your email is only used to contact you about beta access.
               </p>
             </div>
           </div>
