@@ -1979,41 +1979,6 @@ int main() {
   });
 }
 
-// VII. INFORMATICS PRACTICE CONTESTS — CODEFORCES (3 PAPERS)
-for (let pNum = 1; pNum <= 3; pNum++) {
-  EXAMS_DATA.push({
-    title: `Informatics Practice Contests — Codeforces Tier, Paper ${pNum}`,
-    description: `A collection of curated Codeforces contests for preparation. Go to the links provided, solve the problems, and practice your programming logic.`,
-    subject: 'Informatics',
-    durationMinutes: 120,
-    status: 'published',
-    gradingMode: 'manual',
-    examType: 'proof_only',
-    isPublic: true,
-    questions: [
-      {
-        text: `### Codeforces Practice Set ${pNum}
-Prepare for Round 2 by solving the problems in these official Codeforces contests:
-1. **Codeforces Round 900 (Div. 3)**: [Contest Link](https://codeforces.com/contest/1878)
-2. **Codeforces Round 915 (Div. 2)**: [Contest Link](https://codeforces.com/contest/1905)
-3. **Educational Codeforces Round 160 (Div. 2)**: [Contest Link](https://codeforces.com/contest/1913)
-
-Write down your handles and summarize your solutions and performance below once completed!`,
-        type: 'essay',
-        correctAnswer: 'Codeforces Handle submission',
-        referenceSolution: `### Part 1: Walkthrough (Intuitive Guide & Ideas)
-Go to the links provided and solve the problems in order of difficulty. Document your code submissions and performance log.
-
-### Part 2: Polished Formal Proof
-Submit handle and logs to verify your participation and submissions.`,
-        points: 10,
-        difficulty: 'medium',
-        order: 1
-      }
-    ]
-  });
-}
-
 // ─── DB SEED RUNNER ──────────────────────────────────────────────────────────
 async function main() {
   const client = new Client({ connectionString: DATABASE_URL });
@@ -2064,7 +2029,7 @@ async function main() {
       console.log(`✅ Seeded: ${exam.title} (code: ${code}) with ${exam.questions.length} questions.`);
     }
 
-    console.log('\n🎉 Successfully seeded all 23 practice papers with structured solutions!');
+    console.log('\n🎉 Successfully seeded all 20 practice papers with structured solutions!');
   } finally {
     await client.end();
   }
