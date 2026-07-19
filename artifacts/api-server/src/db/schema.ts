@@ -29,6 +29,7 @@ export const examsTable = pgTable('exams', {
   }>(),
   examType: text('exam_type'), // 'mixed' | 'proof_only'
   accessCode: text('access_code').unique(),
+  isPublic: boolean('is_public').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

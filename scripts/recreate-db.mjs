@@ -39,6 +39,7 @@ CREATE TABLE exams (
   ai_config            JSONB,
   exam_type            TEXT,
   access_code          TEXT    UNIQUE,
+  is_public            BOOLEAN NOT NULL DEFAULT false,
   created_at           TIMESTAMP NOT NULL DEFAULT now(),
   updated_at           TIMESTAMP NOT NULL DEFAULT now()
 );

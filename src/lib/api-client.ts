@@ -575,3 +575,49 @@ export function useGetExamResults(examId?: string | number, opts?: { query?: Omi
     ...opts?.query,
   });
 }
+
+export function useListPublicExams(opts?: { query?: Omit<UseQueryOptions<Exam[], Error, Exam[], any>, 'queryFn'> }) {
+  const { getToken } = useAuth();
+  return useQuery<Exam[]>({
+    queryKey: ['public-exams'],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/exams/public`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /exams/public failed: ${res.status}`);
+      return res.json();
+    },
+    ...opts?.query,
+  });
+}
+
+export function useJoinPublicExam() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<
+    { session: ExamSession; exam: Exam },
+    Error,
+    { examId: number }
+  >({
+    mutationFn: async ({ examId }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/sessions/join-public`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ examId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to join public exam');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+    },
+  });
+}

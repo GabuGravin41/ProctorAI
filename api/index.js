@@ -49150,6 +49150,7 @@ var examsTable = pgTable("exams", {
   examType: text("exam_type"),
   // 'mixed' | 'proof_only'
   accessCode: text("access_code").unique(),
+  isPublic: boolean("is_public").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -49345,6 +49346,7 @@ function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0) {
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
     accessCode: exam.accessCode ?? null,
+    isPublic: exam.isPublic ?? false,
     questionCount,
     sessionCount,
     flagCount,
@@ -49394,6 +49396,22 @@ router3.post("/", requireAuth3, async (req, res) => {
     res.status(201).json(formatExam(exam));
   } catch (err) {
     req.log.error({ err }, "createExam error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router3.get("/public", requireAuth3, async (req, res) => {
+  try {
+    const exams = await db.select().from(examsTable).where(and(eq(examsTable.isPublic, true), eq(examsTable.status, "published")));
+    const result = await Promise.all(
+      exams.map(async (exam) => {
+        const [qCount] = await db.select({ count: count() }).from(questionsTable).where(eq(questionsTable.examId, exam.id));
+        const [sCount] = await db.select({ count: count() }).from(examSessionsTable).where(eq(examSessionsTable.examId, exam.id));
+        return formatExam(exam, qCount.count, sCount.count, 0);
+      })
+    );
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "listPublicExams error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -50395,6 +50413,54 @@ router5.post("/:sessionId/questions/:questionId/grade", requireAuth5, async (req
     res.json({ answer, session: updatedSession });
   } catch (err) {
     req.log.error({ err }, "grade error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router5.post("/join-public", requireAuth5, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const { examId } = req.body;
+    const [exam] = await db.select().from(examsTable).where(and(eq(examsTable.id, parseInt(examId)), eq(examsTable.isPublic, true), eq(examsTable.status, "published")));
+    if (!exam) return res.status(404).json({ error: "Public exam not found" });
+    let [session] = await db.select().from(examSessionsTable).where(and(eq(examSessionsTable.examId, exam.id), eq(examSessionsTable.studentClerkId, clerkId)));
+    if (!session) {
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      [session] = await db.insert(examSessionsTable).values({
+        examId: exam.id,
+        studentClerkId: clerkId,
+        studentEmail: student?.email || "",
+        studentName: student?.name || "Student",
+        accessCode: exam.accessCode || "PUBLIC",
+        status: "pending"
+      }).returning();
+    }
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, exam.id)).orderBy(questionsTable.order);
+    res.json({
+      session: formatSession(session),
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        description: exam.description ?? null,
+        status: exam.status,
+        durationMinutes: exam.durationMinutes,
+        subject: exam.subject ?? null,
+        instructorClerkId: exam.instructorClerkId,
+        createdAt: exam.createdAt.toISOString(),
+        updatedAt: exam.updatedAt.toISOString(),
+        questions: questions.map((q) => ({
+          id: q.id,
+          examId: q.examId,
+          type: q.type,
+          text: q.text,
+          options: q.options ?? null,
+          correctAnswer: null,
+          points: q.points,
+          order: q.order
+        }))
+      }
+    });
+  } catch (err) {
+    req.log.error({ err }, "joinPublicExam error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

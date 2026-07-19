@@ -578,4 +578,73 @@ router.post("/:sessionId/questions/:questionId/grade", requireAuth, async (req: 
   }
 });
 
+// POST /api/sessions/join-public
+router.post("/join-public", requireAuth, async (req: any, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const { examId } = req.body;
+    const [exam] = await db
+      .select()
+      .from(examsTable)
+      .where(and(eq(examsTable.id, parseInt(examId)), eq(examsTable.isPublic, true), eq(examsTable.status, "published")));
+
+    if (!exam) return res.status(404).json({ error: "Public exam not found" });
+
+    // Check if student already has a session
+    let [session] = await db
+      .select()
+      .from(examSessionsTable)
+      .where(and(eq(examSessionsTable.examId, exam.id), eq(examSessionsTable.studentClerkId, clerkId)));
+
+    if (!session) {
+      const [student] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+      [session] = await db
+        .insert(examSessionsTable)
+        .values({
+          examId: exam.id,
+          studentClerkId: clerkId,
+          studentEmail: student?.email || "",
+          studentName: student?.name || "Student",
+          accessCode: exam.accessCode || "PUBLIC",
+          status: "pending",
+        })
+        .returning();
+    }
+
+    const questions = await db
+      .select()
+      .from(questionsTable)
+      .where(eq(questionsTable.examId, exam.id))
+      .orderBy(questionsTable.order);
+
+    res.json({
+      session: formatSession(session),
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        description: exam.description ?? null,
+        status: exam.status,
+        durationMinutes: exam.durationMinutes,
+        subject: exam.subject ?? null,
+        instructorClerkId: exam.instructorClerkId,
+        createdAt: exam.createdAt.toISOString(),
+        updatedAt: exam.updatedAt.toISOString(),
+        questions: questions.map((q) => ({
+          id: q.id,
+          examId: q.examId,
+          type: q.type,
+          text: q.text,
+          options: q.options ?? null,
+          correctAnswer: null,
+          points: q.points,
+          order: q.order,
+        })),
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "joinPublicExam error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

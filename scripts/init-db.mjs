@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS exams (
   grading_mode         TEXT    NOT NULL,
   ai_config            JSONB,
   exam_type            TEXT,
+  access_code          TEXT    UNIQUE,
+  is_public            BOOLEAN NOT NULL DEFAULT false,
   created_at           TIMESTAMP NOT NULL DEFAULT now(),
   updated_at           TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -115,6 +117,9 @@ CREATE TABLE IF NOT EXISTS waitlist (
   role       TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- Ensure is_public is added if the table already exists
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false;
 `;
 
 async function main() {

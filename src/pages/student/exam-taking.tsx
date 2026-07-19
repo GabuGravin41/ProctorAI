@@ -357,6 +357,91 @@ export default function ExamTaking() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [hasStarted, sessionId, reportFlag, startedAtTime]);
 
+  // ── Focus Loss detection ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    const handleBlur = () => {
+      if (isUploadWindowRef.current) return;
+      const elapsed = startedAtTime ? (Date.now() - startedAtTime) / 1000 : 0;
+      if (elapsed < 20) return;
+
+      triggerFlag("focus_loss" as FlagInputType, "Student clicked outside of the exam window (focus lost)");
+      toast({
+        title: "⚠ Focus Lost",
+        description: "Leaving the active exam area has been flagged.",
+        variant: "destructive"
+      });
+    };
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
+  }, [hasStarted, sessionId, reportFlag, toast, startedAtTime]);
+
+  // ── Copy/Paste Block & Logging ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    const handleCopy = (e: ClipboardEvent) => {
+      if (isUploadWindowRef.current) return;
+      e.preventDefault();
+      triggerFlag("copy_paste" as FlagInputType, "Student attempted to copy exam text");
+      toast({
+        title: "⚠ Copy Blocked",
+        description: "Copying text during the exam is restricted and has been flagged.",
+        variant: "destructive"
+      });
+    };
+    const handlePaste = (e: ClipboardEvent) => {
+      if (isUploadWindowRef.current) return;
+      // Allow paste in scratchpad image inputs, but block on main exam body
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" && target.getAttribute("type") === "file") return;
+      
+      e.preventDefault();
+      triggerFlag("copy_paste" as FlagInputType, "Student attempted to paste text into the exam");
+      toast({
+        title: "⚠ Paste Blocked",
+        description: "Pasting content into the exam is restricted and has been flagged.",
+        variant: "destructive"
+      });
+    };
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [hasStarted, sessionId, reportFlag, toast]);
+
+  // ── Screenshot / Print blocking ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isUploadWindowRef.current) return;
+      
+      // PrintScreen key
+      if (e.key === "PrintScreen") {
+        triggerFlag("screenshot" as FlagInputType, "PrintScreen key press detected");
+        toast({
+          title: "⚠ Screenshot Attempted",
+          description: "PrintScreen key press has been flagged.",
+          variant: "destructive"
+        });
+      }
+      
+      // Ctrl+P / Cmd+P print shortcut
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        triggerFlag("screenshot" as FlagInputType, "Student tried to print the exam (Ctrl+P)");
+        toast({
+          title: "⚠ Print Blocked",
+          description: "Printing the exam page is disabled and has been flagged.",
+          variant: "destructive"
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasStarted, sessionId, reportFlag, toast]);
+
   // ── Upload Window countdown ──────────────────────────────────────────────────
   useEffect(() => {
     if (!isUploadWindow) return;

@@ -25,6 +25,7 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     subject: exam.subject ?? null,
     instructorClerkId: exam.instructorClerkId,
     accessCode: exam.accessCode ?? null,
+    isPublic: exam.isPublic ?? false,
     questionCount,
     sessionCount,
     flagCount,
@@ -82,6 +83,28 @@ router.post("/", requireAuth, async (req: any, res) => {
     res.status(201).json(formatExam(exam));
   } catch (err) {
     req.log.error({ err }, "createExam error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/exams/public
+router.get("/public", requireAuth, async (req: any, res) => {
+  try {
+    const exams = await db
+      .select()
+      .from(examsTable)
+      .where(and(eq(examsTable.isPublic, true), eq(examsTable.status, "published")));
+
+    const result = await Promise.all(
+      exams.map(async (exam) => {
+        const [qCount] = await db.select({ count: count() }).from(questionsTable).where(eq(questionsTable.examId, exam.id));
+        const [sCount] = await db.select({ count: count() }).from(examSessionsTable).where(eq(examSessionsTable.examId, exam.id));
+        return formatExam(exam, qCount.count, sCount.count, 0);
+      })
+    );
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "listPublicExams error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
