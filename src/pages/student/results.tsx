@@ -40,9 +40,14 @@ export default function StudentResults() {
   const params = useParams();
   const sessionId = Number(params.sessionId);
 
+  // ── All hooks must be at the top, before any early returns ──────────────────
   const { data: sessionData, isLoading } = useGetSession(sessionId, {
     query: { queryKey: getGetSessionQueryKey(sessionId), enabled: !!sessionId },
   });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const requestReviewMutation = useRequestSessionReview();
+  const isRequestingReview = requestReviewMutation.isPending;
 
   if (isLoading) {
     return (
@@ -63,10 +68,6 @@ export default function StudentResults() {
   }
 
   const { session, exam, answers } = sessionData;
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const requestReviewMutation = useRequestSessionReview();
-  const isRequestingReview = requestReviewMutation.isPending;
 
   const handleRequestReview = async () => {
     try {
