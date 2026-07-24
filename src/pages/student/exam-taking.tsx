@@ -237,7 +237,6 @@ export default function ExamTaking() {
       .then(s => {
         acquired = s;
         setStream(s);
-        if (videoRef.current) videoRef.current.srcObject = s;
       })
       .catch(() => {
         if (exam?.isPublic) {
@@ -251,7 +250,15 @@ export default function ExamTaking() {
       });
 
     return () => { acquired?.getTracks().forEach(t => t.stop()); };
-  }, [hasStarted, exam?.isPublic]);
+  }, [hasStarted, exam?.isPublic, isProctoringEnabled]);
+
+  // Ensure stream is bound to video element whenever stream or video element renders
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stream, hasStarted]);
 
   // ── Timer initialisation ────────────────────────────────────────────────────
   // Run once when hasStarted becomes true AND session data is available.
