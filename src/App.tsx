@@ -15,6 +15,8 @@ import NewExam from "@/pages/exams/new";
 import ExamBuilder from "@/pages/exams/build";
 import ExamResults from "@/pages/exams/results";
 import UserProfile from "@/pages/profile";
+import RosterManagement from "@/pages/instructor/roster";
+import LiveContestMonitor from "@/pages/exams/live-monitor";
 import StudentHome from "@/pages/student/home";
 import JoinExam from "@/pages/student/join";
 import ExamTaking from "@/pages/student/exam-taking";
@@ -164,10 +166,12 @@ function App() {
             {/* Instructor Routes */}
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/profile" component={UserProfile} />
+            <Route path="/roster" component={RosterManagement} />
             <Route path="/exams" component={ExamsList} />
             <Route path="/exams/new" component={NewExam} />
             <Route path="/exams/:examId/build" component={ExamBuilder} />
             <Route path="/exams/:examId/results" component={ExamResults} />
+            <Route path="/exams/:examId/live" component={LiveContestMonitor} />
             
             {/* Student Routes */}
             <Route path="/student" component={StudentHome} />

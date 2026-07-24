@@ -26,11 +26,13 @@ export const examsTable = pgTable('exams', {
     provider: 'free' | 'custom_openrouter' | 'custom_gemini' | 'hosted';
     model: string;
     customApiKey?: string;
+    proctoringEnabled?: boolean;
   }>(),
   examType: text('exam_type'), // 'mixed' | 'proof_only'
   accessCode: text('access_code').unique(),
   isPublic: boolean('is_public').notNull().default(false),
-  collaborators: jsonb('collaborators').$type<string[]>(),
+  // Updated collaborators: now has access level per person
+  collaborators: jsonb('collaborators').$type<{ clerkId: string; accessLevel: 'read' | 'write' }[]>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -109,3 +111,61 @@ export const answersTable = pgTable('answers', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
+// ─── New Tables ───────────────────────────────────────────────────────────────
+
+/**
+ * Instructor profiles — stores the unique instructor code
+ * that students type to join an instructor's roster.
+ */
+export const instructorProfilesTable = pgTable('instructor_profiles', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  clerkId: text('clerk_id').notNull().unique(),
+  instructorCode: text('instructor_code').notNull().unique(), // e.g. "COACH-XY7K3"
+  displayName: text('display_name'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+/**
+ * Student cohorts / groups — instructors organize students into named groups.
+ * e.g. "IOI Students 2025", "KMO Round 1 Group", "Physics Contest Cohort 2026"
+ */
+export const studentCohortsTable = pgTable('student_cohorts', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  instructorClerkId: text('instructor_clerk_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  subject: text('subject'),
+  year: text('year'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+/**
+ * Student roster entries — students who have joined an instructor's roster
+ * (either pending approval or approved, and assigned to a cohort).
+ */
+export const studentRosterTable = pgTable('student_roster', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  instructorClerkId: text('instructor_clerk_id').notNull(),
+  cohortId: integer('cohort_id').references(() => studentCohortsTable.id, { onDelete: 'set null' }),
+  studentClerkId: text('student_clerk_id').notNull(),
+  studentName: text('student_name'),
+  studentEmail: text('student_email'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'approved' | 'declined'
+  joinedAt: timestamp('joined_at').notNull().defaultNow(),
+});
+
+/**
+ * In-platform exam invitations — instructor sends exam invites to students.
+ * Student sees them on their homepage and can accept or decline.
+ */
+export const examInvitesTable = pgTable('exam_invites', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  examId: integer('exam_id').notNull().references(() => examsTable.id, { onDelete: 'cascade' }),
+  studentClerkId: text('student_clerk_id').notNull(),
+  sentByClerkId: text('sent_by_clerk_id').notNull(),
+  status: text('status').notNull().default('pending'), // 'pending' | 'accepted' | 'declined'
+  sessionId: integer('session_id').references(() => examSessionsTable.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});

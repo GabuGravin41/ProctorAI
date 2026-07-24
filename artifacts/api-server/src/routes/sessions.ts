@@ -308,6 +308,48 @@ router.post("/:sessionId/start", requireAuth, async (req: any, res) => {
   }
 });
 
+// POST /api/sessions/:sessionId/autosave
+router.post("/:sessionId/autosave", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const { answers } = req.body; // Array of { questionId, answer, attachments }
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    if (Array.isArray(answers)) {
+      for (const item of answers) {
+        if (!item.questionId) continue;
+        const [existing] = await db
+          .select()
+          .from(answersTable)
+          .where(and(eq(answersTable.sessionId, sessionId), eq(answersTable.questionId, item.questionId)));
+
+        if (existing) {
+          await db
+            .update(answersTable)
+            .set({ answer: item.answer || "", attachments: item.attachments || [] })
+            .where(eq(answersTable.id, existing.id));
+        } else {
+          await db.insert(answersTable).values({
+            sessionId,
+            questionId: item.questionId,
+            answer: item.answer || "",
+            attachments: item.attachments || [],
+            isCorrect: 0,
+            points: 0,
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, savedAt: new Date().toISOString() });
+  } catch (err) {
+    req.log.error({ err }, "autosave error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/sessions/:sessionId/submit
 router.post("/:sessionId/submit", requireAuth, async (req: any, res) => {
   try {

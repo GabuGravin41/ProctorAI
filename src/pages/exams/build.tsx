@@ -13,10 +13,12 @@ import {
   useUpdateQuestion,
   getGetExamQueryKey,
   getListQuestionsQueryKey,
+  useListCohorts,
+  useInviteCohorts,
   GenerateQuestionsInputDifficulty,
   GenerateQuestionsInputQuestionTypesItem
 } from "@/lib/api-client";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown, Users } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -102,6 +104,7 @@ export default function ExamBuilder() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [codesOpen, setCodesOpen] = useState(false);
+  const [shareCohortOpen, setShareCohortOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [questionForm, setQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
@@ -652,9 +655,14 @@ Generate ${aiCount} questions that follow these specifications exactly.
               </Dialog>
             )}
             {(exam.status === 'published' || exam.status === 'archived') && (
-              <Button variant="secondary" asChild className="flex-1 sm:flex-none text-xs sm:text-sm">
-                <Link href={`/exams/${exam.id}/results`}>View Results</Link>
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setShareCohortOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm bg-indigo-50 border-indigo-200 text-indigo-700">
+                  <Users className="h-3.5 w-3.5 mr-1" /> Share with Cohort
+                </Button>
+                <Button variant="secondary" asChild className="flex-1 sm:flex-none text-xs sm:text-sm">
+                  <Link href={`/exams/${exam.id}/results`}>View Results</Link>
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1595,6 +1603,13 @@ Example: Chapter 3 covers photosynthesis...
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share Exam to Cohort Dialog */}
+      <ShareCohortDialog
+        examId={examId}
+        open={shareCohortOpen}
+        onOpenChange={setShareCohortOpen}
+      />
     </InstructorLayout>
   );
 }
@@ -1621,5 +1636,106 @@ function AccessCodeRow({ code, studentEmail }: { code: string; studentEmail: str
         {copied ? <CheckCheck className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
       </button>
     </div>
+  );
+}
+
+function ShareCohortDialog({
+  examId,
+  open,
+  onOpenChange,
+}: {
+  examId: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const { data: cohorts = [] } = useListCohorts();
+  const inviteCohorts = useInviteCohorts();
+  const [selectedCohortIds, setSelectedCohortIds] = useState<number[]>([]);
+
+  const toggleCohort = (id: number) => {
+    setSelectedCohortIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSendInvites = async () => {
+    if (selectedCohortIds.length === 0) {
+      toast({ title: "Select at least one cohort", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const res = await inviteCohorts.mutateAsync({
+        examId,
+        cohortIds: selectedCohortIds,
+      });
+      toast({
+        title: "Invites Sent!",
+        description: res.message || `Invited students to exam.`,
+      });
+      onOpenChange(false);
+      setSelectedCohortIds([]);
+    } catch (err: any) {
+      toast({ title: "Failed to send invites", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-600" /> Share Exam to Cohort(s)
+          </DialogTitle>
+          <DialogDescription>
+            Select cohorts of enrolled students. Every student in selected cohorts will receive a contest invite on their dashboard.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-3 space-y-3">
+          {cohorts.length === 0 ? (
+            <div className="text-center py-6 text-xs text-muted-foreground border rounded-md bg-slate-50">
+              You haven't created any cohorts yet. Go to Roster Management to build cohorts first.
+            </div>
+          ) : (
+            cohorts.map((cohort) => {
+              const isChecked = selectedCohortIds.includes(cohort.id);
+              return (
+                <div
+                  key={cohort.id}
+                  onClick={() => toggleCohort(cohort.id)}
+                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                    isChecked ? "border-indigo-600 bg-indigo-50/50" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <div>
+                    <div className="font-bold text-sm text-slate-900">{cohort.name}</div>
+                    {cohort.subject && (
+                      <div className="text-xs text-slate-500">
+                        {cohort.subject} {cohort.year ? `(${cohort.year})` : ""}
+                      </div>
+                    )}
+                  </div>
+                  <Checkbox checked={isChecked} onCheckedChange={() => toggleCohort(cohort.id)} />
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSendInvites}
+            disabled={inviteCohorts.isPending || selectedCohortIds.length === 0}
+          >
+            {inviteCohorts.isPending ? "Sending..." : "Send Exam Invites"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

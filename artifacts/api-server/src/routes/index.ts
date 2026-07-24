@@ -8,6 +8,8 @@ import flagsRouter from "./flags";
 import dashboardRouter from "./dashboard";
 import waitlistRouter from "./waitlist";
 import auditRouter from "./audit";
+import rosterRouter from "./roster";
+import invitesRouter from "./invites";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(flagsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use(auditRouter);
 router.use(waitlistRouter);
+router.use("/roster", rosterRouter);
+router.use("/invites", invitesRouter);
 
 export default router;

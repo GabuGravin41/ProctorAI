@@ -295,4 +295,111 @@ router.get("/:examId/access-codes", requireAuth, async (req: any, res) => {
   }
 });
 
+// GET /api/exams/:examId/live-status
+router.get("/:examId/live-status", requireAuth, async (req: any, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    // Auth check: owner or collaborator
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollaborator = (exam.collaborators || []).some((c) => c.clerkId === clerkId);
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const sessions = await db.select().from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
+    const questions = await db.select({ id: questionsTable.id }).from(questionsTable).where(eq(questionsTable.examId, examId));
+    const totalQuestions = questions.length;
+
+    let activeCount = 0;
+    let submittedCount = 0;
+    let notStartedCount = 0;
+    let urgentFlagsCount = 0;
+
+    const students = await Promise.all(
+      sessions.map(async (s) => {
+        const flags = await db.select().from(cheatingFlagsTable).where(eq(cheatingFlagsTable.sessionId, s.id));
+        const answers = await db.select().from(answersTable).where(eq(answersTable.sessionId, s.id));
+        const nonNullAnswers = answers.filter((a) => a.answer && a.answer.trim() !== "");
+
+        if (s.status === "active" || s.status === "in_progress") activeCount++;
+        else if (s.status === "submitted" || s.status === "completed") submittedCount++;
+        else notStartedCount++;
+
+        const pendingFlags = flags.filter((f) => f.reviewStatus === "pending");
+        if (pendingFlags.length >= 3) urgentFlagsCount++;
+
+        const lastFlag = flags.length > 0 ? flags[flags.length - 1] : null;
+
+        return {
+          sessionId: s.id,
+          studentName: s.studentName || "Student",
+          studentEmail: s.studentEmail || "",
+          status: s.status,
+          questionsAnswered: nonNullAnswers.length,
+          totalQuestions,
+          flagCount: flags.length,
+          pendingFlagCount: pendingFlags.length,
+          lastFlagType: lastFlag ? lastFlag.type : null,
+          startedAt: s.startedAt ? s.startedAt.toISOString() : null,
+          submittedAt: s.submittedAt ? s.submittedAt.toISOString() : null,
+        };
+      })
+    );
+
+    res.json({
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        subject: exam.subject,
+        durationMinutes: exam.durationMinutes,
+        status: exam.status,
+      },
+      summary: {
+        total: sessions.length,
+        active: activeCount,
+        submitted: submittedCount,
+        notStarted: notStartedCount,
+        urgentFlags: urgentFlagsCount,
+      },
+      students,
+    });
+  } catch (err) {
+    req.log.error({ err }, "getLiveStatus error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /api/exams/:examId/collaborators
+router.patch("/:examId/collaborators", requireAuth, async (req: any, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+    const { collaborators } = req.body; // Array of { clerkId, accessLevel: 'read' | 'write' }
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+
+    // Only creator/owner can manage collaborators
+    if (exam.instructorClerkId !== clerkId) {
+      return res.status(403).json({ error: "Only the exam creator can manage collaborators" });
+    }
+
+    const [updated] = await db
+      .update(examsTable)
+      .set({ collaborators, updatedAt: new Date() })
+      .where(eq(examsTable.id, examId))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "updateCollaborators error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

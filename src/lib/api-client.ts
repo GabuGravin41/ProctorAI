@@ -624,3 +624,284 @@ export function useJoinPublicExam() {
     },
   });
 }
+
+// ─── Roster & Cohort Types ──────────────────────────────────────────────────
+
+export interface InstructorProfile {
+  id: number;
+  clerkId: string;
+  instructorCode: string;
+  displayName: string | null;
+  createdAt: string;
+}
+
+export interface StudentCohort {
+  id: number;
+  instructorClerkId: string;
+  name: string;
+  description: string | null;
+  subject: string | null;
+  year: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentRosterEntry {
+  id: number;
+  instructorClerkId: string;
+  cohortId: number | null;
+  studentClerkId: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  status: 'pending' | 'approved' | 'declined';
+  joinedAt: string;
+}
+
+export interface ExamInvite {
+  id: number;
+  examId: number;
+  examTitle: string;
+  examSubject: string | null;
+  examDurationMinutes: number;
+  examDescription: string | null;
+  senderName: string;
+  createdAt: string;
+}
+
+export interface LiveStatusData {
+  exam: {
+    id: number;
+    title: string;
+    subject: string | null;
+    durationMinutes: number;
+    status: string;
+  };
+  summary: {
+    total: number;
+    active: number;
+    submitted: number;
+    notStarted: number;
+    urgentFlags: number;
+  };
+  students: {
+    sessionId: number;
+    studentName: string;
+    studentEmail: string;
+    status: string;
+    questionsAnswered: number;
+    totalQuestions: number;
+    flagCount: number;
+    pendingFlagCount: number;
+    lastFlagType: string | null;
+    startedAt: string | null;
+    submittedAt: string | null;
+  }[];
+}
+
+// ─── Roster Hooks ────────────────────────────────────────────────────────────
+
+export function useGetInstructorProfile() {
+  const { getToken } = useAuth();
+  return useQuery<InstructorProfile>({
+    queryKey: ['instructorProfile'],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/roster/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /roster/profile failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+
+export function useListCohorts() {
+  const { getToken } = useAuth();
+  return useQuery<StudentCohort[]>({
+    queryKey: ['cohorts'],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/roster/cohorts`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /roster/cohorts failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+
+export function useCreateCohort() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<StudentCohort, Error, { name: string; description?: string; subject?: string; year?: string }>({
+    mutationFn: async (data) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/roster/cohorts`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`POST /roster/cohorts failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cohorts'] }),
+  });
+}
+
+export function useListRosterStudents(status?: string) {
+  const { getToken } = useAuth();
+  return useQuery<StudentRosterEntry[]>({
+    queryKey: ['rosterStudents', status],
+    queryFn: async () => {
+      const token = await getToken();
+      const params = status ? `?status=${status}` : '';
+      const res = await fetch(`${API_BASE}/roster/students${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /roster/students failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+
+export function useUpdateRosterEntry() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<StudentRosterEntry, Error, { entryId: number; status: 'approved' | 'declined'; cohortId?: number }>({
+    mutationFn: async ({ entryId, status, cohortId }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/roster/students/${entryId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, cohortId }),
+      });
+      if (!res.ok) throw new Error(`PATCH /roster/students/${entryId} failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rosterStudents'] }),
+  });
+}
+
+export function useJoinRoster() {
+  const { getToken } = useAuth();
+  return useMutation<{ message: string; instructorDisplayName: string }, Error, { instructorCode: string }>({
+    mutationFn: async ({ instructorCode }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/roster/join`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructorCode }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to join roster');
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useInviteCohorts() {
+  const { getToken } = useAuth();
+  return useMutation<{ message: string; invitedCount: number }, Error, { examId: number; cohortIds: number[] }>({
+    mutationFn: async (data) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/invites/cohort`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to send invites');
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useListStudentInvites() {
+  const { getToken } = useAuth();
+  return useQuery<ExamInvite[]>({
+    queryKey: ['studentInvites'],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/invites/student`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /invites/student failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<{ sessionId: number; examId: number }, Error, { inviteId: number }>({
+    mutationFn: async ({ inviteId }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/invites/${inviteId}/accept`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`POST /invites/${inviteId}/accept failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studentInvites'] });
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+    },
+  });
+}
+
+export function useDeclineInvite() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, { inviteId: number }>({
+    mutationFn: async ({ inviteId }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/invites/${inviteId}/decline`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`POST /invites/${inviteId}/decline failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['studentInvites'] }),
+  });
+}
+
+export function useGetLiveStatus(examId: number, opts?: { refetchInterval?: number }) {
+  const { getToken } = useAuth();
+  return useQuery<LiveStatusData>({
+    queryKey: ['liveStatus', examId],
+    enabled: !!examId,
+    refetchInterval: opts?.refetchInterval ?? 10000,
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/exams/${examId}/live-status`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /exams/${examId}/live-status failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+
+export function useAutosaveSessionAnswers() {
+  const { getToken } = useAuth();
+  return useMutation<{ success: boolean }, Error, { sessionId: number; answers: { questionId: number; answer: string; attachments?: string[] }[] }>({
+    mutationFn: async ({ sessionId, answers }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/autosave`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers }),
+      });
+      if (!res.ok) throw new Error(`POST /sessions/${sessionId}/autosave failed: ${res.status}`);
+      return res.json();
+    },
+  });
+}
+

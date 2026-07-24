@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, AlertTriangle, CheckCircle2, ShieldCheck, ShieldX,
-  ChevronRight, Loader2, X,
+  ChevronRight, Loader2, X, Activity,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,16 +33,25 @@ export default function ExamResults() {
     <InstructorLayout>
       <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-start gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" asChild className="shrink-0 mt-0.5">
-            <Link href="/exams"><ArrowLeft className="h-4 w-4" /></Link>
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground">
-              {results.exam.title} — Results
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">Review student submissions and AI-detected flags.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" asChild className="shrink-0 mt-0.5">
+              <Link href="/exams"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground">
+                {results.exam.title} — Results
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">Review student submissions and AI-detected flags.</p>
+            </div>
           </div>
+
+          <Button asChild className="bg-red-600 hover:bg-red-700 text-white shrink-0">
+            <Link href={`/exams/${examId}/live`}>
+              <Activity className="h-4 w-4 mr-2 animate-pulse" />
+              🔴 Open Live Contest Monitor
+            </Link>
+          </Button>
         </div>
 
         {/* Stats */}

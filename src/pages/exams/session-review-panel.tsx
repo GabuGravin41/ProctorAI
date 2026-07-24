@@ -149,7 +149,7 @@ function FlagCard({
 }
 
 // ---------- Main Panel Component ----------
-export default function SessionReviewPanel({ sessionId, examId, onClose }: { sessionId: number, examId: number, onClose: () => void }) {
+export default function SessionReviewPanel({ sessionId, examId, open, onClose }: { sessionId: number, examId?: number, open?: boolean, onClose: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   

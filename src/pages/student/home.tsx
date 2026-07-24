@@ -1,9 +1,12 @@
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetMe, useListSessions, getListSessionsQueryKey, useListPublicExams, useJoinPublicExam } from "@/lib/api-client";
+import { useGetMe, useListSessions, getListSessionsQueryKey, useListPublicExams, useJoinPublicExam, useListStudentInvites, useAcceptInvite, useDeclineInvite, useJoinRoster } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { KeyRound, PlayCircle, Clock, CheckCircle2, Search, BookOpen, Layers, Award, Filter, Award as Trophy } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { KeyRound, PlayCircle, Clock, CheckCircle2, Search, BookOpen, Layers, Award, Filter, Award as Trophy, Mail, Check, X, UserPlus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
 
@@ -165,6 +168,9 @@ export default function StudentHome() {
             </Link>
           </Button>
         </div>
+
+        {/* Exam Invites & Join Instructor Roster Banner */}
+        <StudentInvitesAndRosterWidget />
 
         {/* Tab Selection */}
         <div className="flex border-b border-slate-200">
@@ -416,5 +422,156 @@ export default function StudentHome() {
         )}
       </div>
     </StudentLayout>
+  );
+}
+
+function StudentInvitesAndRosterWidget() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { data: invites = [] } = useListStudentInvites();
+  const acceptInvite = useAcceptInvite();
+  const declineInvite = useDeclineInvite();
+  const joinRoster = useJoinRoster();
+
+  const [instructorCode, setInstructorCode] = useState("");
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+
+  const handleAccept = async (inviteId: number) => {
+    try {
+      const res = await acceptInvite.mutateAsync({ inviteId });
+      toast({ title: "Invite accepted!", description: "Taking you to the exam session..." });
+      setLocation(`/exam/${res.sessionId}`);
+    } catch (err: any) {
+      toast({ title: "Failed to accept invite", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDecline = async (inviteId: number) => {
+    try {
+      await declineInvite.mutateAsync({ inviteId });
+      toast({ title: "Invite declined." });
+    } catch (err: any) {
+      toast({ title: "Failed to decline invite", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleJoinRoster = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!instructorCode.trim()) return;
+
+    try {
+      const res = await joinRoster.mutateAsync({ instructorCode: instructorCode.trim() });
+      toast({
+        title: "Request Sent!",
+        description: res.message || `Sent join request to ${res.instructorDisplayName}.`,
+      });
+      setInstructorCode("");
+      setJoinDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: "Failed to join", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Pending Exam Invites Banner */}
+      {invites.length > 0 && (
+        <Card className="border-indigo-200 bg-gradient-to-r from-indigo-50/70 to-purple-50/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-bold text-indigo-900 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-indigo-600 animate-bounce" />
+              You Have Exam Invites ({invites.length})
+            </CardTitle>
+            <CardDescription className="text-xs text-indigo-700">
+              Your instructor has invited you to take the following contest(s):
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-2">
+            {invites.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-indigo-100 rounded-lg shadow-xs gap-3"
+              >
+                <div>
+                  <div className="font-bold text-sm text-slate-900">{invite.examTitle}</div>
+                  <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                    <span>From: <strong className="text-slate-700">{invite.senderName}</strong></span>
+                    <span>• {invite.examDurationMinutes} Mins</span>
+                    {invite.examSubject && <span>• {invite.examSubject}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-xs h-8"
+                    disabled={acceptInvite.isPending}
+                    onClick={() => handleAccept(invite.id)}
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" /> Accept & Start
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8 text-slate-600"
+                    disabled={declineInvite.isPending}
+                    onClick={() => handleDecline(invite.id)}
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" /> Decline
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Join Instructor Roster Banner */}
+      <div className="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+            <UserPlus className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-bold text-sm text-slate-900">Enrolled with an Instructor?</div>
+            <div className="text-xs text-slate-500">Enter your instructor's code to get contest invites directly on your dashboard.</div>
+          </div>
+        </div>
+
+        <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="text-xs shrink-0">
+              Enter Instructor Code
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Join Instructor's Roster</DialogTitle>
+              <DialogDescription>
+                Ask your instructor or coach for their 6-character code (e.g., COACH-XY7K3).
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleJoinRoster} className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Input
+                  placeholder="e.g., COACH-XY7K3"
+                  value={instructorCode}
+                  onChange={(e) => setInstructorCode(e.target.value.toUpperCase())}
+                  className="font-mono text-center text-lg tracking-widest uppercase"
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setJoinDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={joinRoster.isPending}>
+                  {joinRoster.isPending ? "Submitting..." : "Send Join Request"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 }

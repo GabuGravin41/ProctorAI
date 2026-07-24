@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetSession, useStartSession, useSubmitSession, useReportFlag, getGetSessionQueryKey, FlagInputType, customFetch } from "@/lib/api-client";
+import { useGetSession, useStartSession, useSubmitSession, useReportFlag, useAutosaveSessionAnswers, getGetSessionQueryKey, FlagInputType, customFetch } from "@/lib/api-client";
+import { useProctoringEngine } from "@/hooks/use-proctoring-engine";
+import { TypingAnalyzer } from "@/lib/typing-analyzer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -475,18 +477,70 @@ export default function ExamTaking() {
     return () => clearInterval(interval);
   }, [isUploadWindow]);
 
-  // ── AI monitoring simulation ────────────────────────────────────────────────
+  // ── Typing Cadence Analyzer (Layer B) ──────────────────────────────────────
+  const typingAnalyzerRef = useRef<TypingAnalyzer | null>(null);
+  if (!typingAnalyzerRef.current) {
+    const analyzer = new TypingAnalyzer();
+    analyzer.onAnomaly((event) => {
+      if (isUploadWindowRef.current) return;
+      void triggerFlag(event.type as FlagInputType, event.description);
+      toast({
+        title: "⚠ Typing Cadence Flag",
+        description: event.description,
+        variant: "destructive",
+      });
+    });
+    typingAnalyzerRef.current = analyzer;
+  }
+
+  const handleAnswerChange = (qId: number, val: string) => {
+    setAnswers((prev) => ({ ...prev, [qId]: val }));
+    answersRef.current[qId] = val;
+    if (typingAnalyzerRef.current) {
+      typingAnalyzerRef.current.recordKeystroke(val);
+    }
+  };
+
+  // ── Real MediaPipe AI Proctoring Engine ──────────────────────────────────────
+  const handleEngineViolation = useCallback(
+    (event: { type: string; description: string }) => {
+      if (isUploadWindowRef.current) return;
+      void triggerFlag(event.type as FlagInputType, event.description);
+      toast({
+        title: "⚠ AI Proctor Flag",
+        description: event.description,
+        variant: "destructive",
+      });
+    },
+    []
+  );
+
+  useProctoringEngine(
+    videoRef,
+    stream,
+    hasStarted && !cameraError && !isUploadWindow && isProctoringEnabled,
+    handleEngineViolation
+  );
+
+  // ── Background Auto-Save (Every 30 Seconds) ──────────────────────────────
+  const autosaveMutation = useAutosaveSessionAnswers();
+
   useEffect(() => {
-    if (!hasStarted || !stream || cameraError || isUploadWindow || !isProctoringEnabled) return;
-    const id = window.setInterval(() => {
-      if (Math.random() < 0.05) {
-        const types: FlagInputType[] = ["face_not_visible", "looking_away", "multiple_faces"];
-        const type = types[Math.floor(Math.random() * types.length)];
-        void triggerFlag(type, `AI detected: ${type.replace(/_/g, " ")}`);
-      }
-    }, 60000);
-    return () => window.clearInterval(id);
-  }, [hasStarted, stream, cameraError, sessionId, reportFlag, isUploadWindow, isProctoringEnabled]);
+    if (!hasStarted || isUploadWindow) return;
+    const interval = setInterval(() => {
+      const currentAnswers = answersRef.current;
+      const currentAttachments = attachmentsRef.current;
+      const formatted = questionsRef.current.map((q) => ({
+        questionId: q.id,
+        answer: currentAnswers[q.id] || "",
+        attachments: currentAttachments[q.id] || [],
+      }));
+
+      autosaveMutation.mutate({ sessionId, answers: formatted });
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [hasStarted, isUploadWindow, sessionId]);
 
   // ── Redirect if already submitted ──────────────────────────────────────────
   useEffect(() => {
@@ -914,7 +968,7 @@ export default function ExamTaking() {
                   <Input
                     placeholder="Your answer…"
                     value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                    onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                     className="max-w-md"
                   />
                 ) : (
@@ -923,7 +977,7 @@ export default function ExamTaking() {
                       placeholder="Write your essay / proof here… You can use standard LaTeX (e.g. $\int x^2 \,dx = \frac{x^3}{3} + C$)"
                       className="min-h-48 font-mono leading-relaxed"
                       value={answers[q.id] || ""}
-                      onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                      onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                       💡 <strong>Don't know LaTeX or wrote your work on paper?</strong> You can leave this blank or type a brief note, and <strong>upload photos/scans of your handwritten paper sheets</strong> directly on the next screen after clicking submit!
