@@ -49,7 +49,6 @@ export const questionsTable = pgTable('questions', {
   difficulty: text('difficulty'), // 'easy' | 'medium' | 'hard'
   rubric: jsonb('rubric').$type<{ criterion: string; maxPoints: number; description: string }[]>(),
   order: integer('order').notNull().default(0),
-  rubric: jsonb('rubric'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

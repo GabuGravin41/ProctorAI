@@ -491,7 +491,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
           customApiKey: customApiKey || undefined,
           proctoringEnabled: proctoringEnabled,
         },
-        collaborators,
+        collaborators: collaborators as any,
       }
     }, {
       onSuccess: () => {
