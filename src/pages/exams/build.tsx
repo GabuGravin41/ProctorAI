@@ -16,7 +16,8 @@ import {
   useListCohorts,
   useInviteCohorts,
   GenerateQuestionsInputDifficulty,
-  GenerateQuestionsInputQuestionTypesItem
+  GenerateQuestionsInputQuestionTypesItem,
+  useGetMe
 } from "@/lib/api-client";
 import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown, Users } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -88,6 +89,9 @@ export default function ExamBuilder() {
 
   const { data: exam, isLoading: isLoadingExam } = useGetExam(examId, { query: { enabled: !!examId, queryKey: getGetExamQueryKey(examId) } });
   const { data: questions, isLoading: isLoadingQuestions, refetch: refetchQuestions } = useListQuestions(examId, { query: { enabled: !!examId, queryKey: getListQuestionsQueryKey(examId) } });
+  const { data: me } = useGetMe();
+
+  const isOwner = exam && me && exam.instructorClerkId === me.clerkId;
 
   const publishExam = usePublishExam();
   const generateQuestions = useGenerateQuestions();
@@ -119,6 +123,10 @@ export default function ExamBuilder() {
   const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModel[]>(FALLBACK_OPENROUTER_MODELS);
   const [loadingOpenRouterModels, setLoadingOpenRouterModels] = useState(false);
   const [openRouterModelError, setOpenRouterModelError] = useState("");
+  
+  // Collaborators management state
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [collaboratorInput, setCollaboratorInput] = useState("");
   
   // Edit Question State
   const [editQuestionOpen, setEditQuestionOpen] = useState(false);
@@ -482,7 +490,8 @@ Generate ${aiCount} questions that follow these specifications exactly.
           model: aiModel,
           customApiKey: customApiKey || undefined,
           proctoringEnabled: proctoringEnabled,
-        }
+        },
+        collaborators,
       }
     }, {
       onSuccess: () => {
@@ -585,11 +594,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 )}
               </p>
             </div>
-          </div>
-          
-          {/* Action Buttons - Mobile Responsive */}
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {exam.status === 'draft' && (
+                  {exam.status === 'draft' && (
               <>
                 <Button
                   variant="outline"
@@ -599,25 +604,29 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 >
                   <Settings className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Exam Settings</span><span className="sm:hidden">Settings</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-destructive hover:text-destructive flex-1 sm:flex-none"
-                  onClick={() => setDeleteAllOpen(true)}
-                  disabled={!questions || questions.length === 0}
-                >
-                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
-                  onClick={() => setRegenerateOpen(true)}
-                  disabled={!questions || questions.length === 0}
-                >
-                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Regenerate</span><span className="sm:hidden">Regen</span>
-                </Button>
+                {isOwner && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-destructive hover:text-destructive flex-1 sm:flex-none"
+                      onClick={() => setDeleteAllOpen(true)}
+                      disabled={!questions || questions.length === 0}
+                    >
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Delete All</span><span className="sm:hidden">Delete</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none"
+                      onClick={() => setRegenerateOpen(true)}
+                      disabled={!questions || questions.length === 0}
+                    >
+                      <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Regenerate</span><span className="sm:hidden">Regen</span>
+                    </Button>
+                  </>
+                )}
               </>
             )}
-            {exam.status === 'published' && (
+            {exam.status === 'published' && isOwner && (
               <Button
                 variant="outline"
                 className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 text-muted-foreground flex-1 sm:flex-none"
@@ -627,7 +636,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
                 <Archive className="h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Archive</span>
               </Button>
             )}
-            {exam.status === 'draft' && (
+            {exam.status === 'draft' && isOwner && (
               <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 flex-1 sm:flex-none">
@@ -671,7 +680,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-8">
           <h2 className="text-lg sm:text-xl font-bold">Questions ({questions?.length || 0})</h2>
           
-          {exam.status === 'draft' && (
+          {exam.status === 'draft' && isOwner && (
             <div className="flex gap-2">
               <Dialog open={aiGenerateOpen} onOpenChange={setAiGenerateOpen}>
                 <DialogTrigger asChild>
@@ -1045,7 +1054,7 @@ Example: Chapter 3 covers photosynthesis...
                       <span className="text-xs bg-slate-100 rounded px-1.5 py-0.5 shrink-0">{q.points || 1} pt{(q.points || 1) !== 1 ? "s" : ""}</span>
                     </CardDescription>
                   </div>
-                  {exam.status === 'draft' && (
+                  {exam.status === 'draft' && isOwner && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1083,7 +1092,7 @@ Example: Chapter 3 covers photosynthesis...
                     </div>
                   </CardContent>
                 )}
-                {exam.status === 'draft' ? (
+                {exam.status === 'draft' && isOwner ? (
                   <CardContent className="py-2 flex gap-2 justify-between items-center border-t bg-slate-50/20">
                     <div className="flex gap-1.5">
                       <Button
@@ -1596,10 +1605,12 @@ Example: Chapter 3 covers photosynthesis...
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAiSettingsOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateAiSettings} disabled={updateExam.isPending}>
-              {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Settings
-            </Button>
+            {isOwner && (
+              <Button onClick={handleUpdateAiSettings} disabled={updateExam.isPending}>
+                {updateExam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Settings
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

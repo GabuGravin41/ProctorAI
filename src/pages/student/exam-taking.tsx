@@ -186,6 +186,24 @@ export default function ExamTaking() {
     });
   };
 
+  const captureScreenshot = (): string | null => {
+    if (!videoRef.current || !stream) return null;
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.7);
+      }
+    } catch (e) {
+      console.error("Screenshot capture failed", e);
+    }
+    return null;
+  };
+
   // Helper helper to trigger flags with clips
   const triggerFlag = async (type: FlagInputType, description: string) => {
     if (!sessionId || !Number.isInteger(sessionId) || sessionId <= 0) return;
@@ -268,10 +286,34 @@ export default function ExamTaking() {
     submitSession.mutate({ sessionId, data: { answers: formatted } }, {
       onSuccess: () => {
         stream?.getTracks().forEach(t => t.stop());
+        localStorage.removeItem(`proctorai_backup_${sessionId}`);
         setLocation(`/exam/${sessionId}/results`);
       },
     });
   }, [sessionId, submitSession, stream, setLocation, toast]);
+
+  // ── Autosave & Progress Recovery ───────────────────────────────────────────
+  useEffect(() => {
+    if (!hasStarted) return;
+    const backupKey = `proctorai_backup_${sessionId}`;
+    const backup = localStorage.getItem(backupKey);
+    if (backup) {
+      try {
+        const parsed = JSON.parse(backup);
+        if (parsed.answers) setAnswers(parsed.answers);
+        if (parsed.attachments) setAttachments(parsed.attachments);
+        toast({ title: "Autosaved Progress Restored", description: "Your previously saved work has been recovered." });
+      } catch (e) {
+        console.error("Failed to restore backup", e);
+      }
+    }
+  }, [hasStarted, sessionId, toast]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+    const backupKey = `proctorai_backup_${sessionId}`;
+    localStorage.setItem(backupKey, JSON.stringify({ answers, attachments }));
+  }, [answers, attachments, hasStarted, sessionId]);
 
   const doSubmitRef = useRef(doSubmit);
   useEffect(() => { doSubmitRef.current = doSubmit; }, [doSubmit]);

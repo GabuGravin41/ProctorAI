@@ -33,6 +33,7 @@ function formatFlag(f: any) {
     reviewStatus: f.reviewStatus,
     reviewedAt: f.reviewedAt?.toISOString() ?? null,
     reviewNote: f.reviewNote ?? null,
+    screenshotUrl: f.screenshotUrl ?? null,
   };
 }
 
@@ -52,7 +53,7 @@ router.get("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
 router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => {
   try {
     const sessionId = parseInt(req.params.sessionId);
-    const { type, description, clipData, detectedAt } = req.body;
+    const { type, description, clipData, detectedAt, screenshotUrl } = req.body;
 
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       return res.status(400).json({ error: "Invalid session id" });
@@ -89,6 +90,7 @@ router.post("/sessions/:sessionId/flags", requireAuth, async (req: any, res) => 
         clipData: clipData ?? null,
         detectedAt: now,
         reviewStatus: "pending",
+        screenshotUrl: screenshotUrl ?? null,
       })
       .returning();
 

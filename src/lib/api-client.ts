@@ -122,6 +122,7 @@ export interface CheatingFlag {
   reviewStatus: string;
   reviewedAt: string | null;
   reviewNote: string | null;
+  screenshotUrl?: string | null;
   createdAt: string;
 }
 
