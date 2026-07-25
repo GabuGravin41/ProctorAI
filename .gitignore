@@ -50,10 +50,8 @@ Thumbs.db
 
 # Environment files
 .env
-.env.local
-.env.production
-.env.development
-.env.test
+.env.*
+!.env.example
 
 # API-server build outputs
 artifacts/api-server/api/index.js
