@@ -31,6 +31,8 @@ export const examsTable = pgTable('exams', {
   examType: text('exam_type'), // 'mixed' | 'proof_only'
   accessCode: text('access_code').unique(),
   isPublic: boolean('is_public').notNull().default(false),
+  topic: text('topic'),
+  tags: jsonb('tags').$type<string[]>(),
   // Updated collaborators: now has access level per person
   collaborators: jsonb('collaborators').$type<{ clerkId: string; accessLevel: 'read' | 'write' }[]>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),

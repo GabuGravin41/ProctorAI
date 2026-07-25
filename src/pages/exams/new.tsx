@@ -11,14 +11,17 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateExam } from "@/lib/api-client";
-import { ArrowLeft, Loader2, Sparkles, Key, Cpu } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Loader2, Sparkles, Key, Cpu, Globe, Tag, X, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subject: z.string().optional(),
+  topic: z.string().optional(),
   description: z.string().optional(),
+  isPublic: z.boolean().default(false),
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
   examType: z.enum(["mixed", "proof_only"]),
   gradingMode: z.enum(["auto", "review_release", "manual"]),
@@ -55,13 +58,33 @@ export default function NewExam() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState("");
   const [examType, setExamType] = useState<"mixed" | "proof_only">("mixed");
+  
+  // Custom Topic & Tags state
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
+  const handleAddTag = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if ('key' in e && e.key !== 'Enter' && e.key !== ',') return;
+    e.preventDefault();
+    const trimmed = tagInput.trim().toLowerCase().replace(/^[#,\s]+/, '');
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags([...tags, trimmed]);
+    }
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      subject: "",
+      subject: "Mathematics",
+      topic: "Olympiad Algebra",
       description: "",
+      isPublic: false,
       durationMinutes: 60,
       examType: "mixed",
       gradingMode: "auto",
@@ -101,6 +124,9 @@ export default function NewExam() {
     const payload = {
       title: data.title,
       subject: data.subject || "",
+      topic: data.topic || "",
+      tags: tags,
+      isPublic: data.isPublic,
       description: data.description || "",
       durationMinutes: data.durationMinutes,
       examType: data.examType,
@@ -174,12 +200,83 @@ export default function NewExam() {
                       <FormItem>
                         <FormLabel>Subject</FormLabel>
                         <FormControl>
-                          <Input placeholder="Mathematics" {...field} value={field.value || ""} className="bg-slate-50/50 focus:bg-white" />
+                          <Input placeholder="Mathematics, Computer Science..." {...field} value={field.value || ""} className="bg-slate-50/50 focus:bg-white" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="topic"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Topic / Category</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Olympiad Algebra, Bebras Puzzles..." {...field} value={field.value || ""} className="bg-slate-50/50 focus:bg-white" />
+                        </FormControl>
+                        <FormDescription>Specific branch or subcategory for filtering.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Tags Section */}
+                <div className="space-y-2">
+                  <FormLabel className="flex items-center gap-1.5">
+                    <Tag className="h-4 w-4 text-indigo-600" /> Exam Tags
+                  </FormLabel>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    {tags.map((t) => (
+                      <Badge key={t} variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 gap-1 text-xs py-1 px-2.5 rounded-full font-mono">
+                        #{t}
+                        <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-rose-600 ml-1">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Add tag (e.g. calculus, round-1, easy) and press Enter" 
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleAddTag}
+                      className="bg-slate-50/50 focus:bg-white text-sm"
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddTag} className="shrink-0">
+                      <Plus className="h-4 w-4 mr-1" /> Add Tag
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Public Visibility Toggle */}
+                <FormField
+                  control={form.control}
+                  name="isPublic"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base font-bold text-indigo-950 flex items-center gap-2">
+                          <Globe className="h-5 w-5 text-indigo-600" />
+                          Make Exam Public
+                        </FormLabel>
+                        <FormDescription className="text-xs text-indigo-900/70">
+                          Public exams are listed on the Student Dashboard for all students to practice freely without an invite code.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="durationMinutes"

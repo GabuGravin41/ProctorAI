@@ -67,6 +67,8 @@ export interface Exam {
   title: string;
   description: string | null;
   subject: string | null;
+  topic?: string | null;
+  tags?: string[];
   durationMinutes: number;
   status: 'draft' | 'published' | 'archived';
   gradingMode: 'auto' | 'manual' | 'review_release';
@@ -74,6 +76,8 @@ export interface Exam {
   examType: string | null;
   accessCode: string | null;
   isPublic?: boolean;
+  instructorName?: string | null;
+  institutionName?: string | null;
   collaborators?: { clerkId: string; accessLevel: 'read' | 'write' }[];
   questionCount?: number;
   sessionCount?: number;
@@ -812,6 +816,25 @@ export function useInviteCohorts() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to send invites');
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useInviteStudents() {
+  const { getToken } = useAuth();
+  return useMutation<{ invitations: { email: string; accessCode: string }[] }, Error, { examId: number; emails: string[] }>({
+    mutationFn: async (data) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/exams/${data.examId}/invite`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: data.emails }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

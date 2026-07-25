@@ -54435,6 +54435,8 @@ var examsTable = pgTable("exams", {
   // 'mixed' | 'proof_only'
   accessCode: text("access_code").unique(),
   isPublic: boolean("is_public").notNull().default(false),
+  topic: text("topic"),
+  tags: jsonb("tags").$type(),
   // Updated collaborators: now has access level per person
   collaborators: jsonb("collaborators").$type(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -54454,7 +54456,6 @@ var questionsTable = pgTable("questions", {
   // 'easy' | 'medium' | 'hard'
   rubric: jsonb("rubric").$type(),
   order: integer("order").notNull().default(0),
-  rubric: jsonb("rubric"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -54670,7 +54671,7 @@ var requireAuth3 = (req, res, next) => {
   req.clerkUserId = userId;
   next();
 };
-function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0) {
+function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0, instructorName, institutionName) {
   return {
     id: exam.id,
     title: exam.title,
@@ -54680,7 +54681,11 @@ function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0) {
     gradingMode: exam.gradingMode,
     aiConfig: exam.aiConfig,
     subject: exam.subject ?? null,
+    topic: exam.topic ?? null,
+    tags: Array.isArray(exam.tags) ? exam.tags : [],
     instructorClerkId: exam.instructorClerkId,
+    instructorName: instructorName ?? null,
+    institutionName: institutionName ?? null,
     accessCode: exam.accessCode ?? null,
     isPublic: exam.isPublic ?? false,
     questionCount,
@@ -54725,11 +54730,14 @@ router3.get("/", requireAuth3, async (req, res) => {
 router3.post("/", requireAuth3, async (req, res) => {
   try {
     const clerkId = req.clerkUserId;
-    const { title, description, subject, durationMinutes, gradingMode, aiConfig } = req.body;
+    const { title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, aiConfig } = req.body;
     const [exam] = await db.insert(examsTable).values({
       title,
       description,
       subject,
+      topic: topic ?? null,
+      tags: Array.isArray(tags) ? tags : [],
+      isPublic: !!isPublic,
       durationMinutes: durationMinutes ?? 60,
       gradingMode: gradingMode ?? "review_release",
       aiConfig: aiConfig ?? { provider: "free", model: "google/gemma-2-9b-it:free" },
@@ -54748,7 +54756,8 @@ router3.get("/public", requireAuth3, async (req, res) => {
       exams.map(async (exam) => {
         const [qCount] = await db.select({ count: count() }).from(questionsTable).where(eq(questionsTable.examId, exam.id));
         const [sCount] = await db.select({ count: count() }).from(examSessionsTable).where(eq(examSessionsTable.examId, exam.id));
-        return formatExam(exam, qCount.count, sCount.count, 0);
+        const [instructor] = await db.select().from(usersTable).where(eq(usersTable.clerkId, exam.instructorClerkId));
+        return formatExam(exam, qCount.count, sCount.count, 0, instructor?.name ?? "Instructor", instructor?.institutionName ?? void 0);
       })
     );
     res.json(result);
@@ -54786,11 +54795,14 @@ router3.patch("/:examId", requireAuth3, async (req, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { title, description, subject, durationMinutes, gradingMode, status, aiConfig, collaborators } = req.body;
+    const { title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, status, aiConfig, collaborators } = req.body;
     const updates = { updatedAt: /* @__PURE__ */ new Date() };
     if (title !== void 0) updates.title = title;
     if (description !== void 0) updates.description = description;
     if (subject !== void 0) updates.subject = subject;
+    if (topic !== void 0) updates.topic = topic;
+    if (tags !== void 0) updates.tags = Array.isArray(tags) ? tags : [];
+    if (isPublic !== void 0) updates.isPublic = !!isPublic;
     if (durationMinutes !== void 0) updates.durationMinutes = durationMinutes;
     if (gradingMode !== void 0) updates.gradingMode = gradingMode;
     if (status !== void 0) updates.status = status;

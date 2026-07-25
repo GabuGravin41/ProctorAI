@@ -92,16 +92,31 @@ export default function ExamsList() {
                       <Link href={`/exams/${exam.id}/build`} className="font-bold text-foreground hover:text-primary transition-colors block mb-1">
                         {exam.title}
                       </Link>
-                      <div className="text-xs text-muted-foreground">
-                        {exam.subject && <span className="mr-2">{exam.subject} •</span>}
-                        {exam.durationMinutes} min
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div>
+                          {exam.subject && <span className="mr-1.5 font-medium">{exam.subject}</span>}
+                          {exam.topic && <span className="text-indigo-600 font-semibold">• {exam.topic}</span>}
+                          <span className="ml-1.5">• {exam.durationMinutes} min</span>
+                        </div>
+                        {exam.tags && exam.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {exam.tags.map((t: string) => (
+                              <span key={t} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="col-span-2 flex flex-col justify-center items-start gap-1">
-                      <div className="flex gap-1.5 items-center">
+                      <div className="flex flex-wrap gap-1.5 items-center">
                         {getStatusBadge(exam.status)}
+                        {exam.isPublic && (
+                          <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px]">🌐 Public</Badge>
+                        )}
                         {me && exam.instructorClerkId !== me.clerkId && (
-                          <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700">Shared</Badge>
+                          <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px]">Shared</Badge>
                         )}
                       </div>
                       {exam.status === "published" && exam.accessCode && (

@@ -19,7 +19,8 @@ export default function StudentHome() {
 
   // Public Exams filter and search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedTopic, setSelectedTopic] = useState<string>('All Topics');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // Fetch sessions for this student
   const { data: sessions, isLoading } = useListSessions(undefined, { query: { queryKey: getListSessionsQueryKey(undefined), enabled: !!me?.clerkId } });
@@ -44,112 +45,29 @@ export default function StudentHome() {
     }
   };
 
-  // Helper to extract clean round/paper labels from long titles
-  const getExamCleanLabel = (title: string) => {
-    if (title.includes("Bebras")) {
-      const match = title.match(/Paper \d+/);
-      return `Bebras Puzzles — ${match ? match[0] : 'Practice'}`;
-    }
-    if (title.includes("IMO Selection")) {
-      const match = title.match(/Paper \d+/);
-      return `IMO Prep — ${match ? match[0] : 'Practice'}`;
-    }
-    if (title.includes("Informatics") && title.includes("Round 2")) {
-      const match = title.match(/Paper \d+/);
-      return `Round 2 — ${match ? match[0] : 'Practice'}`;
-    }
-    if (title.includes("Mathematical")) {
-      const roundMatch = title.match(/Round \d+/);
-      const paperMatch = title.match(/Paper \d+/);
-      if (roundMatch && paperMatch) {
-        return `${roundMatch[0]} — ${paperMatch[0]}`;
-      }
-    }
-    return title;
-  };
+  // Compute unique topics from actual public exams
+  const availableTopics = Array.from(
+    new Set(publicExams?.map((e) => e.topic || e.subject || 'General Practice').filter(Boolean))
+  );
 
-  // Helper to categorize exams and assign theme styling
-  const getCategoryDetails = (title: string) => {
-    if (title.includes("Bebras")) {
-      return {
-        category: "Informatics Puzzles",
-        badge: "Round 1: Bebras Puzzles",
-        themeClass: "bg-emerald-50 text-emerald-700 border-emerald-100",
-        accentClass: "border-t-4 border-t-emerald-500",
-        iconColor: "text-emerald-500"
-      };
-    }
-    if (title.includes("IMO Selection") || title.includes("IMO format")) {
-      return {
-        category: "IMO Prep",
-        badge: "IMO Prep (Selection)",
-        themeClass: "bg-rose-50 text-rose-700 border-rose-100",
-        accentClass: "border-t-4 border-t-rose-500",
-        iconColor: "text-rose-500"
-      };
-    }
-    if (title.includes("Round 1") && title.includes("Mathematical")) {
-      return {
-        category: "KMO Round 1",
-        badge: "Round 1 (Euclid Style)",
-        themeClass: "bg-blue-50 text-blue-700 border-blue-100",
-        accentClass: "border-t-4 border-t-blue-400",
-        iconColor: "text-blue-400"
-      };
-    }
-    if (title.includes("Round 2") && title.includes("Mathematical")) {
-      return {
-        category: "KMO Round 2",
-        badge: "Round 2 (Intermediate)",
-        themeClass: "bg-indigo-50 text-indigo-700 border-indigo-100",
-        accentClass: "border-t-4 border-t-indigo-500",
-        iconColor: "text-indigo-500"
-      };
-    }
-    if (title.includes("Round 3") && title.includes("Mathematical")) {
-      return {
-        category: "KMO Round 3",
-        badge: "Round 3 (EAMO Level)",
-        themeClass: "bg-purple-50 text-purple-700 border-purple-100",
-        accentClass: "border-t-4 border-t-purple-600",
-        iconColor: "text-purple-600"
-      };
-    }
-    if (title.includes("Informatics") && title.includes("Round 2")) {
-      return {
-        category: "Informatics Contests",
-        badge: "Round 2 (Algorithmic)",
-        themeClass: "bg-violet-50 text-violet-700 border-violet-100",
-        accentClass: "border-t-4 border-t-violet-500",
-        iconColor: "text-violet-500"
-      };
-    }
-    return {
-      category: "General",
-      badge: "Practice Exam",
-      themeClass: "bg-slate-50 text-slate-700 border-slate-100",
-      accentClass: "border-t-4 border-t-slate-400",
-      iconColor: "text-slate-400"
-    };
-  };
-
-  const categories = [
-    'All',
-    'KMO Round 1',
-    'KMO Round 2',
-    'KMO Round 3',
-    'IMO Prep',
-    'Informatics Puzzles',
-    'Informatics Contests'
-  ];
+  // Compute unique tags from actual public exams
+  const availableTags = Array.from(
+    new Set(publicExams?.flatMap((e) => e.tags || []).filter(Boolean))
+  );
 
   // Filter and search logic for public exams
   const filteredPublicExams = publicExams?.filter((exam) => {
-    const details = getCategoryDetails(exam.title);
-    const matchesCategory = selectedCategory === 'All' || details.category === selectedCategory;
-    const matchesSearch = exam.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (exam.description && exam.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
+    const examTopic = exam.topic || exam.subject || 'General Practice';
+    const matchesTopic = selectedTopic === 'All Topics' || examTopic === selectedTopic;
+    const matchesTag = !selectedTag || (exam.tags && exam.tags.includes(selectedTag));
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || 
+      exam.title.toLowerCase().includes(q) || 
+      (exam.description && exam.description.toLowerCase().includes(q)) ||
+      (exam.subject && exam.subject.toLowerCase().includes(q)) ||
+      (exam.topic && exam.topic.toLowerCase().includes(q)) ||
+      (exam.tags && exam.tags.some(t => t.toLowerCase().includes(q)));
+    return matchesTopic && matchesTag && matchesSearch;
   }) || [];
 
   return (
@@ -304,37 +222,79 @@ export default function StudentHome() {
         {activeTab === 'practice' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Search and Filters */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search practice exams..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 w-full text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
-                />
-              </div>
+            <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search practice exams, topics, tags..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 w-full text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                  />
+                </div>
 
-              {/* Category selector */}
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 self-center mr-1">
-                  <Filter className="h-3 w-3" /> Filter:
-                </span>
-                {categories.map((cat) => (
+                {/* Topic Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 self-center mr-1">
+                    <Filter className="h-3 w-3" /> Topic:
+                  </span>
                   <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => setSelectedTopic('All Topics')}
                     className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
-                      selectedCategory === cat
+                      selectedTopic === 'All Topics'
                         ? 'bg-indigo-600 border-indigo-600 text-white'
                         : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {cat}
+                    All Topics
                   </button>
-                ))}
+                  {availableTopics.map((topic) => (
+                    <button
+                      key={topic}
+                      onClick={() => setSelectedTopic(topic)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
+                        selectedTopic === topic
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Tag Filters (if any exist) */}
+              {availableTags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 text-xs">
+                  <span className="text-slate-500 font-semibold flex items-center gap-1 mr-1">
+                    <Layers className="h-3 w-3" /> Tags:
+                  </span>
+                  {availableTags.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSelectedTag(selectedTag === t ? null : t)}
+                      className={`px-2.5 py-0.5 text-[11px] font-mono rounded-full border transition-all ${
+                        selectedTag === t
+                          ? 'bg-indigo-700 text-white border-indigo-700 font-bold'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                      }`}
+                    >
+                      #{t}
+                    </button>
+                  ))}
+                  {selectedTag && (
+                    <button
+                      onClick={() => setSelectedTag(null)}
+                      className="text-[11px] text-rose-600 hover:underline ml-2 font-semibold"
+                    >
+                      Clear tag filter
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Public exams list */}
@@ -349,44 +309,66 @@ export default function StudentHome() {
                 {filteredPublicExams.map((exam) => {
                   const activeSession = activeSessions.find(s => s.exam.id === exam.id);
                   const completedSession = completedSessions.find(s => s.exam.id === exam.id);
-                  const details = getCategoryDetails(exam.title);
 
                   return (
-                    <Card key={exam.id} className={`shadow-sm hover:shadow-md transition-all ${details.accentClass}`}>
+                    <Card key={exam.id} className="shadow-sm hover:shadow-md transition-all border-t-4 border-t-indigo-600">
                       <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <span className={`px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider rounded border ${details.themeClass}`}>
-                            {details.badge}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full truncate">
+                            {exam.topic || exam.subject || 'Practice Exam'}
                           </span>
                           {completedSession && (
-                            <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 rounded">
+                            <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 rounded shrink-0">
                               Completed
                             </span>
                           )}
                         </div>
-                        <CardTitle className="mt-2 text-slate-800 font-display" title={exam.title}>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                            {exam.title.split(" — ")[0]}
-                          </div>
-                          <div className="text-base font-bold text-indigo-900 mt-0.5 whitespace-normal">
-                            {getExamCleanLabel(exam.title)}
-                          </div>
+                        <CardTitle className="mt-2 text-slate-900 font-display text-base font-bold line-clamp-2" title={exam.title}>
+                          {exam.title}
                         </CardTitle>
                         <CardDescription className="line-clamp-2 min-h-[2.5rem] text-xs">
-                          {exam.description || 'Practice exam for olympiad training.'}
+                          {exam.description || 'Public instructor practice assessment.'}
                         </CardDescription>
+
+                        {/* Instructor Attribution */}
+                        <div className="text-[11px] text-slate-500 font-medium pt-1">
+                          Created by <strong className="text-slate-700">{exam.instructorName || 'Instructor'}</strong>
+                          {exam.institutionName ? ` • ${exam.institutionName}` : ''}
+                        </div>
                       </CardHeader>
-                      <CardContent className="pb-3 text-xs">
+                      <CardContent className="pb-3 text-xs space-y-3">
                         <div className="flex items-center gap-4 text-slate-500">
                           <div className="flex items-center">
-                            <Clock className={`h-4 w-4 mr-1 ${details.iconColor}`} />
+                            <Clock className="h-4 w-4 mr-1 text-indigo-500" />
                             {exam.durationMinutes} min
                           </div>
                           <div className="flex items-center">
-                            <BookOpen className={`h-4 w-4 mr-1 ${details.iconColor}`} />
-                            {exam.questionCount} {exam.questionCount === 1 ? 'Question' : 'Questions'}
+                            <BookOpen className="h-4 w-4 mr-1 text-indigo-500" />
+                            {exam.questionCount || 0} {exam.questionCount === 1 ? 'Question' : 'Questions'}
                           </div>
                         </div>
+
+                        {/* Tag Chips */}
+                        {exam.tags && exam.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {exam.tags.map((t) => (
+                              <span
+                                key={t}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTag(selectedTag === t ? null : t);
+                                }}
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                                  selectedTag === t
+                                    ? 'bg-indigo-600 text-white font-bold'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
+                                }`}
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                       <CardFooter>
                         {completedSession ? (

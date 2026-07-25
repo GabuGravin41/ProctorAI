@@ -1992,13 +1992,15 @@ async function main() {
     for (const exam of EXAMS_DATA) {
       const code = generateAccessCode();
       const res = await client.query(
-        `INSERT INTO exams (instructor_clerk_id, title, description, subject, duration_minutes, status, grading_mode, exam_type, access_code, is_public)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        `INSERT INTO exams (instructor_clerk_id, title, description, subject, topic, tags, duration_minutes, status, grading_mode, exam_type, access_code, is_public)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
         [
           INSTRUCTOR_CLERK_ID,
           exam.title,
           exam.description,
           exam.subject,
+          exam.topic || exam.subject || 'Olympiad Practice',
+          JSON.stringify(exam.tags || ['olympiad', 'practice']),
           exam.durationMinutes,
           exam.status,
           exam.gradingMode,

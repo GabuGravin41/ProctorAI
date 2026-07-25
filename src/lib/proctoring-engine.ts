@@ -74,10 +74,10 @@ export class ProctoringEngine {
   }
 
   start() {
-    if (this.isRunning || !this.video || !this.landmarker) return;
+    if (this.isRunning || !this.video) return;
     this.isRunning = true;
     if (this.audioContext && this.audioContext.state === "suspended") {
-      this.audioContext.resume();
+      this.audioContext.resume().catch(() => {});
     }
     this.detectLoop();
   }
@@ -95,7 +95,7 @@ export class ProctoringEngine {
   }
 
   private detectLoop = () => {
-    if (!this.isRunning || !this.video || !this.landmarker) return;
+    if (!this.isRunning || !this.video) return;
 
     const now = performance.now();
 
@@ -103,57 +103,59 @@ export class ProctoringEngine {
     if (now - this.lastProcessTime >= 1000 && this.video.readyState >= 2) {
       this.lastProcessTime = now;
       try {
-        const results = this.landmarker.detectForVideo(this.video, now);
-        const numFaces = results.faceLandmarks.length;
+        if (this.landmarker) {
+          const results = this.landmarker.detectForVideo(this.video, now);
+          const numFaces = results.faceLandmarks ? results.faceLandmarks.length : 0;
 
-        // 1. Multiple Faces Detection
-        if (numFaces >= 2) {
-          this.emitViolation({
-            type: "multiple_faces",
-            description: `Multiple faces detected in frame (${numFaces} faces visible)`,
-          });
-        }
-
-        // 2. Face Visibility Detection (3+ seconds missing)
-        if (numFaces === 0) {
-          this.noFaceCount++;
-          if (this.noFaceCount >= 3) {
+          // 1. Multiple Faces Detection
+          if (numFaces >= 2) {
             this.emitViolation({
-              type: "face_not_visible",
-              description: "Student face is not visible in camera feed",
+              type: "multiple_faces",
+              description: `Multiple faces detected in frame (${numFaces} faces visible)`,
             });
+          }
+
+          // 2. Face Visibility Detection (3+ seconds missing)
+          if (numFaces === 0) {
+            this.noFaceCount++;
+            if (this.noFaceCount >= 3) {
+              this.emitViolation({
+                type: "face_not_visible",
+                description: "Student face is not visible in camera feed",
+              });
+              this.noFaceCount = 0;
+            }
+          } else {
             this.noFaceCount = 0;
           }
-        } else {
-          this.noFaceCount = 0;
-        }
 
-        // 3. Directional Head Pose / Gaze Detection
-        if (numFaces === 1) {
-          const landmarks = results.faceLandmarks[0];
-          const noseTip = landmarks[1];
-          const leftEar = landmarks[234];
-          const rightEar = landmarks[454];
+          // 3. Directional Head Pose / Gaze Detection
+          if (numFaces === 1) {
+            const landmarks = results.faceLandmarks[0];
+            const noseTip = landmarks[1];
+            const leftEar = landmarks[234];
+            const rightEar = landmarks[454];
 
-          if (noseTip && leftEar && rightEar) {
-            const faceWidth = Math.abs(rightEar.x - leftEar.x);
-            const noseRelativeX = (noseTip.x - leftEar.x) / (faceWidth || 1);
+            if (noseTip && leftEar && rightEar) {
+              const faceWidth = Math.abs(rightEar.x - leftEar.x);
+              const noseRelativeX = (noseTip.x - leftEar.x) / (faceWidth || 1);
 
-            // IGNORE LOOKING DOWN (scratch paper) & LOOKING UP (thinking)
-            // ONLY FLAG SIDEWAYS TURNS (Left/Right)
-            const isLookingSideways = noseRelativeX < 0.20 || noseRelativeX > 0.80;
+              // IGNORE LOOKING DOWN (scratch paper) & LOOKING UP (thinking)
+              // ONLY FLAG SIDEWAYS TURNS (Left/Right)
+              const isLookingSideways = noseRelativeX < 0.20 || noseRelativeX > 0.80;
 
-            if (isLookingSideways) {
-              this.lookingSidewaysCount++;
-              if (this.lookingSidewaysCount >= 4) {
-                this.emitViolation({
-                  type: "looking_away",
-                  description: "Student is repeatedly turning head sideways away from screen",
-                });
+              if (isLookingSideways) {
+                this.lookingSidewaysCount++;
+                if (this.lookingSidewaysCount >= 4) {
+                  this.emitViolation({
+                    type: "looking_away",
+                    description: "Student is repeatedly turning head sideways away from screen",
+                  });
+                  this.lookingSidewaysCount = 0;
+                }
+              } else {
                 this.lookingSidewaysCount = 0;
               }
-            } else {
-              this.lookingSidewaysCount = 0;
             }
           }
         }

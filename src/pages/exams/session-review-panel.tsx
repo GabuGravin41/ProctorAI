@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import LatexRenderer from "@/components/latex-renderer";
 import {
   X, Loader2, ShieldCheck, ShieldX, CheckCircle2,
-  AlertTriangle, BookOpen, Clock, Sparkles
+  AlertTriangle, BookOpen, Clock, Sparkles, Video, Camera
 } from "lucide-react";
 import { customFetch } from "@/lib/api-client";
 
@@ -110,8 +110,24 @@ function FlagCard({
       )}
 
       {flag.clipData && (
-        <div className="rounded-md overflow-hidden bg-black aspect-video border my-2">
-          <video src={flag.clipData} controls className="w-full h-full object-contain" />
+        <div className="space-y-1 my-2">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            <Video className="h-3 w-3 text-red-500" /> Recorded Video &amp; Audio Evidence Clip
+          </div>
+          <div className="rounded-md overflow-hidden bg-black aspect-video border shadow-inner">
+            <video src={flag.clipData} controls className="w-full h-full object-contain" />
+          </div>
+        </div>
+      )}
+
+      {flag.screenshotUrl && (
+        <div className="space-y-1 my-2">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            <Camera className="h-3 w-3 text-indigo-500" /> Frame Snapshot
+          </div>
+          <div className="rounded-md overflow-hidden bg-slate-950 aspect-video border shadow-inner">
+            <img src={flag.screenshotUrl} alt="Flag snapshot" className="w-full h-full object-contain" />
+          </div>
         </div>
       )}
 

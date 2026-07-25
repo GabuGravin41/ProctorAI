@@ -19,7 +19,7 @@ import {
   GenerateQuestionsInputQuestionTypesItem,
   useGetMe
 } from "@/lib/api-client";
-import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Sparkles, Send, Copy, CheckCheck, Archive, Trash2, RefreshCw, Settings, ArrowUp, ArrowDown, Users, Globe, Tag, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import LatexRenderer from "@/components/latex-renderer";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 type QuestionType = "multiple_choice" | "true_false" | "short_answer" | "essay";
@@ -134,6 +135,24 @@ export default function ExamBuilder() {
   const [editQuestionForm, setEditQuestionForm] = useState<NewQuestionForm>(DEFAULT_FORM);
   const [proctoringEnabled, setProctoringEnabled] = useState(true);
   const [gradingMode, setGradingMode] = useState<"auto" | "manual" | "review_release">("auto");
+  const [isPublicSetting, setIsPublicSetting] = useState(false);
+  const [topicSetting, setTopicSetting] = useState("");
+  const [tagsSetting, setTagsSetting] = useState<string[]>([]);
+  const [tagInputSetting, setTagInputSetting] = useState("");
+
+  const handleAddTagSetting = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if ('key' in e && e.key !== 'Enter' && e.key !== ',') return;
+    e.preventDefault();
+    const trimmed = tagInputSetting.trim().toLowerCase().replace(/^[#,\s]+/, '');
+    if (trimmed && !tagsSetting.includes(trimmed)) {
+      setTagsSetting([...tagsSetting, trimmed]);
+    }
+    setTagInputSetting("");
+  };
+
+  const handleRemoveTagSetting = (tagToRemove: string) => {
+    setTagsSetting(tagsSetting.filter(t => t !== tagToRemove));
+  };
   
   // Enhanced AI generation state
   const [learningObjectives, setLearningObjectives] = useState("");
@@ -485,6 +504,9 @@ Generate ${aiCount} questions that follow these specifications exactly.
       examId,
       data: {
         gradingMode,
+        isPublic: isPublicSetting,
+        topic: topicSetting,
+        tags: tagsSetting,
         aiConfig: {
           provider: aiProvider,
           model: aiModel,
@@ -505,7 +527,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
     });
   };
 
-  // Initialize AI settings from exam when dialog opens
+  // Initialize AI settings & exam details when dialog opens
   useEffect(() => {
     if (aiSettingsOpen && exam) {
       if (exam.aiConfig) {
@@ -515,6 +537,9 @@ Generate ${aiCount} questions that follow these specifications exactly.
         setProctoringEnabled(exam.aiConfig.proctoringEnabled !== false);
       }
       setGradingMode(exam.gradingMode as any || "auto");
+      setIsPublicSetting(exam.isPublic ?? false);
+      setTopicSetting(exam.topic || "");
+      setTagsSetting(Array.isArray(exam.tags) ? exam.tags : []);
     }
   }, [aiSettingsOpen, exam]);
 
@@ -582,17 +607,31 @@ Generate ${aiCount} questions that follow these specifications exactly.
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground truncate">{exam.title}</h1>
                 <Badge variant={exam.status === 'published' ? 'default' : exam.status === 'archived' ? 'outline' : 'secondary'} className="capitalize shrink-0">{exam.status}</Badge>
+                <Badge className={exam.isPublic ? "bg-emerald-600 text-white shrink-0" : "bg-slate-100 text-slate-700 border shrink-0"}>
+                  {exam.isPublic ? "🌐 Public" : "🔒 Private"}
+                </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {exam.subject} • {exam.durationMinutes} min
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>{exam.subject || 'General'}</span>
+                {exam.topic && <span>• Topic: <strong className="text-slate-800 font-semibold">{exam.topic}</strong></span>}
+                <span>• {exam.durationMinutes} min</span>
                 {exam.accessCode && (
                   <>
-                    <span className="mx-2">•</span>
+                    <span>•</span>
                     <span className="font-semibold text-primary">Access Code: </span>
                     <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-xs select-all">{exam.accessCode}</code>
                   </>
                 )}
               </p>
+              {exam.tags && exam.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {exam.tags.map((t: string) => (
+                    <Badge key={t} variant="outline" className="text-[10px] font-mono bg-indigo-50 text-indigo-700 border-indigo-200">
+                      #{t}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
                   {exam.status === 'draft' && (
               <>
@@ -1558,6 +1597,69 @@ Example: Chapter 3 covers photosynthesis...
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Public Exam Visibility & Categorization */}
+            <div className="space-y-4 pt-4">
+              <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-indigo-600" /> Visibility, Topic & Tags
+              </h4>
+              
+              <div className="flex flex-row items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isPublicSwitch" className="text-sm font-bold text-indigo-950 cursor-pointer">
+                    Make Exam Public
+                  </Label>
+                  <p className="text-xs text-indigo-900/70">
+                    Visible to all students on their Practice Exams dashboard.
+                  </p>
+                </div>
+                <Switch
+                  id="isPublicSwitch"
+                  checked={isPublicSetting}
+                  onCheckedChange={setIsPublicSetting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="topicInput">Topic / Category</Label>
+                <Input
+                  id="topicInput"
+                  placeholder="e.g. Olympiad Algebra, Graph Theory, Bebras Puzzles"
+                  value={topicSetting}
+                  onChange={(e) => setTopicSetting(e.target.value)}
+                  className="bg-white text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Categorize your test to help students find relevant practice material.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Tag className="h-3.5 w-3.5 text-indigo-600" /> Exam Tags
+                </Label>
+                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                  {tagsSetting.map((t) => (
+                    <Badge key={t} variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 gap-1 text-[11px] py-0.5 px-2 rounded-full font-mono">
+                      #{t}
+                      <button type="button" onClick={() => handleRemoveTagSetting(t)} className="hover:text-rose-600 ml-1">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Add tag and press Enter" 
+                    value={tagInputSetting}
+                    onChange={(e) => setTagInputSetting(e.target.value)}
+                    onKeyDown={handleAddTagSetting}
+                    className="bg-white text-xs h-8"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddTagSetting} className="shrink-0 h-8 text-xs">
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Proctoring Settings Section */}

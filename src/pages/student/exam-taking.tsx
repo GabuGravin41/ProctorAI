@@ -65,16 +65,20 @@ export default function ExamTaking() {
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
       });
       setCaptureStream(stream);
-      setTimeout(() => {
-        if (captureVideoRef.current) {
-          captureVideoRef.current.srcObject = stream;
-        }
-      }, 150);
     } catch (err) {
       toast({ title: "Camera access failed", description: "Please ensure camera permissions are granted.", variant: "destructive" });
       setActiveCaptureQId(null);
     }
   };
+
+  // Ensure proof photo modal video element binds and plays stream
+  useEffect(() => {
+    if (captureStream && activeCaptureQId !== null && captureVideoRef.current) {
+      const video = captureVideoRef.current;
+      video.srcObject = captureStream;
+      video.play().catch(err => console.warn("Proof photo video play error:", err));
+    }
+  }, [captureStream, activeCaptureQId]);
 
   const capturePhoto = async () => {
     if (activeCaptureQId === null || !captureStream || !captureVideoRef.current) return;
@@ -133,28 +137,41 @@ export default function ExamTaking() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
-  // Initialize rolling recording buffer
+  // Initialize rolling recording buffer with cross-browser MIME type check
   useEffect(() => {
     if (!stream) return;
     try {
-      const options = { mimeType: "video/webm;codecs=vp8" };
+      let mimeType = "";
+      const candidates = [
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+        "video/mp4",
+        "video/ogg"
+      ];
+      for (const cand of candidates) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(cand)) {
+          mimeType = cand;
+          break;
+        }
+      }
+
+      const options = mimeType ? { mimeType } : undefined;
       const recorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           recordedChunksRef.current.push(e.data);
-          // Keep only the last 4 chunks (~12 seconds of video if timeslice is 3s)
-          if (recordedChunksRef.current.length > 4) {
+          // Keep the last 5 slices (~12.5 seconds of video/audio)
+          if (recordedChunksRef.current.length > 5) {
             recordedChunksRef.current.shift();
           }
         }
       };
 
-      // Start recording with 3-second slices
-      recorder.start(3000);
+      recorder.start(2500);
     } catch (e) {
-      console.warn("MediaRecorder not fully supported or failed to initialize:", e);
+      console.warn("MediaRecorder initialization note:", e);
     }
 
     return () => {
@@ -166,23 +183,22 @@ export default function ExamTaking() {
 
   const captureVideoClip = async (): Promise<string | null> => {
     return new Promise((resolve) => {
-      if (!mediaRecorderRef.current || recordedChunksRef.current.length === 0) {
+      if (!recordedChunksRef.current || recordedChunksRef.current.length === 0) {
         resolve(null);
         return;
       }
-      // Wait 5 seconds after flag is triggered to capture the post-cheating frame buffer
-      setTimeout(() => {
-        try {
-          const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-        } catch (err) {
-          resolve(null);
-        }
-      }, 5000);
+      try {
+        const mimeType = mediaRecorderRef.current?.mimeType || "video/webm";
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        resolve(null);
+      }
     });
   };
 
@@ -204,19 +220,22 @@ export default function ExamTaking() {
     return null;
   };
 
-  // Helper helper to trigger flags with clips
+  // Helper helper to trigger flags with dual evidence (clip + screenshot)
   const triggerFlag = async (type: FlagInputType, description: string) => {
     if (!sessionId || !Number.isInteger(sessionId) || sessionId <= 0) return;
 
     setLiveFlags((n) => n + 1);
 
+    const screenshot = captureScreenshot();
     const clip = await captureVideoClip();
+
     reportFlag.mutate({
       sessionId,
       data: {
         type,
         detectedAt: new Date().toISOString(),
         description,
+        screenshotUrl: screenshot || undefined,
         clipData: clip || undefined,
       },
     }, {
@@ -252,11 +271,19 @@ export default function ExamTaking() {
     return () => { acquired?.getTracks().forEach(t => t.stop()); };
   }, [hasStarted, exam?.isPublic, isProctoringEnabled]);
 
-  // Ensure stream is bound to video element whenever stream or video element renders
+  // Ensure stream is bound to main video element whenever stream or video element renders
   useEffect(() => {
     if (stream && videoRef.current) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(() => {});
+      const video = videoRef.current;
+      video.srcObject = stream;
+      const playVideo = () => {
+        video.play().catch((err) => console.warn("Webcam video play error:", err));
+      };
+      if (video.readyState >= 2) {
+        playVideo();
+      } else {
+        video.onloadedmetadata = playVideo;
+      }
     }
   }, [stream, hasStarted]);
 
