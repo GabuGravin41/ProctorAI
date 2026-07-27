@@ -134,8 +134,8 @@ export default function Dashboard() {
               {isLoadingAudit ? (
                 <div className="text-sm text-muted-foreground">Loading timeline...</div>
               ) : auditEvents.length ? (
-                <div className="space-y-3 md:space-y-4">
-                  {auditEvents.slice(0, 8).map((event) => (
+                <div className="max-h-[480px] overflow-y-auto pr-2 space-y-3 md:space-y-4">
+                  {auditEvents.map((event) => (
                     <div key={event.id} className="flex flex-col p-3 md:p-4 border rounded-md bg-red-50/50 border-red-100 gap-2">
                       <div className="flex items-start md:items-center justify-between gap-2">
                         <span className="font-medium capitalize text-destructive flex items-center gap-1 text-xs md:text-sm">
