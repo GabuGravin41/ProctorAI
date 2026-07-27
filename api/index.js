@@ -54568,6 +54568,15 @@ var pool = new Pool4({
 var db = drizzle(pool, { schema: schema_exports });
 
 // artifacts/api-server/src/routes/users.ts
+async function reassignSeededExamsIfAdmin(clerkId, email) {
+  if (email && email.toLowerCase() === "daltonomondi04@gmail.com") {
+    try {
+      await db.update(examsTable).set({ instructorClerkId: clerkId }).where(eq(examsTable.instructorClerkId, "seed_olympiad_trainer"));
+    } catch (err) {
+      console.error("Failed to reassign seeded exams to admin:", err);
+    }
+  }
+}
 var router2 = (0, import_express2.Router)();
 var requireAuth2 = (req, res, next) => {
   const auth = getAuth(req);
@@ -54600,6 +54609,9 @@ router2.get("/me", requireAuth2, async (req, res) => {
         role: null,
         name: fullName
       }).returning();
+    }
+    if (user) {
+      await reassignSeededExamsIfAdmin(user.clerkId, user.email);
     }
     res.json({
       id: user.id,
@@ -54641,6 +54653,9 @@ router2.patch("/me", requireAuth2, async (req, res) => {
       }).returning();
     } else {
       [user] = await db.update(usersTable).set(updates).where(eq(usersTable.clerkId, clerkId)).returning();
+    }
+    if (user) {
+      await reassignSeededExamsIfAdmin(user.clerkId, user.email);
     }
     res.json({
       id: user.id,
@@ -55093,14 +55108,6 @@ router4.patch("/:examId/questions/:questionId", requireAuth4, async (req, res) =
     if (referenceSolution !== void 0) updates.referenceSolution = referenceSolution;
     if (points !== void 0) updates.points = points;
     if (order !== void 0) updates.order = order;
-    if (exam.status !== "draft") {
-      const allowedKeys = ["referenceSolution"];
-      const attemptedKeys = Object.keys(updates);
-      const isAttemptingOtherUpdates = attemptedKeys.some((k) => !allowedKeys.includes(k));
-      if (isAttemptingOtherUpdates) {
-        return res.status(400).json({ error: "Cannot modify question structure of a published exam. Only reference solutions can be edited." });
-      }
-    }
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });
     res.json(formatQuestion(q));

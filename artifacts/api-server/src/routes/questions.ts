@@ -94,15 +94,7 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (points !== undefined) updates.points = points;
     if (order !== undefined) updates.order = order;
 
-    if (exam.status !== "draft") {
-      // If the exam is published/archived, only referenceSolution is allowed to be modified
-      const allowedKeys = ["referenceSolution"];
-      const attemptedKeys = Object.keys(updates);
-      const isAttemptingOtherUpdates = attemptedKeys.some(k => !allowedKeys.includes(k));
-      if (isAttemptingOtherUpdates) {
-        return res.status(400).json({ error: "Cannot modify question structure of a published exam. Only reference solutions can be edited." });
-      }
-    }
+
 
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });

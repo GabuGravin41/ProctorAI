@@ -27,7 +27,7 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const INSTRUCTOR_CLERK_ID = 'seed_olympiad_trainer';
+let INSTRUCTOR_CLERK_ID = 'seed_olympiad_trainer';
 
 function generateAccessCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -1981,12 +1981,20 @@ int main() {
 
 // ─── DB SEED RUNNER ──────────────────────────────────────────────────────────
 async function main() {
-  const client = new Client({ connectionString: DATABASE_URL });
+  const client = new Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
   await client.connect();
   console.log('🌱 Connected to database for seeding...');
 
   try {
-    await client.query('DELETE FROM exams WHERE instructor_clerk_id = $1', [INSTRUCTOR_CLERK_ID]);
+    const adminRes = await client.query("SELECT clerk_id FROM users WHERE email = 'daltonomondi04@gmail.com'");
+    if (adminRes.rows.length > 0) {
+      INSTRUCTOR_CLERK_ID = adminRes.rows[0].clerk_id;
+      console.log(`👤 Found admin user (daltonomondi04@gmail.com). Seeding exams to: ${INSTRUCTOR_CLERK_ID}`);
+    } else {
+      console.log(`👤 Admin user not found. Seeding to default: ${INSTRUCTOR_CLERK_ID}`);
+    }
+
+    await client.query("DELETE FROM exams WHERE instructor_clerk_id = $1 OR instructor_clerk_id = 'seed_olympiad_trainer'", [INSTRUCTOR_CLERK_ID]);
     console.log('🧹 Cleaned up old seeded exams.');
 
     for (const exam of EXAMS_DATA) {

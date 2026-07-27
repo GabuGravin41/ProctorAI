@@ -1,7 +1,17 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, usersTable } from "../db";
+import { db, usersTable, examsTable } from "../db";
 import { eq } from "drizzle-orm";
+
+async function reassignSeededExamsIfAdmin(clerkId: string, email: string) {
+  if (email && email.toLowerCase() === 'daltonomondi04@gmail.com') {
+    try {
+      await db.update(examsTable).set({ instructorClerkId: clerkId }).where(eq(examsTable.instructorClerkId, 'seed_olympiad_trainer'));
+    } catch (err) {
+      console.error("Failed to reassign seeded exams to admin:", err);
+    }
+  }
+}
 
 const router = Router();
 
@@ -42,6 +52,10 @@ router.get("/me", requireAuth, async (req: any, res) => {
           name: fullName
         })
         .returning();
+    }
+
+    if (user) {
+      await reassignSeededExamsIfAdmin(user.clerkId, user.email);
     }
 
     res.json({
@@ -91,6 +105,11 @@ router.patch("/me", requireAuth, async (req: any, res) => {
     } else {
       [user] = await db.update(usersTable).set(updates).where(eq(usersTable.clerkId, clerkId)).returning();
     }
+
+    if (user) {
+      await reassignSeededExamsIfAdmin(user.clerkId, user.email);
+    }
+
     res.json({
       id: user.id,
       clerkId: user.clerkId,

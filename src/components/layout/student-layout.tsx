@@ -35,7 +35,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       me.subjectArea && 
       me.trafficSource;
 
-    if (!isProfileComplete) {
+    if (!isProfileComplete && location !== "/profile") {
       setLocation("/onboarding");
       return null;
     }

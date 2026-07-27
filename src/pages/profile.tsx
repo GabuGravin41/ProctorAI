@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useGetMe, useUpdateMe, getGetMeQueryKey } from "@/lib/api-client";
+import { useGetMe, useUpdateMe, getGetMeQueryKey, useGetInstructorProfile } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Copy } from "lucide-react";
 import { Link } from "wouter";
 
 export default function UserProfile() {
@@ -23,6 +23,8 @@ export default function UserProfile() {
     query: { queryKey: getGetMeQueryKey() }
   });
   const updateMe = useUpdateMe();
+  
+  const { data: instructorProfile } = useGetInstructorProfile();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -35,7 +37,7 @@ export default function UserProfile() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (me) {
+    if (me && !isEditing) {
       setFormData({
         name: me.name || "",
         email: me.email || "",
@@ -44,7 +46,7 @@ export default function UserProfile() {
         trafficSource: me.trafficSource || "",
       });
     }
-  }, [me]);
+  }, [me, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +63,11 @@ export default function UserProfile() {
 
     if (!formData.subjectArea) {
       toast({ title: "Subject area is required", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.trafficSource) {
+      toast({ title: "How you heard about us is required", variant: "destructive" });
       return;
     }
 
@@ -189,7 +196,7 @@ export default function UserProfile() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Full Name *</Label>
                   <Input
@@ -227,7 +234,7 @@ export default function UserProfile() {
               </div>
 
               {/* Subject Area */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Subject Area *</Label>
                   <Select
@@ -326,6 +333,28 @@ export default function UserProfile() {
                 {me.createdAt ? new Date(me.createdAt).toLocaleDateString() : "N/A"}
               </span>
             </div>
+            {me.role === "instructor" && instructorProfile?.instructorCode && (
+              <div className="flex justify-between items-center py-2 border-t mt-1">
+                <span className="text-muted-foreground">Instructor Code:</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded font-mono font-semibold">
+                    {instructorProfile.instructorCode}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      navigator.clipboard.writeText(instructorProfile.instructorCode);
+                      toast({ title: "Instructor code copied!" });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

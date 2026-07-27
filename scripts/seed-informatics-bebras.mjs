@@ -31,7 +31,7 @@ loadEnv();
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('ERROR: DATABASE_URL not set'); process.exit(1); }
 
-const INSTRUCTOR_CLERK_ID = 'seed_olympiad_trainer';
+let INSTRUCTOR_CLERK_ID = 'seed_olympiad_trainer';
 
 function code() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -486,6 +486,29 @@ async function insertExam(exam) {
 async function main() {
   await client.connect();
   console.log('Connected to database. Seeding Informatics Bebras papers...\n');
+
+  try {
+    const adminRes = await client.query("SELECT clerk_id FROM users WHERE email = 'daltonomondi04@gmail.com'");
+    if (adminRes.rows.length > 0) {
+      INSTRUCTOR_CLERK_ID = adminRes.rows[0].clerk_id;
+      console.log(`👤 Found admin user (daltonomondi04@gmail.com). Seeding Bebras exams to: ${INSTRUCTOR_CLERK_ID}`);
+    } else {
+      console.log(`👤 Admin user not found. Seeding to default: ${INSTRUCTOR_CLERK_ID}`);
+    }
+
+    const titles = [
+      'Kenya Informatics Olympiad — Round 1 (Bebras Puzzles), Paper 1',
+      'Kenya Informatics Olympiad — Round 1 (Bebras Puzzles), Paper 2',
+      'Kenya Informatics Olympiad — Round 1 (Bebras Puzzles), Paper 3'
+    ];
+    await client.query(
+      `DELETE FROM exams WHERE (instructor_clerk_id = $1 OR instructor_clerk_id = 'seed_olympiad_trainer') AND title = ANY($2)`,
+      [INSTRUCTOR_CLERK_ID, titles]
+    );
+    console.log('🧹 Cleaned up old seeded Bebras exams.');
+  } catch (err) {
+    console.error('Warning: Bebras cleanup failed:', err.message);
+  }
 
   await insertExam({
     title: 'Kenya Informatics Olympiad — Round 1 (Bebras Puzzles), Paper 1',
