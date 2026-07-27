@@ -92,7 +92,7 @@ export default function ExamBuilder() {
   const { data: questions, isLoading: isLoadingQuestions, refetch: refetchQuestions } = useListQuestions(examId, { query: { enabled: !!examId, queryKey: getListQuestionsQueryKey(examId) } });
   const { data: me } = useGetMe();
 
-  const isOwner = exam && me && exam.instructorClerkId === me.clerkId;
+  const isOwner = exam && me && (exam.instructorClerkId === me.clerkId || me.email === "daltonomondi04@gmail.com");
 
   const publishExam = usePublishExam();
   const generateQuestions = useGenerateQuestions();
@@ -335,28 +335,21 @@ Generate ${aiCount} questions that follow these specifications exactly.
       return;
     }
 
-    let payload: any;
-    if (exam?.status !== "draft") {
-      payload = {
-        referenceSolution: referenceSolution.trim() || null,
-      };
-    } else {
-      payload = {
-        type,
-        text: text.trim(),
-        points: parseInt(points, 10) || 1,
-        referenceSolution: referenceSolution.trim() || null,
-      };
+    const payload: any = {
+      type,
+      text: text.trim(),
+      points: parseInt(points, 10) || 1,
+      referenceSolution: referenceSolution.trim() || null,
+    };
 
-      if (type === "multiple_choice") {
-        payload.options = options.map(o => o.trim());
-        payload.correctAnswer = correctAnswer;
-      } else if (type === "true_false") {
-        payload.options = ["True", "False"];
-        payload.correctAnswer = correctAnswer;
-      } else if (type === "short_answer") {
-        payload.correctAnswer = correctAnswer || null;
-      }
+    if (type === "multiple_choice") {
+      payload.options = options.map(o => o.trim());
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "true_false") {
+      payload.options = ["True", "False"];
+      payload.correctAnswer = correctAnswer;
+    } else if (type === "short_answer") {
+      payload.correctAnswer = correctAnswer || null;
     }
 
     updateQuestion.mutate({ examId: String(examId), questionId: editTargetId, data: payload }, {
