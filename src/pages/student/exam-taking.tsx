@@ -935,9 +935,14 @@ export default function ExamTaking() {
             </span>
           </div>
           <div className="aspect-video bg-zinc-900 relative flex items-center justify-center">
-            {stream ? (
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
-            ) : (
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className={`w-full h-full object-cover transform -scale-x-100 ${!stream ? "hidden" : ""}`} 
+            />
+            {!stream && (
               <div className="text-[10px] text-zinc-500 text-center px-4 leading-normal">
                 Camera inactive (optional for practice)
               </div>
