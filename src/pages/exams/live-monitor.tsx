@@ -51,133 +51,135 @@ export default function LiveContestMonitor() {
   return (
     <InstructorLayout>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Navigation & Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-          <div>
-            <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-slate-500">
-              <Link href={`/exams/${examId}/results`}>
-                <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Results
-              </Link>
-            </Button>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-slate-900">
-                🔴 Live Contest Monitor
-              </h1>
-              <Badge className="bg-red-500 text-white animate-pulse">Live 10s Poll</Badge>
+        <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 pt-2 pb-4 border-b space-y-6">
+          {/* Navigation & Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-slate-500">
+                <Link href={`/exams/${examId}/results`}>
+                  <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Results
+                </Link>
+              </Button>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-slate-900">
+                  🔴 Live Contest Monitor
+                </h1>
+                <Badge className="bg-red-500 text-white animate-pulse">Live 10s Poll</Badge>
+              </div>
+              <p className="text-xs md:text-sm text-slate-500 mt-1">
+                Exam: <span className="font-semibold text-slate-700">{exam?.title}</span> • {exam?.durationMinutes} mins
+              </p>
             </div>
-            <p className="text-xs md:text-sm text-slate-500 mt-1">
-              Exam: <span className="font-semibold text-slate-700">{exam?.title}</span> • {exam?.durationMinutes} mins
-            </p>
-          </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
-            Refresh Feed
-          </Button>
-        </div>
-
-        {/* Real-time Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="bg-white border">
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold text-slate-500">Total Enrolled</div>
-              <div className="text-2xl font-bold text-slate-900 mt-1">{summary?.total || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-emerald-50/50 border-emerald-200">
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                <Activity className="h-3.5 w-3.5" /> Active Taking
-              </div>
-              <div className="text-2xl font-bold text-emerald-900 mt-1">{summary?.active || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-blue-50/50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold text-blue-700 flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Submitted
-              </div>
-              <div className="text-2xl font-bold text-blue-900 mt-1">{summary?.submitted || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-50 border-slate-200">
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold text-slate-500">Not Started</div>
-              <div className="text-2xl font-bold text-slate-700 mt-1">{summary?.notStarted || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`cursor-pointer transition-all ${
-              (summary?.urgentFlags || 0) > 0
-                ? "bg-red-100 border-red-300 ring-2 ring-red-400"
-                : "bg-white border"
-            }`}
-            onClick={() => setFilterStatus("urgent")}
-          >
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold text-red-700 flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-red-600" /> Urgent Attention
-              </div>
-              <div className="text-2xl font-bold text-red-900 mt-1">{summary?.urgentFlags || 0}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filter Controls */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <Search className="h-4 w-4 absolute left-3 top-3 text-slate-400" />
-            <Input
-              placeholder="Search student..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
             <Button
+              variant="outline"
               size="sm"
-              variant={filterStatus === "all" ? "default" : "outline"}
-              onClick={() => setFilterStatus("all")}
-              className="text-xs h-8"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="flex items-center gap-2"
             >
-              All Students ({students.length})
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
+              Refresh Feed
             </Button>
-            <Button
-              size="sm"
-              variant={filterStatus === "urgent" ? "destructive" : "outline"}
+          </div>
+
+          {/* Real-time Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Card className="bg-white border">
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold text-slate-500">Total Enrolled</div>
+                <div className="text-2xl font-bold text-slate-900 mt-1">{summary?.total || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-emerald-50/50 border-emerald-200">
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                  <Activity className="h-3.5 w-3.5" /> Active Taking
+                </div>
+                <div className="text-2xl font-bold text-emerald-900 mt-1">{summary?.active || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-blue-50/50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold text-blue-700 flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Submitted
+                </div>
+                <div className="text-2xl font-bold text-blue-900 mt-1">{summary?.submitted || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-50 border-slate-200">
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold text-slate-500">Not Started</div>
+                <div className="text-2xl font-bold text-slate-700 mt-1">{summary?.notStarted || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`cursor-pointer transition-all ${
+                (summary?.urgentFlags || 0) > 0
+                  ? "bg-red-100 border-red-300 ring-2 ring-red-400"
+                  : "bg-white border"
+              }`}
               onClick={() => setFilterStatus("urgent")}
-              className="text-xs h-8"
             >
-              🚨 Urgent ({students.filter((s) => s.pendingFlagCount >= 3).length})
-            </Button>
-            <Button
-              size="sm"
-              variant={filterStatus === "flagged" ? "secondary" : "outline"}
-              onClick={() => setFilterStatus("flagged")}
-              className="text-xs h-8"
-            >
-              🚩 Has Flags ({students.filter((s) => s.flagCount > 0).length})
-            </Button>
-            <Button
-              size="sm"
-              variant={filterStatus === "active" ? "secondary" : "outline"}
-              onClick={() => setFilterStatus("active")}
-              className="text-xs h-8"
-            >
-              🟢 Active ({summary?.active || 0})
-            </Button>
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold text-red-700 flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" /> Urgent Attention
+                </div>
+                <div className="text-2xl font-bold text-red-900 mt-1">{summary?.urgentFlags || 0}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative w-full sm:w-80">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-slate-400" />
+              <Input
+                placeholder="Search student..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                size="sm"
+                variant={filterStatus === "all" ? "default" : "outline"}
+                onClick={() => setFilterStatus("all")}
+                className="text-xs h-8"
+              >
+                All Students ({students.length})
+              </Button>
+              <Button
+                size="sm"
+                variant={filterStatus === "urgent" ? "destructive" : "outline"}
+                onClick={() => setFilterStatus("urgent")}
+                className="text-xs h-8"
+              >
+                🚨 Urgent ({students.filter((s) => s.pendingFlagCount >= 3).length})
+              </Button>
+              <Button
+                size="sm"
+                variant={filterStatus === "flagged" ? "secondary" : "outline"}
+                onClick={() => setFilterStatus("flagged")}
+                className="text-xs h-8"
+              >
+                🚩 Has Flags ({students.filter((s) => s.flagCount > 0).length})
+              </Button>
+              <Button
+                size="sm"
+                variant={filterStatus === "active" ? "secondary" : "outline"}
+                onClick={() => setFilterStatus("active")}
+                className="text-xs h-8"
+              >
+                🟢 Active ({summary?.active || 0})
+              </Button>
+            </div>
           </div>
         </div>
 

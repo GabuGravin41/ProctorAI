@@ -1,5 +1,5 @@
 export interface TypingAnomalyEvent {
-  type: "suspicious_typing_cadence" | "unnatural_typing_burst";
+  type: "suspicious_typing" | "unnatural_typing";
   description: string;
 }
 
@@ -50,7 +50,7 @@ export class TypingAnalyzer {
     if (latexDensity > 0.15 && wpm > 35) {
       this.lastFlagTime = now;
       this.emitAnomaly({
-        type: "suspicious_typing_cadence",
+        type: "suspicious_typing",
         description: `Unnaturally high LaTeX typing speed detected (${Math.round(wpm)} WPM with high mathematical symbol density)`,
       });
       return;
@@ -75,7 +75,7 @@ export class TypingAnalyzer {
       if (avgInterval < 220 && stdDev < 30) {
         this.lastFlagTime = now;
         this.emitAnomaly({
-          type: "unnatural_typing_burst",
+          type: "unnatural_typing",
           description: "Unnatural uniform typing cadence detected (burst typing without deliberation pauses)",
         });
       }

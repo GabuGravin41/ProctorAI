@@ -6,6 +6,13 @@ const ALLOWED_FLAG_TYPES = new Set([
   'face_not_visible',
   'looking_away',
   'multiple_faces',
+  'lost_focus',
+  'copy_pasting',
+  'screenshot',
+  'loud_audio_detected',
+  'phone_detected',
+  'suspicious_typing',
+  'unnatural_typing',
 ]);
 
 export function normalizeFlagType(type: unknown): string | null {

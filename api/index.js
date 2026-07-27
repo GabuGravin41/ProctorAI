@@ -56132,7 +56132,14 @@ var ALLOWED_FLAG_TYPES = /* @__PURE__ */ new Set([
   "fullscreen_exit",
   "face_not_visible",
   "looking_away",
-  "multiple_faces"
+  "multiple_faces",
+  "lost_focus",
+  "copy_pasting",
+  "screenshot",
+  "loud_audio_detected",
+  "phone_detected",
+  "suspicious_typing",
+  "unnatural_typing"
 ]);
 function normalizeFlagType(type) {
   if (typeof type !== "string") return null;

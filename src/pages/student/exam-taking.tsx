@@ -252,7 +252,10 @@ export default function ExamTaking() {
   useEffect(() => {
     if (!hasStarted || !isProctoringEnabled) return;
     let acquired: MediaStream | null = null;
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    navigator.mediaDevices.getUserMedia({ 
+      video: { width: { max: 640 }, height: { max: 480 }, frameRate: { max: 12 } }, 
+      audio: true 
+    })
       .then(s => {
         acquired = s;
         setStream(s);
@@ -452,7 +455,7 @@ export default function ExamTaking() {
       const elapsed = startedAtTime ? (Date.now() - startedAtTime) / 1000 : 0;
       if (elapsed < 20) return;
 
-      triggerFlag("focus_loss" as FlagInputType, "Student clicked outside of the exam window (focus lost)");
+      triggerFlag("lost_focus" as FlagInputType, "Student clicked outside of the exam window (focus lost)");
       toast({
         title: "⚠ Focus Lost",
         description: "Leaving the active exam area has been flagged.",
@@ -469,7 +472,7 @@ export default function ExamTaking() {
     const handleCopy = (e: ClipboardEvent) => {
       if (isUploadWindowRef.current) return;
       e.preventDefault();
-      triggerFlag("copy_paste" as FlagInputType, "Student attempted to copy exam text");
+      triggerFlag("copy_pasting" as FlagInputType, "Student attempted to copy exam text");
       toast({
         title: "⚠ Copy Blocked",
         description: "Copying text during the exam is restricted and has been flagged.",
@@ -483,7 +486,7 @@ export default function ExamTaking() {
       if (target.tagName === "INPUT" && target.getAttribute("type") === "file") return;
       
       e.preventDefault();
-      triggerFlag("copy_paste" as FlagInputType, "Student attempted to paste text into the exam");
+      triggerFlag("copy_pasting" as FlagInputType, "Student attempted to paste text into the exam");
       toast({
         title: "⚠ Paste Blocked",
         description: "Pasting content into the exam is restricted and has been flagged.",

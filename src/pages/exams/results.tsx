@@ -271,88 +271,89 @@ export default function ExamResults() {
 
         {/* Student Leaderboard & Performance Table */}
         <Card className="shadow-sm border">
-          <CardHeader className="border-b bg-slate-50/50 pb-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-amber-500" />
-                  Student Performance &amp; Leaderboard
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Ranked list of student submissions ({sortedSessions.length} of {results.sessions.length} shown)
-                </p>
-              </div>
-
-              {/* Sorting and Search Controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Search Bar */}
-                <div className="relative w-full sm:w-48 md:w-56">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search name, email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 text-xs h-9 bg-white"
-                  />
+          <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 border-b">
+            <CardHeader className="bg-slate-50/50 pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-500" />
+                    Student Performance &amp; Leaderboard
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Ranked list of student submissions ({sortedSessions.length} of {results.sessions.length} shown)
+                  </p>
                 </div>
 
-                {/* Sort By Dropdown */}
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full sm:w-44 text-xs h-9 bg-white">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <SelectValue placeholder="Sort By" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rank-desc">🏆 Rank / Highest Score</SelectItem>
-                    <SelectItem value="score-asc">📉 Lowest Score</SelectItem>
-                    <SelectItem value="name-asc">🔤 Name (A-Z)</SelectItem>
-                    <SelectItem value="name-desc">🔤 Name (Z-A)</SelectItem>
-                    <SelectItem value="flags-desc">🚩 Most Flags</SelectItem>
-                    <SelectItem value="flags-asc">🛡️ Fewest Flags (Clean)</SelectItem>
-                    <SelectItem value="submitted-desc">⏱️ Newest First</SelectItem>
-                    <SelectItem value="submitted-asc">⏱️ Oldest First</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Sorting and Search Controls */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Search Bar */}
+                  <div className="relative w-full sm:w-48 md:w-56">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search name, email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 text-xs h-9 bg-white"
+                    />
+                  </div>
 
-                {/* Status Filter */}
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-28 text-xs h-9 bg-white">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="review_requested">Requested Review</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {/* Sort By Dropdown */}
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-full sm:w-44 text-xs h-9 bg-white">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <SelectValue placeholder="Sort By" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rank-desc">🏆 Rank / Highest Score</SelectItem>
+                      <SelectItem value="score-asc">📉 Lowest Score</SelectItem>
+                      <SelectItem value="name-asc">🔤 Name (A-Z)</SelectItem>
+                      <SelectItem value="name-desc">🔤 Name (Z-A)</SelectItem>
+                      <SelectItem value="flags-desc">🚩 Most Flags</SelectItem>
+                      <SelectItem value="flags-asc">🛡️ Fewest Flags (Clean)</SelectItem>
+                      <SelectItem value="submitted-desc">⏱️ Newest First</SelectItem>
+                      <SelectItem value="submitted-asc">⏱️ Oldest First</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                {/* Flag Filter */}
-                <Select value={flagFilter} onValueChange={setFlagFilter}>
-                  <SelectTrigger className="w-28 text-xs h-9 bg-white">
-                    <SelectValue placeholder="Flags" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Flags</SelectItem>
-                    <SelectItem value="flagged">Flagged</SelectItem>
-                    <SelectItem value="clean">Clean</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {/* Status Filter */}
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-28 text-xs h-9 bg-white">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="review_requested">Requested Review</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Flag Filter */}
+                  <Select value={flagFilter} onValueChange={setFlagFilter}>
+                    <SelectTrigger className="w-28 text-xs h-9 bg-white">
+                      <SelectValue placeholder="Flags" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Flags</SelectItem>
+                      <SelectItem value="flagged">Flagged</SelectItem>
+                      <SelectItem value="clean">Clean</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            </CardHeader>
+            <div className="hidden md:grid md:grid-cols-12 gap-3 p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-slate-100/70 border-t">
+              <div className="col-span-1">Rank</div>
+              <div className="col-span-3">Student</div>
+              <div className="col-span-2">Access Code</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Score &amp; %</div>
+              <div className="col-span-2 text-right">Flags &amp; Action</div>
             </div>
-          </CardHeader>
+          </div>
           <CardContent className="p-0">
-            <div className="border-t">
-              <div className="hidden md:grid md:grid-cols-12 gap-3 p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-slate-100/70 border-b">
-                <div className="col-span-1">Rank</div>
-                <div className="col-span-3">Student</div>
-                <div className="col-span-2">Access Code</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-2">Score &amp; %</div>
-                <div className="col-span-2 text-right">Flags &amp; Action</div>
-              </div>
               <div className="divide-y">
                 {sortedSessions.length === 0 && (
                   <div className="p-8 text-center text-muted-foreground text-sm">
@@ -477,7 +478,6 @@ export default function ExamResults() {
                   );
                 })}
               </div>
-            </div>
           </CardContent>
         </Card>
       </div>

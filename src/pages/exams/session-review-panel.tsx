@@ -62,6 +62,14 @@ const FLAG_LABELS: Record<string, string> = {
   looking_away: "Looking Away",
   multiple_faces: "Multiple Faces",
   phone_detected: "Phone Detected",
+  tab_switch: "Tab Switch",
+  fullscreen_exit: "Fullscreen Exit",
+  lost_focus: "Lost Focus",
+  copy_pasting: "Copy / Pasting Attempt",
+  screenshot: "Screenshot Attempt",
+  loud_audio_detected: "Loud Audio Detected",
+  suspicious_typing: "Suspicious Typing",
+  unnatural_typing: "Unnatural Typing",
   other: "Other",
 };
 
