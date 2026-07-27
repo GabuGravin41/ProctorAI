@@ -139,6 +139,10 @@ export default function ExamBuilder() {
   const [topicSetting, setTopicSetting] = useState("");
   const [tagsSetting, setTagsSetting] = useState<string[]>([]);
   const [tagInputSetting, setTagInputSetting] = useState("");
+  const [titleSetting, setTitleSetting] = useState("");
+  const [descriptionSetting, setDescriptionSetting] = useState("");
+  const [durationMinutesSetting, setDurationMinutesSetting] = useState(60);
+  const [subjectSetting, setSubjectSetting] = useState("Mathematics");
 
   const handleAddTagSetting = (e: React.KeyboardEvent | React.MouseEvent) => {
     if ('key' in e && e.key !== 'Enter' && e.key !== ',') return;
@@ -503,6 +507,10 @@ Generate ${aiCount} questions that follow these specifications exactly.
     updateExam.mutate({
       examId,
       data: {
+        title: titleSetting,
+        description: descriptionSetting,
+        durationMinutes: durationMinutesSetting,
+        subject: subjectSetting,
         gradingMode,
         isPublic: isPublicSetting,
         topic: topicSetting,
@@ -540,6 +548,10 @@ Generate ${aiCount} questions that follow these specifications exactly.
       setIsPublicSetting(exam.isPublic ?? false);
       setTopicSetting(exam.topic || "");
       setTagsSetting(Array.isArray(exam.tags) ? exam.tags : []);
+      setTitleSetting(exam.title || "");
+      setDescriptionSetting(exam.description || "");
+      setDurationMinutesSetting(exam.durationMinutes || 60);
+      setSubjectSetting(exam.subject || "Mathematics");
     }
   }, [aiSettingsOpen, exam]);
 
@@ -1470,18 +1482,67 @@ Example: Chapter 3 covers photosynthesis...
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* AI Settings Dialog */}
       <Dialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" /> Exam Settings
             </DialogTitle>
             <DialogDescription>
-              Configure AI generation and proctoring controls for this exam.
+              Configure basic details, AI generation, and proctoring controls for this exam.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-4 divide-y divide-slate-100">
+            {/* Basic Exam Details Section */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm text-foreground">Basic Exam Details</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="examTitleInput">Exam Title / Name</Label>
+                <Input
+                  id="examTitleInput"
+                  value={titleSetting}
+                  onChange={(e) => setTitleSetting(e.target.value)}
+                  placeholder="e.g. Kenya Mathematics Olympiad — Round 1"
+                  className="bg-white text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="examDescriptionInput">Description / Instructions</Label>
+                <Textarea
+                  id="examDescriptionInput"
+                  value={descriptionSetting}
+                  onChange={(e) => setDescriptionSetting(e.target.value)}
+                  placeholder="Enter instructions or description..."
+                  className="bg-white text-sm min-h-20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="examSubjectInput">Subject</Label>
+                  <Input
+                    id="examSubjectInput"
+                    value={subjectSetting}
+                    onChange={(e) => setSubjectSetting(e.target.value)}
+                    placeholder="e.g. Mathematics"
+                    className="bg-white text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="examDurationInput">Duration (minutes)</Label>
+                  <Input
+                    id="examDurationInput"
+                    type="number"
+                    min="5"
+                    value={durationMinutesSetting}
+                    onChange={(e) => setDurationMinutesSetting(Number(e.target.value) || 60)}
+                    className="bg-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
             {/* AI Settings Section */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm text-foreground">AI Question Generation Settings</h4>
