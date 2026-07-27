@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, questionsTable, examsTable } from "../db";
+import { db, questionsTable, examsTable, usersTable } from "../db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -39,6 +39,12 @@ router.get("/:examId/questions", requireAuth, async (req: any, res) => {
   }
 });
 
+async function isAuthorizedForExam(exam: any, clerkUserId: string): Promise<boolean> {
+  if (exam.instructorClerkId === clerkUserId) return true;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkUserId));
+  return !!(user && user.email === "daltonomondi04@gmail.com");
+}
+
 // POST /api/exams/:examId/questions
 router.post("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
@@ -48,7 +54,9 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
-    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
+    
+    const isAuth = await isAuthorizedForExam(exam, clerkId);
+    if (!isAuth) return res.status(403).json({ error: "Forbidden: Only the exam owner or admin can modify questions." });
 
     const existing = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId));
     const order = existing.length;
@@ -83,7 +91,9 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     // Fetch the exam to check its status
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
-    if (exam.instructorClerkId !== req.clerkUserId) return res.status(403).json({ error: "Forbidden: Only the exam owner can modify questions." });
+    
+    const isAuth = await isAuthorizedForExam(exam, req.clerkUserId);
+    if (!isAuth) return res.status(403).json({ error: "Forbidden: Only the exam owner or admin can modify questions." });
 
     const updates: any = {};
     if (type !== undefined) updates.type = type;
@@ -93,8 +103,6 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
     if (points !== undefined) updates.points = points;
     if (order !== undefined) updates.order = order;
-
-
 
     const [q] = await db.update(questionsTable).set(updates).where(eq(questionsTable.id, questionId)).returning();
     if (!q) return res.status(404).json({ error: "Question not found" });
@@ -114,7 +122,9 @@ router.delete("/:examId/questions/:questionId", requireAuth, async (req: any, re
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
-    if (exam.instructorClerkId !== clerkId) return res.status(403).json({ error: "Forbidden: Only the exam owner can delete questions." });
+    
+    const isAuth = await isAuthorizedForExam(exam, clerkId);
+    if (!isAuth) return res.status(403).json({ error: "Forbidden: Only the exam owner or admin can delete questions." });
 
     await db.delete(questionsTable).where(eq(questionsTable.id, questionId));
     res.status(204).send();

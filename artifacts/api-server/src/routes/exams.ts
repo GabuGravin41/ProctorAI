@@ -159,6 +159,10 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const isAdmin = user && user.email === "daltonomondi04@gmail.com";
+
     const { title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, status, aiConfig, collaborators } = req.body;
     const updates: any = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
@@ -173,7 +177,11 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
     if (aiConfig !== undefined) updates.aiConfig = aiConfig;
     if (collaborators !== undefined) updates.collaborators = collaborators;
 
-    const [exam] = await db.update(examsTable).set(updates).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId))).returning();
+    const queryCond = isAdmin
+      ? eq(examsTable.id, examId)
+      : and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId));
+
+    const [exam] = await db.update(examsTable).set(updates).where(queryCond).returning();
     if (!exam) return res.status(404).json({ error: "Exam not found" });
     res.json(formatExam(exam));
   } catch (err) {
@@ -187,7 +195,15 @@ router.delete("/:examId", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    await db.delete(examsTable).where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId)));
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const isAdmin = user && user.email === "daltonomondi04@gmail.com";
+
+    const queryCond = isAdmin
+      ? eq(examsTable.id, examId)
+      : and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId));
+
+    await db.delete(examsTable).where(queryCond);
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "deleteExam error");
@@ -201,6 +217,9 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const isAdmin = user && user.email === "daltonomondi04@gmail.com";
+
     // Generate a unique 8-character uppercase access code
     let code: string = "";
     let attempts = 0;
@@ -211,6 +230,10 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
       attempts++;
     }
 
+    const queryCond = isAdmin
+      ? eq(examsTable.id, examId)
+      : and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId));
+
     const [exam] = await db
       .update(examsTable)
       .set({ 
@@ -218,7 +241,7 @@ router.post("/:examId/publish", requireAuth, async (req: any, res) => {
         accessCode: code,
         updatedAt: new Date() 
       })
-      .where(and(eq(examsTable.id, examId), eq(examsTable.instructorClerkId, clerkId)))
+      .where(queryCond)
       .returning();
 
     if (!exam) return res.status(404).json({ error: "Exam not found" });
@@ -246,7 +269,8 @@ router.get("/:examId/results", requireAuth, async (req: any, res) => {
 
     const isOwner = exam.instructorClerkId === clerkId;
     const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
-    if (!isOwner && !isCollab) return res.status(403).json({ error: "Forbidden" });
+    const isAdmin = user.email === "daltonomondi04@gmail.com";
+    if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: "Forbidden" });
 
     const sessions = await db.select().from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
 
