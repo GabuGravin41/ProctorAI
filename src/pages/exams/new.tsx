@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Sparkles, Key, Cpu, Globe, Tag, X, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -224,9 +225,9 @@ export default function NewExam() {
 
                 {/* Tags Section */}
                 <div className="space-y-2">
-                  <FormLabel className="flex items-center gap-1.5">
+                  <Label className="flex items-center gap-1.5">
                     <Tag className="h-4 w-4 text-indigo-600" /> Exam Tags
-                  </FormLabel>
+                  </Label>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     {tags.map((t) => (
                       <Badge key={t} variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 gap-1 text-xs py-1 px-2.5 rounded-full font-mono">
