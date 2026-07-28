@@ -288,14 +288,7 @@ export default function ExamTaking() {
       setStream(s);
     }).catch(() => {
       if (!active) return;
-      if (exam?.isPublic) {
-        toast({
-          title: "Camera monitoring skipped",
-          description: "Since this is a public practice exam, you can continue without camera access.",
-        });
-      } else {
-        setCameraError("Camera access required to take this exam.");
-      }
+      setCameraError("Camera access required to take this exam.");
     });
 
     return () => {
@@ -892,9 +885,7 @@ export default function ExamTaking() {
                   <>
                     <li className="flex gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                      {exam?.isPublic 
-                        ? "Camera and microphone access is requested to test the proctoring features (optional for public practice)." 
-                        : "Camera and microphone access is strictly required throughout the exam."}
+                      Camera and microphone access is strictly required throughout the exam.
                     </li>
                     <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Ensure your face is clearly visible and well-lit at all times.</li>
                     <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />AI monitors for looking away, multiple faces, phones, and other violations.</li>
@@ -969,7 +960,7 @@ export default function ExamTaking() {
             />
             {!stream && (
               <div className="text-[10px] text-zinc-500 text-center px-4 leading-normal">
-                Camera inactive (optional for practice)
+                Initializing camera feed...
               </div>
             )}
           </div>
