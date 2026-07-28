@@ -61,27 +61,40 @@ export default function ExamTaking() {
   const startCameraCapture = async (qId: number) => {
     try {
       setActiveCaptureQId(qId);
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
-      });
-      setCaptureStream(stream);
+      let s;
+      try {
+        s = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+      } catch {
+        try {
+          s = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 } 
+          });
+        } catch {
+          s = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+      }
+      setCaptureStream(s);
     } catch (err) {
       toast({ title: "Camera access failed", description: "Please ensure camera permissions are granted.", variant: "destructive" });
       setActiveCaptureQId(null);
     }
   };
 
-  // Ensure proof photo modal video element binds and plays stream
+  // Ensure proof photo modal video element binds and plays stream (reusing proctoring stream if available to prevent device locks)
   useEffect(() => {
-    if (captureStream && activeCaptureQId !== null && captureVideoRef.current) {
+    const activeStream = captureStream || stream;
+    if (activeStream && activeCaptureQId !== null && captureVideoRef.current) {
       const video = captureVideoRef.current;
-      video.srcObject = captureStream;
+      video.srcObject = activeStream;
       video.play().catch(err => console.warn("Proof photo video play error:", err));
     }
-  }, [captureStream, activeCaptureQId]);
+  }, [captureStream, stream, activeCaptureQId]);
 
   const capturePhoto = async () => {
-    if (activeCaptureQId === null || !captureStream || !captureVideoRef.current) return;
+    const activeStream = captureStream || stream;
+    if (activeCaptureQId === null || !activeStream || !captureVideoRef.current) return;
     try {
       const video = captureVideoRef.current;
       const canvas = document.createElement("canvas");
@@ -251,27 +264,46 @@ export default function ExamTaking() {
   // ── Camera ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!hasStarted || !isProctoringEnabled) return;
+    let active = true;
     let acquired: MediaStream | null = null;
-    navigator.mediaDevices.getUserMedia({ 
-      video: { width: { max: 640 }, height: { max: 480 }, frameRate: { max: 12 } }, 
-      audio: true 
-    })
-      .then(s => {
-        acquired = s;
-        setStream(s);
-      })
-      .catch(() => {
-        if (exam?.isPublic) {
-          toast({
-            title: "Camera monitoring skipped",
-            description: "Since this is a public practice exam, you can continue without camera access.",
-          });
-        } else {
-          setCameraError("Camera access required to take this exam.");
-        }
-      });
 
-    return () => { acquired?.getTracks().forEach(t => t.stop()); };
+    const constraints = [
+      { video: { width: 640, height: 480, frameRate: 12 }, audio: true },
+      { video: { width: { max: 640 }, height: { max: 480 }, frameRate: { max: 12 } }, audio: true },
+      { video: true, audio: true },
+      { video: true }
+    ];
+
+    let p = navigator.mediaDevices.getUserMedia(constraints[0]);
+    for (let i = 1; i < constraints.length; i++) {
+      p = p.catch(() => navigator.mediaDevices.getUserMedia(constraints[i]));
+    }
+
+    p.then(s => {
+      if (!active) {
+        s.getTracks().forEach(t => t.stop());
+        return;
+      }
+      acquired = s;
+      setStream(s);
+    }).catch(() => {
+      if (!active) return;
+      if (exam?.isPublic) {
+        toast({
+          title: "Camera monitoring skipped",
+          description: "Since this is a public practice exam, you can continue without camera access.",
+        });
+      } else {
+        setCameraError("Camera access required to take this exam.");
+      }
+    });
+
+    return () => {
+      active = false;
+      if (acquired) {
+        acquired.getTracks().forEach(t => t.stop());
+      }
+    };
   }, [hasStarted, exam?.isPublic, isProctoringEnabled]);
 
   // Ensure stream is bound to main video element whenever stream or video element renders
@@ -279,14 +311,7 @@ export default function ExamTaking() {
     if (stream && videoRef.current) {
       const video = videoRef.current;
       video.srcObject = stream;
-      const playVideo = () => {
-        video.play().catch((err) => console.warn("Webcam video play error:", err));
-      };
-      if (video.readyState >= 2) {
-        playVideo();
-      } else {
-        video.onloadedmetadata = playVideo;
-      }
+      video.play().catch((err) => console.warn("Webcam video play error:", err));
     }
   }, [stream, hasStarted]);
 
