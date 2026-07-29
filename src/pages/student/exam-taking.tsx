@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2, Camera, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import LatexRenderer from "@/components/latex-renderer";
 
 
@@ -21,6 +22,7 @@ export default function ExamTaking() {
   const sessionId = Number(params.sessionId);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: sessionWithExam, isLoading } = useGetSession(sessionId, { query: { queryKey: getGetSessionQueryKey(sessionId), enabled: !!sessionId && !isNaN(sessionId) } });
   const startSession = useStartSession();
@@ -342,6 +344,7 @@ export default function ExamTaking() {
       onSuccess: () => {
         stream?.getTracks().forEach(t => t.stop());
         localStorage.removeItem(`proctorai_backup_${sessionId}`);
+        queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(Number(sessionId)) });
         setLocation(`/exam/${sessionId}/results`);
       },
     });

@@ -21,6 +21,7 @@ import StudentHome from "@/pages/student/home";
 import JoinExam from "@/pages/student/join";
 import ExamTaking from "@/pages/student/exam-taking";
 import StudentResults from "@/pages/student/results";
+import Resources from "@/pages/resources";
 
 import { useGetMe, getGetMeQueryKey, setAuthTokenGetter } from "@/lib/api-client";
 
@@ -172,6 +173,9 @@ function App() {
             <Route path="/exams/:examId/build" component={ExamBuilder} />
             <Route path="/exams/:examId/results" component={ExamResults} />
             <Route path="/exams/:examId/live" component={LiveContestMonitor} />
+            
+            {/* Shared Routes */}
+            <Route path="/resources" component={Resources} />
             
             {/* Student Routes */}
             <Route path="/student" component={StudentHome} />

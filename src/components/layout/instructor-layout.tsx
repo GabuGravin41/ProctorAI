@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
-import { LayoutDashboard, FileText, Settings, LogOut, Menu, Users } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, LogOut, Menu, Users, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useGetMe, getGetMeQueryKey } from "@/lib/api-client";
@@ -49,6 +49,7 @@ export default function InstructorLayout({ children }: InstructorLayoutProps) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Exams", href: "/exams", icon: FileText },
     { name: "Students & Roster", href: "/roster", icon: Users },
+    { name: "Resources", href: "/resources", icon: BookOpen },
   ];
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

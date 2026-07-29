@@ -10,6 +10,7 @@ import waitlistRouter from "./waitlist";
 import auditRouter from "./audit";
 import rosterRouter from "./roster";
 import invitesRouter from "./invites";
+import resourcesRouter from "./resources";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(auditRouter);
 router.use(waitlistRouter);
 router.use("/roster", rosterRouter);
 router.use("/invites", invitesRouter);
+router.use(resourcesRouter);
 
 export default router;

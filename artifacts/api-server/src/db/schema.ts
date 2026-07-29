@@ -171,3 +171,20 @@ export const examInvitesTable = pgTable('exam_invites', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+/**
+ * Shared Resources Table
+ * Solved problem sets, worksheets, external links, etc.
+ */
+export const resourcesTable = pgTable('resources', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  title: text('title').notNull(),
+  description: text('description'),
+  url: text('url').notNull(),
+  type: text('type').notNull(), // 'pdf' | 'link'
+  subject: text('subject').notNull(), // 'Machine Learning' | 'Mathematics' | 'Informatics' | 'General'
+  cohortId: integer('cohort_id').references(() => studentCohortsTable.id, { onDelete: 'cascade' }), // null = visible to anyone with an account
+  ownerClerkId: text('owner_clerk_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});

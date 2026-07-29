@@ -20616,27 +20616,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router13;
+    module.exports = Router14;
     module.exports.Route = Route;
-    function Router13(options) {
-      if (!(this instanceof Router13)) {
-        return new Router13(options);
+    function Router14(options) {
+      if (!(this instanceof Router14)) {
+        return new Router14(options);
       }
       const opts = options || {};
-      function router13(req, res, next) {
-        router13.handle(req, res, next);
+      function router14(req, res, next) {
+        router14.handle(req, res, next);
       }
-      Object.setPrototypeOf(router13, this);
-      router13.caseSensitive = opts.caseSensitive;
-      router13.mergeParams = opts.mergeParams;
-      router13.params = {};
-      router13.strict = opts.strict;
-      router13.stack = [];
-      return router13;
+      Object.setPrototypeOf(router14, this);
+      router14.caseSensitive = opts.caseSensitive;
+      router14.mergeParams = opts.mergeParams;
+      router14.params = {};
+      router14.strict = opts.strict;
+      router14.stack = [];
+      return router14;
     }
-    Router13.prototype = function() {
+    Router14.prototype = function() {
     };
-    Router13.prototype.param = function param(name, fn) {
+    Router14.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20656,7 +20656,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router13.prototype.handle = function handle(req, res, callback) {
+    Router14.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20783,7 +20783,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router13.prototype.use = function use(handler) {
+    Router14.prototype.use = function use(handler) {
       let offset = 0;
       let path = "/";
       if (typeof handler !== "function") {
@@ -20816,7 +20816,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router13.prototype.route = function route(path) {
+    Router14.prototype.route = function route(path) {
       const route2 = new Route(path);
       const layer = new Layer(path, {
         sensitive: this.caseSensitive,
@@ -20831,7 +20831,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router13.prototype[method] = function(path) {
+      Router14.prototype[method] = function(path) {
         const route = this.route(path);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21014,13 +21014,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router13 = require_router();
+    var Router14 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router13 = null;
+      var router14 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21029,13 +21029,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router13 === null) {
-            router13 = new Router13({
+          if (router14 === null) {
+            router14 = new Router14({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router13;
+          return router14;
         }
       });
     };
@@ -21106,15 +21106,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router13 = this.router;
+      var router14 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router13.use(path, fn2);
+          return router14.use(path, fn2);
         }
         debug(".use app under %s", path);
         fn2.mountpath = path;
         fn2.parent = this;
-        router13.use(path, function mounted_app(req, res, next) {
+        router14.use(path, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23687,7 +23687,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router13 = require_router();
+    var Router14 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23709,8 +23709,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router13.Route;
-    exports.Router = Router13;
+    exports.Route = Router14.Route;
+    exports.Router = Router14;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -38196,12 +38196,12 @@ var require_lib5 = __commonJS({
 });
 
 // artifacts/api-server/src/app.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 init_dist2();
 
 // artifacts/api-server/src/routes/index.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 
 // artifacts/api-server/src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -49236,6 +49236,7 @@ __export(schema_exports, {
   examsTable: () => examsTable,
   instructorProfilesTable: () => instructorProfilesTable,
   questionsTable: () => questionsTable,
+  resourcesTable: () => resourcesTable,
   studentCohortsTable: () => studentCohortsTable,
   studentRosterTable: () => studentRosterTable,
   usersTable: () => usersTable,
@@ -49390,6 +49391,21 @@ var examInvitesTable = pgTable("exam_invites", {
   status: text("status").notNull().default("pending"),
   // 'pending' | 'accepted' | 'declined'
   sessionId: integer("session_id").references(() => examSessionsTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+var resourcesTable = pgTable("resources", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  title: text("title").notNull(),
+  description: text("description"),
+  url: text("url").notNull(),
+  type: text("type").notNull(),
+  // 'pdf' | 'link'
+  subject: text("subject").notNull(),
+  // 'Machine Learning' | 'Mathematics' | 'Informatics' | 'General'
+  cohortId: integer("cohort_id").references(() => studentCohortsTable.id, { onDelete: "cascade" }),
+  // null = visible to anyone with an account
+  ownerClerkId: text("owner_clerk_id").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
@@ -51797,23 +51813,117 @@ router11.post("/:inviteId/decline", requireAuth10, async (req, res) => {
 });
 var invites_default = router11;
 
-// artifacts/api-server/src/routes/index.ts
+// artifacts/api-server/src/routes/resources.ts
+var import_express21 = __toESM(require_express2(), 1);
+init_dist2();
 var router12 = (0, import_express21.Router)();
-router12.use(health_default);
-router12.use("/users", users_default);
-router12.use("/exams", exams_default);
-router12.use("/exams", questions_default);
-router12.use("/sessions", sessions_default);
-router12.use(flags_default);
-router12.use("/dashboard", dashboard_default);
-router12.use(audit_default);
-router12.use(waitlist_default);
-router12.use("/roster", roster_default);
-router12.use("/invites", invites_default);
-var routes_default = router12;
+var requireAuth11 = (req, res, next) => {
+  const auth = getAuth(req);
+  const userId = auth?.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  req.clerkUserId = userId;
+  next();
+};
+router12.get("/resources", requireAuth11, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.role === "instructor") {
+      const allResources = await db.select().from(resourcesTable);
+      return res.json(allResources);
+    } else {
+      const rosterEntries = await db.select().from(studentRosterTable).where(
+        and(
+          eq(studentRosterTable.studentClerkId, clerkId),
+          eq(studentRosterTable.status, "approved")
+        )
+      );
+      const approvedCohortIds = rosterEntries.map((r) => r.cohortId).filter((cid) => cid !== null);
+      let studentResources;
+      if (approvedCohortIds.length > 0) {
+        studentResources = await db.select().from(resourcesTable).where(
+          or(
+            isNull(resourcesTable.cohortId),
+            inArray(resourcesTable.cohortId, approvedCohortIds)
+          )
+        );
+      } else {
+        studentResources = await db.select().from(resourcesTable).where(isNull(resourcesTable.cohortId));
+      }
+      return res.json(studentResources);
+    }
+  } catch (err) {
+    req.log.error({ err }, "getResources error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router12.post("/resources", requireAuth11, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.role !== "instructor") return res.status(403).json({ error: "Only instructors can add resources" });
+    const { title, description, url, type, subject, cohortId } = req.body;
+    if (!title || !url || !type || !subject) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const [newResource] = await db.insert(resourcesTable).values({
+      title,
+      description: description || null,
+      url,
+      type,
+      subject,
+      cohortId: cohortId ? Number(cohortId) : null,
+      ownerClerkId: clerkId
+    }).returning();
+    res.status(201).json(newResource);
+  } catch (err) {
+    req.log.error({ err }, "createResource error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router12.delete("/resources/:resourceId", requireAuth11, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const resourceId = parseInt(req.params.resourceId);
+    if (isNaN(resourceId)) return res.status(400).json({ error: "Invalid resource ID" });
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.role !== "instructor") return res.status(403).json({ error: "Only instructors can delete resources" });
+    const [resource] = await db.select().from(resourcesTable).where(eq(resourcesTable.id, resourceId));
+    if (!resource) return res.status(404).json({ error: "Resource not found" });
+    const isAdmin = user.email.toLowerCase() === "daltonomondi04@gmail.com";
+    if (resource.ownerClerkId !== clerkId && !isAdmin) {
+      return res.status(403).json({ error: "You can only delete resources you created" });
+    }
+    await db.delete(resourcesTable).where(eq(resourcesTable.id, resourceId));
+    res.json({ success: true, message: "Resource deleted successfully" });
+  } catch (err) {
+    req.log.error({ err }, "deleteResource error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+var resources_default = router12;
+
+// artifacts/api-server/src/routes/index.ts
+var router13 = (0, import_express23.Router)();
+router13.use(health_default);
+router13.use("/users", users_default);
+router13.use("/exams", exams_default);
+router13.use("/exams", questions_default);
+router13.use("/sessions", sessions_default);
+router13.use(flags_default);
+router13.use("/dashboard", dashboard_default);
+router13.use(audit_default);
+router13.use(waitlist_default);
+router13.use("/roster", roster_default);
+router13.use("/invites", invites_default);
+router13.use(resources_default);
+var routes_default = router13;
 
 // artifacts/api-server/src/app.ts
-var app = (0, import_express22.default)();
+var app = (0, import_express24.default)();
 app.use((req, _res, next) => {
   req.log = {
     info: (...a) => console.log("[INFO]", ...a),
@@ -51831,8 +51941,8 @@ try {
 } catch {
 }
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(import_express22.default.json({ limit: "50mb" }));
-app.use(import_express22.default.urlencoded({ limit: "50mb", extended: true }));
+app.use(import_express24.default.json({ limit: "50mb" }));
+app.use(import_express24.default.urlencoded({ limit: "50mb", extended: true }));
 app.use(clerkMiddleware());
 app.use("/api", routes_default);
 var app_default = app;

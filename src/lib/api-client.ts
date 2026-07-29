@@ -930,3 +930,72 @@ export function useAutosaveSessionAnswers() {
   });
 }
 
+// ─── Resource Types & Hooks ──────────────────────────────────────────────────
+export interface Resource {
+  id: number;
+  title: string;
+  description: string | null;
+  url: string;
+  type: 'pdf' | 'link';
+  subject: string;
+  cohortId: number | null;
+  ownerClerkId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function getResourcesQueryKey() {
+  return ['resources'];
+}
+
+export function useGetResources(opts?: any) {
+  const { getToken } = useAuth();
+  return useQuery<Resource[]>({
+    queryKey: getResourcesQueryKey(),
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/resources`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /resources failed: ${res.status}`);
+      return res.json();
+    },
+    ...opts?.query,
+  });
+}
+
+export function useCreateResource() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<Resource, Error, { data: Partial<Resource> }>({
+    mutationFn: async ({ data }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/resources`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`POST /resources failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getResourcesQueryKey() }),
+  });
+}
+
+export function useDeleteResource() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean; message: string }, Error, number>({
+    mutationFn: async (resourceId) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/resources/${resourceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`DELETE /resources/${resourceId} failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getResourcesQueryKey() }),
+  });
+}
+

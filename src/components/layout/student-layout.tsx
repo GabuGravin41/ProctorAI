@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
-import { LogOut, LayoutDashboard, KeyRound, User } from "lucide-react";
+import { LogOut, LayoutDashboard, KeyRound, User, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGetMe, getGetMeQueryKey } from "@/lib/api-client";
 
@@ -72,6 +72,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 Join Exam
               </span>
             </Link>
+            <Link href="/resources">
+              <span className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === "/resources" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}>
+                Resources
+              </span>
+            </Link>
             <Link href="/profile">
               <span className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === "/profile" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}>
                 Profile
@@ -104,6 +109,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         <Link href="/join">
           <span className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${location === "/join" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
             <KeyRound className="h-4 w-4 inline-block mr-1.5" /> Join Exam
+          </span>
+        </Link>
+        <Link href="/resources">
+          <span className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${location === "/resources" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
+            <BookOpen className="h-4 w-4 inline-block mr-1.5" /> Resources
           </span>
         </Link>
         <Link href="/profile">
