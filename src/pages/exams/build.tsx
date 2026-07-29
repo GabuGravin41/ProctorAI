@@ -157,6 +157,18 @@ export default function ExamBuilder() {
   const handleRemoveTagSetting = (tagToRemove: string) => {
     setTagsSetting(tagsSetting.filter(t => t !== tagToRemove));
   };
+
+  const handleAddCollaborator = () => {
+    const trimmed = collaboratorInput.trim().toLowerCase();
+    if (trimmed && !collaborators.includes(trimmed)) {
+      setCollaborators([...collaborators, trimmed]);
+    }
+    setCollaboratorInput("");
+  };
+
+  const handleRemoveCollaborator = (emailToRemove: string) => {
+    setCollaborators(collaborators.filter(c => c !== emailToRemove));
+  };
   
   // Enhanced AI generation state
   const [learningObjectives, setLearningObjectives] = useState("");
@@ -545,6 +557,7 @@ Generate ${aiCount} questions that follow these specifications exactly.
       setDescriptionSetting(exam.description || "");
       setDurationMinutesSetting(exam.durationMinutes || 60);
       setSubjectSetting(exam.subject || "Mathematics");
+      setCollaborators(Array.isArray(exam.collaborators) ? exam.collaborators : []);
     }
   }, [aiSettingsOpen, exam]);
 
@@ -1676,6 +1689,37 @@ Example: Chapter 3 covers photosynthesis...
                     <Plus className="h-3 w-3 mr-1" /> Add
                   </Button>
                 </div>
+              </div>
+
+              {/* Collaborators Section */}
+              <div className="space-y-2 pt-2 border-t mt-4">
+                <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Users className="h-3.5 w-3.5 text-indigo-600" /> Exam Collaborators
+                </Label>
+                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                  {collaborators.map((c) => (
+                    <Badge key={c} variant="secondary" className="bg-slate-100 text-slate-800 hover:bg-slate-200 gap-1 text-[11px] py-0.5 px-2 rounded-full font-mono">
+                      {c}
+                      <button type="button" onClick={() => handleRemoveCollaborator(c)} className="hover:text-rose-600 ml-1">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Enter coach email address..." 
+                    value={collaboratorInput}
+                    onChange={(e) => setCollaboratorInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCollaborator(); } }}
+                    className="bg-white text-xs h-8"
+                    type="email"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddCollaborator} className="shrink-0 h-8 text-xs">
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Collaborators can view results and participate in grading this exam.</p>
               </div>
             </div>
 
