@@ -30,6 +30,7 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     institutionName: institutionName ?? null,
     accessCode: exam.accessCode ?? null,
     isPublic: exam.isPublic ?? false,
+    collaborators: exam.collaborators ?? [],
     questionCount,
     sessionCount,
     flagCount,
@@ -362,9 +363,12 @@ router.get("/:examId/live-status", requireAuth, async (req: any, res) => {
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
     // Auth check: owner or collaborator
     const isOwner = exam.instructorClerkId === clerkId;
-    const isCollaborator = (exam.collaborators || []).some((c) => c.clerkId === clerkId);
+    const isCollaborator = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -437,7 +441,7 @@ router.patch("/:examId/collaborators", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { collaborators } = req.body; // Array of { clerkId, accessLevel: 'read' | 'write' }
+    const { collaborators } = req.body; // Array of email strings
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });

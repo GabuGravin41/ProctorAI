@@ -33,8 +33,8 @@ export const examsTable = pgTable('exams', {
   isPublic: boolean('is_public').notNull().default(false),
   topic: text('topic'),
   tags: jsonb('tags').$type<string[]>(),
-  // Updated collaborators: now has access level per person
-  collaborators: jsonb('collaborators').$type<{ clerkId: string; accessLevel: 'read' | 'write' }[]>(),
+  // Collaborators: array of coach email addresses (strings)
+  collaborators: jsonb('collaborators').$type<string[]>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

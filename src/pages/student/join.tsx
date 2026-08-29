@@ -14,6 +14,14 @@ export default function JoinExam() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get("code");
+    if (codeParam) {
+      setAccessCode(codeParam);
+    }
+  }, []);
+
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessCode.trim()) return;

@@ -38,11 +38,12 @@ router.post("/cohort", requireAuth, async (req: any, res) => {
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, instructorClerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
     // Verify ownership or write access
     const isOwner = exam.instructorClerkId === instructorClerkId;
-    const isCollaborator = (exam.collaborators || []).some(
-      (c) => c.clerkId === instructorClerkId && c.accessLevel === "write"
-    );
+    const isCollaborator = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Forbidden: You do not have permission to invite students to this exam" });
     }

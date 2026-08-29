@@ -49273,7 +49273,7 @@ var examsTable = pgTable("exams", {
   isPublic: boolean("is_public").notNull().default(false),
   topic: text("topic"),
   tags: jsonb("tags").$type(),
-  // Updated collaborators: now has access level per person
+  // Collaborators: array of coach email addresses (strings)
   collaborators: jsonb("collaborators").$type(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
@@ -49554,6 +49554,7 @@ function formatExam(exam, questionCount = 0, sessionCount = 0, flagCount = 0, in
     institutionName: institutionName ?? null,
     accessCode: exam.accessCode ?? null,
     isPublic: exam.isPublic ?? false,
+    collaborators: exam.collaborators ?? [],
     questionCount,
     sessionCount,
     flagCount,
@@ -49814,8 +49815,10 @@ router3.get("/:examId/live-status", requireAuth3, async (req, res) => {
     const clerkId = req.clerkUserId;
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
     const isOwner = exam.instructorClerkId === clerkId;
-    const isCollaborator = (exam.collaborators || []).some((c) => c.clerkId === clerkId);
+    const isCollaborator = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -51678,10 +51681,10 @@ router11.post("/cohort", requireAuth10, async (req, res) => {
     }
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, instructorClerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
     const isOwner = exam.instructorClerkId === instructorClerkId;
-    const isCollaborator = (exam.collaborators || []).some(
-      (c) => c.clerkId === instructorClerkId && c.accessLevel === "write"
-    );
+    const isCollaborator = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Forbidden: You do not have permission to invite students to this exam" });
     }

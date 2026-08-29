@@ -78,7 +78,7 @@ export interface Exam {
   isPublic?: boolean;
   instructorName?: string | null;
   institutionName?: string | null;
-  collaborators?: { clerkId: string; accessLevel: 'read' | 'write' }[];
+  collaborators?: string[];
   questionCount?: number;
   sessionCount?: number;
   createdAt: string;
