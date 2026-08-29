@@ -329,7 +329,7 @@ export default function Landing() {
                 Flexible Plans for Schools & Competition Academies
               </h2>
               <p className="text-sm text-slate-500 max-w-md mx-auto">
-                Start with our free tier or contact us for direct institutional invoicing and bank payment options.
+                Start with our free tier or request an institutional invoice for your organization.
               </p>
             </div>
 
@@ -407,7 +407,7 @@ export default function Landing() {
                   href="#waitlist"
                   className="w-full inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-md text-xs transition-colors text-center"
                 >
-                  Request Bank Details & Invoice
+                  Request Invoice
                 </a>
               </div>
 
@@ -433,7 +433,7 @@ export default function Landing() {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>Direct bank transfer / wire invoicing</span>
+                      <span>Flexible institutional invoicing</span>
                     </li>
                   </ul>
                 </div>
