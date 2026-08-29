@@ -7,6 +7,7 @@ import {
   useListSessionFlags,
   useReviewFlag,
   useInviteStudents,
+  useExportExamAudit,
   getGetExamResultsQueryKey,
   CheatingFlag,
 } from "@/lib/api-client";
@@ -171,6 +172,22 @@ export default function ExamResults() {
     return 0;
   });
 
+  const exportAudit = useExportExamAudit();
+
+  const handleExportAudit = async () => {
+    if (!results || !results.sessions || results.sessions.length === 0) {
+      toast({ title: "No Data", description: "There are no student sessions to export.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await exportAudit.mutateAsync({ examId, examTitle: results.exam?.title });
+      toast({ title: "Audit Report Exported", description: "Detailed proctoring audit CSV downloaded successfully." });
+    } catch (err: any) {
+      toast({ title: "Export Failed", description: err.message || "Failed to generate audit report.", variant: "destructive" });
+    }
+  };
+
   const handleExportCsv = () => {
     if (!results || !results.sessions || results.sessions.length === 0) {
       toast({ title: "No Data", description: "There are no student sessions to export.", variant: "destructive" });
@@ -235,12 +252,21 @@ export default function ExamResults() {
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             <Button variant="outline" className="gap-2 bg-white shadow-sm" onClick={handleExportCsv}>
               <Download className="h-4 w-4 text-slate-600" />
-              Export Leaderboard CSV
+              Leaderboard CSV
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 bg-white shadow-sm border-slate-300"
+              onClick={handleExportAudit}
+              disabled={exportAudit.isPending}
+            >
+              <Download className="h-4 w-4 text-emerald-600" />
+              {exportAudit.isPending ? "Exporting..." : "Audit Report CSV"}
             </Button>
             <Button asChild className="bg-red-600 hover:bg-red-700 text-white shrink-0">
               <Link href={`/exams/${examId}/live`}>
                 <Activity className="h-4 w-4 mr-2 animate-pulse" />
-                🔴 Open Live Contest Monitor
+                🔴 Live Monitor
               </Link>
             </Button>
           </div>

@@ -6,6 +6,7 @@ export const usersTable = pgTable('users', {
   name: text('name'),
   email: text('email').notNull(),
   role: text('role'), // 'student' | 'instructor' — nullable until onboarding complete
+  plan: text('plan').notNull().default('starter'), // 'starter' | 'institute' | 'organization'
   institutionName: text('institution_name'),
   subjectArea: text('subject_area'),
   trafficSource: text('traffic_source'),

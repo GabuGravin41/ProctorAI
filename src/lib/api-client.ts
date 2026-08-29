@@ -51,6 +51,7 @@ export interface User {
   name: string | null;
   email: string;
   role: 'student' | 'instructor' | null;
+  plan: 'starter' | 'institute' | 'organization';
   institutionName: string | null;
   subjectArea: string | null;
   trafficSource: string | null;
@@ -582,6 +583,30 @@ export function useGetExamResults(examId?: string | number, opts?: { query?: Omi
       return res.json();
     },
     ...opts?.query,
+  });
+}
+
+/** Triggers a browser download of the full audit report CSV for a single exam */
+export function useExportExamAudit() {
+  const { getToken } = useAuth();
+  return useMutation<void, Error, { examId: number; examTitle?: string }>({
+    mutationFn: async ({ examId, examTitle }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/exams/${examId}/audit/export`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Audit export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const filename = `${(examTitle || 'Exam').replace(/[^a-z0-9]/gi, '_')}_Audit_Report.csv`;
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
   });
 }
 

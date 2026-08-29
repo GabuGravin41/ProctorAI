@@ -108,6 +108,7 @@ export default function Landing() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500">
           <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
+          <a href="#pricing" className="hover:text-slate-900 transition-colors">Pricing</a>
           <a href="#academic" className="hover:text-slate-900 transition-colors">Academic Portals</a>
           <Link href="/resources" className="hover:text-slate-900 transition-colors">Resources</Link>
         </nav>
@@ -314,6 +315,135 @@ export default function Landing() {
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Review automatically graded questions and audit timestamped flag events with synchronized clips.
                 </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section id="pricing" className="py-20 md:py-24 bg-white border-t border-slate-100">
+          <div className="max-w-5xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Transparent Pricing</p>
+              <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tight mb-4">
+                Flexible Plans for Schools & Competition Academies
+              </h2>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Start with our free tier or contact us for direct institutional invoicing and bank payment options.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Starter Plan */}
+              <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 flex flex-col justify-between hover:border-slate-300 transition-all">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Starter</div>
+                  <div className="text-3xl font-bold text-slate-900 mb-1">Free</div>
+                  <p className="text-xs text-slate-500 mb-6">Perfect for individual tutors and small contest pilots.</p>
+                  
+                  <ul className="space-y-3 text-xs text-slate-600 mb-8">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Up to <strong>6 active exams</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Up to 50 students per month</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Full AI proctoring & focus lock</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Standard Leaderboard CSV export</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <Link
+                  href="/sign-up"
+                  className="w-full inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-md text-xs transition-colors text-center"
+                >
+                  Get Started Free
+                </Link>
+              </div>
+
+              {/* Institute Plan */}
+              <div className="border-2 border-slate-900 rounded-xl p-6 bg-white shadow-md flex flex-col justify-between relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">
+                  Most Popular
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Institute</div>
+                  <div className="text-3xl font-bold text-slate-900 mb-1">Institutional Invoice</div>
+                  <p className="text-xs text-slate-500 mb-6">Designed for schools, academies, and national contest bodies.</p>
+
+                  <ul className="space-y-3 text-xs text-slate-600 mb-8">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span><strong>Unlimited active exams</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Up to 500 students per month</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Live Contest Monitor & 10s poll</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span><strong>Proctoring Audit Report CSV</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Bulk roster & access code generator</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <a
+                  href="#waitlist"
+                  className="w-full inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-md text-xs transition-colors text-center"
+                >
+                  Request Bank Details & Invoice
+                </a>
+              </div>
+
+              {/* Organization Plan */}
+              <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50 flex flex-col justify-between hover:border-slate-300 transition-all">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Organization</div>
+                  <div className="text-3xl font-bold text-slate-900 mb-1">Custom Tier</div>
+                  <p className="text-xs text-slate-500 mb-6">For ministries, universities, and high-volume testing centers.</p>
+
+                  <ul className="space-y-3 text-xs text-slate-600 mb-8">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Unlimited students & exams</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Multi-coach & collaborator access</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Dedicated onboarding & staff training</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Direct bank transfer / wire invoicing</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <a
+                  href="#waitlist"
+                  className="w-full inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 font-medium py-2.5 rounded-md text-xs transition-colors text-center"
+                >
+                  Contact for Custom Quote
+                </a>
               </div>
             </div>
           </div>

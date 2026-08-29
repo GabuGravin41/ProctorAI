@@ -18541,26 +18541,26 @@ var require_escape_html = __commonJS({
       if (!match2) {
         return str;
       }
-      var escape2;
+      var escape3;
       var html = "";
       var index = 0;
       var lastIndex = 0;
       for (index = match2.index; index < str.length; index++) {
         switch (str.charCodeAt(index)) {
           case 34:
-            escape2 = "&quot;";
+            escape3 = "&quot;";
             break;
           case 38:
-            escape2 = "&amp;";
+            escape3 = "&amp;";
             break;
           case 39:
-            escape2 = "&#39;";
+            escape3 = "&#39;";
             break;
           case 60:
-            escape2 = "&lt;";
+            escape3 = "&lt;";
             break;
           case 62:
-            escape2 = "&gt;";
+            escape3 = "&gt;";
             break;
           default:
             continue;
@@ -18569,7 +18569,7 @@ var require_escape_html = __commonJS({
           html += str.substring(lastIndex, index);
         }
         lastIndex = index + 1;
-        html += escape2;
+        html += escape3;
       }
       return lastIndex !== index ? html + str.substring(lastIndex, index) : html;
     }
@@ -19982,7 +19982,7 @@ var require_dist = __commonJS({
     function escapeText(str) {
       return str.replace(/[{}()\[\]+?!:*\\]/g, "\\$&");
     }
-    function escape2(str) {
+    function escape3(str) {
       return str.replace(/[.+*?^${}()[\]|/\\]/g, "\\$&");
     }
     var TokenData = class {
@@ -20206,8 +20206,8 @@ var require_dist = __commonJS({
       process2(path);
       let pattern = `^(?:${source})`;
       if (trailing)
-        pattern += "(?:" + escape2(delimiter) + "$)?";
-      pattern += end ? "$" : "(?=" + escape2(delimiter) + "|$)";
+        pattern += "(?:" + escape3(delimiter) + "$)?";
+      pattern += end ? "$" : "(?=" + escape3(delimiter) + "|$)";
       return { regexp: new RegExp(pattern, sensitive ? "" : "i"), keys };
     }
     function flatten(tokens, index, result, callback) {
@@ -20255,7 +20255,7 @@ var require_dist = __commonJS({
       while (index < tokens.length) {
         const token = tokens[index++];
         if (token.type === "text") {
-          result += escape2(token.value);
+          result += escape3(token.value);
           backtrack += token.value;
           if (prevCaptureType === 2)
             wildcardBacktrack += token.value;
@@ -20268,7 +20268,7 @@ var require_dist = __commonJS({
             throw new PathError(`Missing text before "${token.name}" ${token.type}`, originalPath);
           }
           if (token.type === "param") {
-            result += hasSegmentCapture & 2 ? `(${negate(delimiter, backtrack)}+)` : hasInSegment(index, "wildcard") ? `(${negate(delimiter, peekText(index))}+)` : hasSegmentCapture & 1 ? `(${negate(delimiter, backtrack)}+|${escape2(backtrack)})` : `(${negate(delimiter, "")}+)`;
+            result += hasSegmentCapture & 2 ? `(${negate(delimiter, backtrack)}+)` : hasInSegment(index, "wildcard") ? `(${negate(delimiter, peekText(index))}+)` : hasSegmentCapture & 1 ? `(${negate(delimiter, backtrack)}+|${escape3(backtrack)})` : `(${negate(delimiter, "")}+)`;
             hasSegmentCapture |= prevCaptureType = 1;
           } else {
             result += hasSegmentCapture & 2 ? `(${negate(backtrack, "")}+)` : wildcardBacktrack ? `(${negate(wildcardBacktrack, "")}+|${negate(delimiter, "")}+)` : `([^]+)`;
@@ -20289,10 +20289,10 @@ var require_dist = __commonJS({
       if (a === b)
         b = "";
       if (b.length > 1)
-        return `(?:(?!${escape2(a)}|${escape2(b)})[^])`;
+        return `(?:(?!${escape3(a)}|${escape3(b)})[^])`;
       if (a.length > 1)
-        return `(?:(?!${escape2(a)})[^${escape2(b)}])`;
-      return `[^${escape2(a + b)}]`;
+        return `(?:(?!${escape3(a)})[^${escape3(b)}])`;
+      return `[^${escape3(a + b)}]`;
     }
     function stringifyTokens(tokens, index) {
       let value = "";
@@ -23231,10 +23231,10 @@ var require_response = __commonJS({
     };
     res.json = function json2(obj) {
       var app2 = this.app;
-      var escape2 = app2.get("json escape");
+      var escape3 = app2.get("json escape");
       var replacer = app2.get("json replacer");
       var spaces = app2.get("json spaces");
-      var body = stringify2(obj, replacer, spaces, escape2);
+      var body = stringify2(obj, replacer, spaces, escape3);
       if (!this.get("Content-Type")) {
         this.set("Content-Type", "application/json");
       }
@@ -23242,10 +23242,10 @@ var require_response = __commonJS({
     };
     res.jsonp = function jsonp(obj) {
       var app2 = this.app;
-      var escape2 = app2.get("json escape");
+      var escape3 = app2.get("json escape");
       var replacer = app2.get("json replacer");
       var spaces = app2.get("json spaces");
-      var body = stringify2(obj, replacer, spaces, escape2);
+      var body = stringify2(obj, replacer, spaces, escape3);
       var callback = this.req.query[app2.get("jsonp callback name")];
       if (!this.get("Content-Type")) {
         this.set("X-Content-Type-Options", "nosniff");
@@ -23553,9 +23553,9 @@ var require_response = __commonJS({
       }
       file.pipe(res2);
     }
-    function stringify2(value, replacer, spaces, escape2) {
+    function stringify2(value, replacer, spaces, escape3) {
       var json2 = replacer || spaces ? JSON.stringify(value, replacer, spaces) : JSON.stringify(value);
-      if (escape2 && typeof json2 === "string") {
+      if (escape3 && typeof json2 === "string") {
         json2 = json2.replace(/[<>&]/g, function(c) {
           switch (c.charCodeAt(0)) {
             case 60:
@@ -49249,6 +49249,8 @@ var usersTable = pgTable("users", {
   email: text("email").notNull(),
   role: text("role"),
   // 'student' | 'instructor' — nullable until onboarding complete
+  plan: text("plan").notNull().default("starter"),
+  // 'starter' | 'institute' | 'organization'
   institutionName: text("institution_name"),
   subjectArea: text("subject_area"),
   trafficSource: text("traffic_source"),
@@ -49470,6 +49472,7 @@ router2.get("/me", requireAuth2, async (req, res) => {
       email: user.email,
       name: user.name ?? null,
       role: user.role ?? null,
+      plan: user.plan ?? "starter",
       institutionName: user.institutionName ?? null,
       subjectArea: user.subjectArea ?? null,
       trafficSource: user.trafficSource ?? null,
@@ -49514,6 +49517,7 @@ router2.patch("/me", requireAuth2, async (req, res) => {
       email: user.email,
       name: user.name ?? null,
       role: user.role ?? null,
+      plan: user.plan ?? "starter",
       institutionName: user.institutionName ?? null,
       subjectArea: user.subjectArea ?? null,
       trafficSource: user.trafficSource ?? null,
@@ -51260,6 +51264,10 @@ var import_express15 = __toESM(require_express2(), 1);
 init_dist2();
 
 // artifacts/api-server/src/lib/audit-export.ts
+var escape2 = (value) => {
+  const text2 = String(value ?? "");
+  return `"${text2.replace(/"/g, '""')}"`;
+};
 function formatAuditEventsCsv(rows) {
   const headers = [
     "id",
@@ -51275,10 +51283,6 @@ function formatAuditEventsCsv(rows) {
     "accessCode",
     "examTitle"
   ];
-  const escape2 = (value) => {
-    const text2 = value ?? "";
-    return `"${text2.replace(/"/g, '""')}"`;
-  };
   const lines = [headers.join(",")];
   for (const row of rows) {
     lines.push([
@@ -51295,6 +51299,83 @@ function formatAuditEventsCsv(rows) {
       escape2(row.accessCode),
       escape2(row.examTitle)
     ].join(","));
+  }
+  return lines.join("\n");
+}
+function formatExamAuditCsv(examTitle, sessions) {
+  const lines = [];
+  lines.push(escape2(`ProctorAI Audit Report \u2014 ${examTitle}`));
+  lines.push(escape2(`Generated: ${(/* @__PURE__ */ new Date()).toISOString()}`));
+  lines.push("");
+  lines.push('"=== SECTION 1: STUDENT SUMMARY ==="');
+  const summaryHeaders = [
+    "Rank",
+    "Student Name",
+    "Student Email",
+    "Access Code",
+    "Status",
+    "Score",
+    "Max Score",
+    "Percentage",
+    "Total Flags",
+    "Submitted At"
+  ];
+  lines.push(summaryHeaders.join(","));
+  const sorted = [...sessions].sort((a, b) => {
+    const aScore = a.score ?? -1;
+    const bScore = b.score ?? -1;
+    return bScore - aScore;
+  });
+  let rank = 0;
+  let lastScore = null;
+  sorted.forEach((s2, idx) => {
+    const isSubmitted = s2.status === "submitted";
+    if (isSubmitted && s2.score !== lastScore) {
+      rank = idx + 1;
+      lastScore = s2.score;
+    }
+    const pct = s2.score !== null && s2.maxScore ? `${Math.round(s2.score / s2.maxScore * 100)}%` : "";
+    lines.push([
+      isSubmitted ? rank : escape2("N/A"),
+      escape2(s2.studentName),
+      escape2(s2.studentEmail),
+      escape2(s2.accessCode),
+      escape2(s2.status),
+      s2.score !== null ? s2.score : "",
+      s2.maxScore ?? "",
+      escape2(pct),
+      s2.flags.length,
+      escape2(s2.submittedAt ?? "")
+    ].join(","));
+  });
+  lines.push("");
+  lines.push('"=== SECTION 2: PROCTORING FLAG DETAIL ==="');
+  const flagHeaders = [
+    "Student Name",
+    "Student Email",
+    "Access Code",
+    "Flag Type",
+    "Description",
+    "Detected At",
+    "Review Status",
+    "Review Note",
+    "Screenshot URL"
+  ];
+  lines.push(flagHeaders.join(","));
+  for (const s2 of sessions) {
+    for (const f of s2.flags) {
+      lines.push([
+        escape2(s2.studentName),
+        escape2(s2.studentEmail),
+        escape2(s2.accessCode),
+        escape2(f.type.replace(/_/g, " ")),
+        escape2(f.description),
+        escape2(f.detectedAt),
+        escape2(f.reviewStatus),
+        escape2(f.reviewNote),
+        escape2(f.screenshotUrl ?? "")
+      ].join(","));
+    }
   }
   return lines.join("\n");
 }
@@ -51323,19 +51404,18 @@ router9.get("/audit/events", requireAuth8, async (req, res) => {
       reviewStatus: cheatingFlagsTable.reviewStatus,
       detectedAt: cheatingFlagsTable.detectedAt,
       reviewNote: cheatingFlagsTable.reviewNote,
-      reviewedAt: cheatingFlagsTable.reviewedAt
+      reviewedAt: cheatingFlagsTable.reviewedAt,
+      screenshotUrl: cheatingFlagsTable.screenshotUrl
     }).from(cheatingFlagsTable).orderBy(desc(cheatingFlagsTable.detectedAt)).limit(100);
     const enriched = await Promise.all(events.map(async (event) => {
       const [session] = await db.select({
         id: examSessionsTable.id,
+        examId: examSessionsTable.examId,
         studentName: examSessionsTable.studentName,
         studentEmail: examSessionsTable.studentEmail,
         accessCode: examSessionsTable.accessCode
       }).from(examSessionsTable).where(eq(examSessionsTable.id, event.sessionId));
-      const [exam] = await db.select({
-        id: examsTable.id,
-        title: examsTable.title
-      }).from(examsTable).where(eq(examsTable.id, session?.id ? void 0 : void 0));
+      const [exam] = session?.examId ? await db.select({ id: examsTable.id, title: examsTable.title }).from(examsTable).where(eq(examsTable.id, session.examId)) : [void 0];
       return {
         ...event,
         detectedAt: event.detectedAt?.toISOString() ?? null,
@@ -51367,15 +51447,17 @@ router9.get("/audit/events/export", requireAuth8, async (req, res) => {
       reviewStatus: cheatingFlagsTable.reviewStatus,
       reviewNote: cheatingFlagsTable.reviewNote,
       detectedAt: cheatingFlagsTable.detectedAt,
-      reviewedAt: cheatingFlagsTable.reviewedAt
+      reviewedAt: cheatingFlagsTable.reviewedAt,
+      screenshotUrl: cheatingFlagsTable.screenshotUrl
     }).from(cheatingFlagsTable).orderBy(desc(cheatingFlagsTable.detectedAt)).limit(500);
     const enriched = await Promise.all(events.map(async (event) => {
       const [session] = await db.select({
+        examId: examSessionsTable.examId,
         studentName: examSessionsTable.studentName,
         studentEmail: examSessionsTable.studentEmail,
         accessCode: examSessionsTable.accessCode
       }).from(examSessionsTable).where(eq(examSessionsTable.id, event.sessionId));
-      const [exam] = await db.select({ title: examsTable.title }).from(examsTable).where(eq(examsTable.id, event.sessionId));
+      const [exam] = session?.examId ? await db.select({ title: examsTable.title }).from(examsTable).where(eq(examsTable.id, session.examId)) : [void 0];
       return {
         ...event,
         detectedAt: event.detectedAt?.toISOString() ?? null,
@@ -51391,6 +51473,123 @@ router9.get("/audit/events/export", requireAuth8, async (req, res) => {
     res.send(formatAuditEventsCsv(enriched));
   } catch (err) {
     req.log.error({ err }, "exportAuditEvents error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router9.get("/exams/:examId/audit", requireAuth8, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const examId = parseInt(req.params.examId);
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    const isAdmin = user.email === "daltonomondi04@gmail.com";
+    if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: "Forbidden" });
+    const sessions = await db.select().from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
+    const sessionIds = sessions.map((s2) => s2.id);
+    const allFlags = sessionIds.length > 0 ? await db.select().from(cheatingFlagsTable).where(inArray(cheatingFlagsTable.sessionId, sessionIds)) : [];
+    const flagsBySession = /* @__PURE__ */ new Map();
+    for (const flag of allFlags) {
+      const existing = flagsBySession.get(flag.sessionId) ?? [];
+      existing.push(flag);
+      flagsBySession.set(flag.sessionId, existing);
+    }
+    const sessionSummaries = sessions.map((s2) => {
+      const flags = flagsBySession.get(s2.id) ?? [];
+      return {
+        sessionId: s2.id,
+        studentName: s2.studentName ?? null,
+        studentEmail: s2.studentEmail ?? null,
+        accessCode: s2.accessCode,
+        status: s2.status,
+        score: s2.score ?? null,
+        maxScore: s2.maxScore ?? null,
+        scorePct: s2.score !== null && s2.maxScore ? Math.round(s2.score / s2.maxScore * 100) : null,
+        flagCount: flags.length,
+        pendingFlagCount: flags.filter((f) => f.reviewStatus === "pending").length,
+        confirmedFlagCount: flags.filter((f) => f.reviewStatus === "confirmed").length,
+        dismissedFlagCount: flags.filter((f) => f.reviewStatus === "dismissed").length,
+        startedAt: s2.startedAt?.toISOString() ?? null,
+        submittedAt: s2.submittedAt?.toISOString() ?? null,
+        flags: flags.map((f) => ({
+          id: f.id,
+          type: f.type,
+          description: f.description ?? null,
+          detectedAt: f.detectedAt?.toISOString() ?? null,
+          reviewStatus: f.reviewStatus,
+          reviewNote: f.reviewNote ?? null,
+          reviewedAt: f.reviewedAt?.toISOString() ?? null,
+          screenshotUrl: f.screenshotUrl ?? null
+        }))
+      };
+    });
+    res.json({
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        subject: exam.subject ?? null,
+        durationMinutes: exam.durationMinutes,
+        status: exam.status,
+        accessCode: exam.accessCode ?? null,
+        createdAt: exam.createdAt.toISOString()
+      },
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      totalSessions: sessions.length,
+      totalFlags: allFlags.length,
+      sessions: sessionSummaries
+    });
+  } catch (err) {
+    req.log.error({ err }, "getExamAudit error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router9.get("/exams/:examId/audit/export", requireAuth8, async (req, res) => {
+  try {
+    const clerkId = req.clerkUserId;
+    const examId = parseInt(req.params.examId);
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const isOwner = exam.instructorClerkId === clerkId;
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && exam.collaborators.includes(user.email);
+    const isAdmin = user.email === "daltonomondi04@gmail.com";
+    if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: "Forbidden" });
+    const sessions = await db.select().from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
+    const sessionIds = sessions.map((s2) => s2.id);
+    const allFlags = sessionIds.length > 0 ? await db.select().from(cheatingFlagsTable).where(inArray(cheatingFlagsTable.sessionId, sessionIds)) : [];
+    const flagsBySession = /* @__PURE__ */ new Map();
+    for (const flag of allFlags) {
+      const existing = flagsBySession.get(flag.sessionId) ?? [];
+      existing.push(flag);
+      flagsBySession.set(flag.sessionId, existing);
+    }
+    const sessionData = sessions.map((s2) => ({
+      studentName: s2.studentName ?? null,
+      studentEmail: s2.studentEmail ?? null,
+      accessCode: s2.accessCode,
+      status: s2.status,
+      score: s2.score ?? null,
+      maxScore: s2.maxScore ?? null,
+      submittedAt: s2.submittedAt?.toISOString() ?? null,
+      flags: (flagsBySession.get(s2.id) ?? []).map((f) => ({
+        type: f.type,
+        description: f.description ?? null,
+        detectedAt: f.detectedAt?.toISOString() ?? null,
+        reviewStatus: f.reviewStatus,
+        reviewNote: f.reviewNote ?? null,
+        screenshotUrl: f.screenshotUrl ?? null
+      }))
+    }));
+    const filename = `${exam.title.replace(/[^a-z0-9]/gi, "_")}_Audit_Report.csv`;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(formatExamAuditCsv(exam.title, sessionData));
+  } catch (err) {
+    req.log.error({ err }, "exportExamAudit error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
