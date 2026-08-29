@@ -49479,6 +49479,7 @@ router2.get("/me", requireAuth2, async (req, res) => {
       createdAt: user.createdAt.toISOString()
     });
   } catch (err) {
+    console.error("GET /api/users/me error:", err);
     req.log.error({ err }, "getMe error");
     res.status(500).json({ error: "Internal server error" });
   }

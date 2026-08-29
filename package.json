@@ -8,7 +8,8 @@
     "build": "vite build && node artifacts/api-server/build.mjs",
     "serve": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test:load": "node scratch/load_test.js"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
