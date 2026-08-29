@@ -31,7 +31,7 @@ const clerkAppearance = {
     colorInputForeground: "hsl(222, 47%, 11%)",
     colorNeutral: "hsl(214, 32%, 91%)",
     fontFamily: "Space Grotesk, sans-serif",
-    borderRadius: "0.25rem",
+    borderRadius: "0.75rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
