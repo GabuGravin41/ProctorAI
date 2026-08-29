@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable, answersTable } from "../db";
-import { eq, and, isNull } from "drizzle-orm";
+import { db, examSessionsTable, examsTable, questionsTable, cheatingFlagsTable, usersTable, answersTable, sessionMessagesTable } from "../db";
+import { eq, and, isNull, asc } from "drizzle-orm";
 import { normalizeSessionStatus } from "../lib/session-status";
 
 const router = Router();
@@ -631,8 +631,10 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
       });
     }
 
+    const isPublicPractice = !!exam?.isPublic;
     const isAutoRelease = exam?.gradingMode === "auto";
     const canReleaseResults = exam?.gradingMode === "auto" || exam?.gradingMode === "review_release";
+    const shouldRelease = isPublicPractice || isAutoRelease || canReleaseResults;
 
     const [updatedSession] = await db
       .update(examSessionsTable)
@@ -641,7 +643,7 @@ Note: isCorrect should be 1 if they receive full or almost full credit (e.g. >= 
         score: totalScore, 
         maxScore, 
         submittedAt: new Date(),
-        isResultsReleased: canReleaseResults ? isAutoRelease : false
+        isResultsReleased: shouldRelease
       })
       .where(eq(examSessionsTable.id, sessionId))
       .returning();
@@ -885,6 +887,83 @@ router.post("/:sessionId/coach-feedback", requireAuth, async (req: any, res) => 
     res.json(formatSession(updated, flags.length));
   } catch (err) {
     req.log.error({ err }, "coachFeedback error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/sessions/:sessionId/messages — list all Q&A messages for a session
+router.get("/:sessionId/messages", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const clerkId = req.clerkUserId;
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const messages = await db
+      .select()
+      .from(sessionMessagesTable)
+      .where(eq(sessionMessagesTable.sessionId, sessionId))
+      .orderBy(asc(sessionMessagesTable.createdAt));
+
+    res.json(messages.map(m => ({
+      id: m.id,
+      sessionId: m.sessionId,
+      senderClerkId: m.senderClerkId,
+      senderRole: m.senderRole,
+      senderName: m.senderName ?? (m.senderRole === "student" ? "Student" : "Instructor"),
+      message: m.message,
+      questionId: m.questionId ?? null,
+      createdAt: m.createdAt.toISOString(),
+    })));
+  } catch (err) {
+    req.log.error({ err }, "listSessionMessages error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/sessions/:sessionId/messages — send a Q&A message (student or instructor)
+router.post("/:sessionId/messages", requireAuth, async (req: any, res) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId);
+    const clerkId = req.clerkUserId;
+    const { message, questionId } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "Message cannot be empty" });
+    }
+
+    const [session] = await db.select().from(examSessionsTable).where(eq(examSessionsTable.id, sessionId));
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const senderRole = user?.role === "instructor" ? "instructor" : "student";
+    const senderName = user?.name || (senderRole === "instructor" ? "Instructor" : "Student");
+
+    const [newMessage] = await db
+      .insert(sessionMessagesTable)
+      .values({
+        sessionId,
+        senderClerkId: clerkId,
+        senderRole,
+        senderName,
+        message: message.trim(),
+        questionId: questionId ? parseInt(questionId) : null,
+      })
+      .returning();
+
+    res.status(201).json({
+      id: newMessage.id,
+      sessionId: newMessage.sessionId,
+      senderClerkId: newMessage.senderClerkId,
+      senderRole: newMessage.senderRole,
+      senderName: newMessage.senderName,
+      message: newMessage.message,
+      questionId: newMessage.questionId ?? null,
+      createdAt: newMessage.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "postSessionMessage error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

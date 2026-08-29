@@ -5,6 +5,8 @@ import {
   getListSessionFlagsQueryKey,
   useGetSession,
   getGetSessionQueryKey,
+  useListSessionMessages,
+  useSendSessionMessage,
   CheatingFlag
 } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,8 @@ import { format } from "date-fns";
 import LatexRenderer from "@/components/latex-renderer";
 import {
   X, Loader2, ShieldCheck, ShieldX, CheckCircle2,
-  AlertTriangle, BookOpen, Clock, Sparkles, Video, Camera
+  AlertTriangle, BookOpen, Clock, Sparkles, Video, Camera,
+  MessageSquare, Send, User
 } from "lucide-react";
 import { customFetch } from "@/lib/api-client";
 
@@ -172,6 +175,103 @@ function FlagCard({
   );
 }
 
+function InstructorSessionMessagingTab({ sessionId }: { sessionId: number }) {
+  const { data: messages, isLoading } = useListSessionMessages(sessionId);
+  const sendMessage = useSendSessionMessage();
+  const [text, setText] = useState("");
+  const { toast } = useToast();
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    try {
+      await sendMessage.mutateAsync({ sessionId, message: text.trim() });
+      setText("");
+    } catch (err: any) {
+      toast({ title: "Failed to send message", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="h-[calc(100vh-140px)] flex flex-col p-5 space-y-4 bg-background">
+      <div className="flex items-center justify-between border-b pb-3 shrink-0">
+        <div>
+          <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-indigo-600" />
+            Student Q&A Conversation
+          </h3>
+          <p className="text-xs text-muted-foreground">Direct questions and coach responses for this session.</p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-0">
+        {isLoading ? (
+          <div className="text-center py-8 text-xs text-muted-foreground">Loading conversation…</div>
+        ) : !messages || messages.length === 0 ? (
+          <div className="text-center py-12 border border-dashed rounded-2xl bg-slate-50/50">
+            <MessageSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-medium text-slate-600">No messages yet for this session.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Type below to send a message directly to the student.</p>
+          </div>
+        ) : (
+          messages.map((m) => {
+            const isInstructor = m.senderRole === "instructor";
+            return (
+              <div
+                key={m.id}
+                className={`flex flex-col ${isInstructor ? "items-end" : "items-start"}`}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mb-1 px-1">
+                  {isInstructor ? (
+                    <span className="font-bold text-indigo-700">You ({m.senderName})</span>
+                  ) : (
+                    <span className="font-semibold text-slate-800 flex items-center gap-1">
+                      <User className="h-3 w-3" /> {m.senderName} (Student)
+                    </span>
+                  )}
+                  <span>• {m.createdAt ? format(new Date(m.createdAt), "h:mm a") : ""}</span>
+                </div>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
+                    isInstructor
+                      ? "bg-slate-900 text-white rounded-br-none shadow-xs"
+                      : "bg-indigo-50/80 text-indigo-950 border border-indigo-100 rounded-bl-none shadow-xs"
+                  }`}
+                >
+                  <LatexRenderer text={m.message} />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <form onSubmit={handleSend} className="flex gap-2 pt-3 border-t shrink-0">
+        <Input
+          placeholder="Type response to student..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          disabled={sendMessage.isPending}
+          className="text-xs h-10 bg-white"
+        />
+        <Button
+          type="submit"
+          disabled={sendMessage.isPending || !text.trim()}
+          className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white shrink-0 rounded-xl"
+        >
+          {sendMessage.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <Send className="h-4 w-4 mr-1.5" /> Reply
+            </>
+          )}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 // ---------- Main Panel Component ----------
 export default function SessionReviewPanel({ sessionId, examId, open, onClose }: { sessionId: number, examId?: number, open?: boolean, onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -182,6 +282,7 @@ export default function SessionReviewPanel({ sessionId, examId, open, onClose }:
   });
   
   const { data: flags, isLoading: isLoadingFlags } = useListSessionFlags(sessionId);
+  const { data: sessionMessages } = useListSessionMessages(sessionId);
   const reviewFlag = useReviewFlag();
   const releaseResults = useReleaseSessionResults();
   const gradeAnswer = useGradeSessionAnswer();
@@ -335,14 +436,22 @@ export default function SessionReviewPanel({ sessionId, examId, open, onClose }:
       <div className="flex-1 overflow-hidden flex flex-col">
         <Tabs defaultValue="grading" className="flex-1 flex flex-col">
           <div className="px-5 pt-4 border-b">
-            <TabsList className="w-full grid grid-cols-2 h-11">
-              <TabsTrigger value="grading" className="font-medium">
+            <TabsList className="w-full grid grid-cols-3 h-11">
+              <TabsTrigger value="grading" className="font-medium text-xs sm:text-sm">
                 Grading & Answers
               </TabsTrigger>
-              <TabsTrigger value="flags" className="font-medium relative">
+              <TabsTrigger value="flags" className="font-medium text-xs sm:text-sm relative">
                 Cheating Flags
                 {pending.length > 0 && (
                   <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-destructive"></span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="font-medium text-xs sm:text-sm relative">
+                💬 Q&A
+                {sessionMessages && sessionMessages.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-indigo-100 text-indigo-800">
+                    {sessionMessages.length}
+                  </span>
                 )}
               </TabsTrigger>
             </TabsList>
@@ -587,6 +696,10 @@ export default function SessionReviewPanel({ sessionId, examId, open, onClose }:
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="messages" className="m-0 focus-visible:outline-none">
+            <InstructorSessionMessagingTab sessionId={sessionId} />
           </TabsContent>
         </Tabs>
       </div>

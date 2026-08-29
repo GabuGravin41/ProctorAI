@@ -151,6 +151,17 @@ export type GenerateQuestionsInputDifficulty = 'easy' | 'medium' | 'hard';
 
 export type GenerateQuestionsInputQuestionTypesItem = string;
 
+export interface SessionMessage {
+  id: number;
+  sessionId: number;
+  senderClerkId: string;
+  senderRole: 'student' | 'instructor';
+  senderName: string;
+  message: string;
+  questionId?: number | null;
+  createdAt: string;
+}
+
 // ─── Query key helpers ───────────────────────────────────────────────────────
 
 export const getGetMeQueryKey = () => ['getMe'] as const;
@@ -158,6 +169,7 @@ export const getGetSessionQueryKey = (id?: string | number) => ['getSession', id
 export const getListSessionsQueryKey = (query?: any) => ['listSessions', query] as const;
 export const getListExamsQueryKey = () => ['listExams'] as const;
 export const getGetExamResultsQueryKey = (id?: string | number) => ['getExamResults', id?.toString()] as const;
+export const getListSessionMessagesQueryKey = (sessionId?: number) => ['sessionMessages', sessionId?.toString()] as const;
 export const getListQuestionsQueryKey = (id?: string | number) => ['listQuestions', id?.toString()] as const;
 export const getListSessionFlagsQueryKey = (id?: number) => ['listSessionFlags', id] as const;
 export const getGetExamQueryKey = (id?: string | number) => ['getExam', id?.toString()] as const;
@@ -508,6 +520,44 @@ export function useReportFlag() {
       });
       if (!res.ok) throw new Error(`POST /flags failed: ${res.status}`);
       return res.json();
+    },
+  });
+}
+
+export function useListSessionMessages(sessionId?: number, opts?: { query?: Omit<UseQueryOptions<SessionMessage[], Error, SessionMessage[], any>, 'queryFn'> }) {
+  const { getToken } = useAuth();
+  return useQuery<SessionMessage[]>({
+    queryKey: getListSessionMessagesQueryKey(sessionId),
+    enabled: !!sessionId,
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`GET /sessions/${sessionId}/messages failed: ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 5000,
+    ...opts?.query,
+  });
+}
+
+export function useSendSessionMessage() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation<SessionMessage, Error, { sessionId: number; message: string; questionId?: number | null }>({
+    mutationFn: async ({ sessionId, message, questionId }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, questionId }),
+      });
+      if (!res.ok) throw new Error(`POST /sessions/${sessionId}/messages failed: ${res.status}`);
+      return res.json();
+    },
+    onSuccess: (_, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: getListSessionMessagesQueryKey(sessionId) });
     },
   });
 }

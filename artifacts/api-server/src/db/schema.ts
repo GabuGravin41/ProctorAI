@@ -189,3 +189,19 @@ export const resourcesTable = pgTable('resources', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+/**
+ * Student-Instructor Q&A Messages Table
+ * Enables direct messages/questions between students and instructors per exam session.
+ */
+export const sessionMessagesTable = pgTable('session_messages', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  sessionId: integer('session_id').notNull().references(() => examSessionsTable.id, { onDelete: 'cascade' }),
+  senderClerkId: text('sender_clerk_id').notNull(),
+  senderRole: text('sender_role').notNull(), // 'student' | 'instructor'
+  senderName: text('sender_name'),
+  message: text('message').notNull(),
+  questionId: integer('question_id').references(() => questionsTable.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+

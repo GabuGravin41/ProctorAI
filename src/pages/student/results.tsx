@@ -1,10 +1,12 @@
 import { useParams, Link } from "wouter";
+import { useState } from "react";
 import StudentLayout from "@/components/layout/student-layout";
-import { useGetSession, getGetSessionQueryKey, customFetch } from "@/lib/api-client";
+import { useGetSession, getGetSessionQueryKey, customFetch, useListSessionMessages, useSendSessionMessage } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -15,11 +17,114 @@ import {
   BookOpen,
   Sparkles,
   Loader2,
+  MessageSquare,
+  Send,
+  UserCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import LatexRenderer from "@/components/latex-renderer";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+
+function StudentSessionMessagingCard({ sessionId }: { sessionId: number }) {
+  const { data: messages, isLoading } = useListSessionMessages(sessionId);
+  const sendMessage = useSendSessionMessage();
+  const [text, setText] = useState("");
+  const { toast } = useToast();
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    try {
+      await sendMessage.mutateAsync({ sessionId, message: text.trim() });
+      setText("");
+    } catch (err: any) {
+      toast({ title: "Failed to send message", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card className="border-slate-200/80 bg-white shadow-sm rounded-2xl overflow-hidden mt-8">
+      <CardHeader className="bg-slate-50/50 pb-3 border-b">
+        <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+          <MessageSquare className="h-5 w-5 text-indigo-600" />
+          Ask Instructor a Question
+        </CardTitle>
+        <p className="text-xs text-slate-500">
+          Have a question about your proof score or AI critique? Ask your coach directly.
+        </p>
+      </CardHeader>
+      <CardContent className="p-4 space-y-4">
+        {/* Messages list */}
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-1 min-h-[100px]">
+          {isLoading ? (
+            <div className="text-center py-6 text-xs text-muted-foreground">Loading messages…</div>
+          ) : !messages || messages.length === 0 ? (
+            <div className="text-center py-8 border border-dashed rounded-xl bg-slate-50/50">
+              <MessageSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-medium text-slate-500">No questions asked yet.</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Type below to start a conversation with your instructor.</p>
+            </div>
+          ) : (
+            messages.map((m) => {
+              const isStudent = m.senderRole === "student";
+              return (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${isStudent ? "items-end" : "items-start"}`}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mb-1 px-1">
+                    {isStudent ? (
+                      <span className="font-semibold text-slate-700">You ({m.senderName})</span>
+                    ) : (
+                      <span className="font-bold text-indigo-700 flex items-center gap-1">
+                        <UserCheck className="h-3 w-3" /> {m.senderName} (Instructor)
+                      </span>
+                    )}
+                    <span>• {m.createdAt ? format(new Date(m.createdAt), "h:mm a") : ""}</span>
+                  </div>
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
+                      isStudent
+                        ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
+                        : "bg-slate-100 text-slate-900 border border-slate-200 rounded-bl-none shadow-xs"
+                    }`}
+                  >
+                    <LatexRenderer text={m.message} />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Send message form */}
+        <form onSubmit={handleSend} className="flex gap-2 pt-2 border-t">
+          <Input
+            placeholder="Ask your instructor a question about this session..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={sendMessage.isPending}
+            className="text-xs h-10 bg-slate-50/50 focus:bg-white"
+          />
+          <Button
+            type="submit"
+            disabled={sendMessage.isPending || !text.trim()}
+            className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 rounded-xl"
+          >
+            {sendMessage.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-1.5" /> Send
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ScoreBadge({ percentage }: { percentage: number }) {
   if (percentage >= 90) return <Badge className="bg-green-600 text-white">Excellent</Badge>;
@@ -440,6 +545,9 @@ export default function StudentResults() {
               </div>
             </>
           )}
+
+        {/* Student-Instructor Q&A Chat */}
+        <StudentSessionMessagingCard sessionId={sessionId} />
 
         <div className="text-center pt-4">
           <Button asChild variant="outline">
