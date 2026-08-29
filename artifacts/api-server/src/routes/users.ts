@@ -71,6 +71,7 @@ router.get("/me", requireAuth, async (req: any, res) => {
       createdAt: user.createdAt.toISOString(),
     });
   } catch (err) {
+    console.error("GET /api/users/me error:", err);
     req.log.error({ err }, "getMe error");
     res.status(500).json({ error: "Internal server error" });
   }
