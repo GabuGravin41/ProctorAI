@@ -57,8 +57,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       <header className="px-6 h-16 flex items-center justify-between border-b bg-white sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-6">
           <Link href="/student" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="ProctorAI" className="h-8 w-8 text-primary" />
-            <span className="font-display font-bold text-xl tracking-tight text-primary">ProctorAI</span>
+            <img src="/logo.svg" alt="EduReach" className="h-8 w-8 text-primary" />
+            <span className="font-display font-bold text-xl tracking-tight text-primary">EduReach</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-1">

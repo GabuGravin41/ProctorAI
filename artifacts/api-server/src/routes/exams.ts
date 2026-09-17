@@ -39,6 +39,10 @@ function formatExam(exam: any, questionCount = 0, sessionCount = 0, flagCount = 
     accessCode: exam.accessCode ?? null,
     isPublic: exam.isPublic ?? false,
     collaborators: exam.collaborators ?? [],
+    contestType: exam.contestType ?? "official_contest",
+    allowInstantSolutions: exam.allowInstantSolutions ?? true,
+    allowProctoringPractice: exam.allowProctoringPractice ?? true,
+    examType: exam.examType ?? "mixed",
     questionCount,
     sessionCount,
     flagCount,
@@ -88,7 +92,10 @@ router.get("/", requireAuth, async (req: any, res) => {
 router.post("/", requireAuth, async (req: any, res) => {
   try {
     const clerkId = req.clerkUserId;
-    const { title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, aiConfig } = req.body;
+    const { 
+      title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, aiConfig,
+      contestType, allowInstantSolutions, allowProctoringPractice, examType
+    } = req.body;
     const [exam] = await db
       .insert(examsTable)
       .values({ 
@@ -101,6 +108,10 @@ router.post("/", requireAuth, async (req: any, res) => {
         durationMinutes: durationMinutes ?? 60, 
         gradingMode: gradingMode ?? "review_release", 
         aiConfig: aiConfig ?? { provider: "free", model: "google/gemma-2-9b-it:free" },
+        contestType: contestType ?? "official_contest",
+        allowInstantSolutions: allowInstantSolutions !== undefined ? !!allowInstantSolutions : true,
+        allowProctoringPractice: allowProctoringPractice !== undefined ? !!allowProctoringPractice : true,
+        examType: examType ?? "mixed",
         instructorClerkId: clerkId 
       })
       .returning();
@@ -115,18 +126,25 @@ router.post("/", requireAuth, async (req: any, res) => {
 router.get("/public", requireAuth, async (req: any, res) => {
   try {
     const exams = await db
-      .select()
+      .select({
+        exam: examsTable,
+        instructorName: usersTable.name,
+        institutionName: usersTable.institutionName,
+      })
       .from(examsTable)
-      .where(and(eq(examsTable.isPublic, true), eq(examsTable.status, "published")));
+      .leftJoin(usersTable, eq(examsTable.instructorClerkId, usersTable.clerkId))
+      .where(and(eq(examsTable.status, "published"), eq(examsTable.isPublic, true)));
 
     const result = await Promise.all(
-      exams.map(async (exam) => {
-        const [qCount] = await db.select({ count: count() }).from(questionsTable).where(eq(questionsTable.examId, exam.id));
-        const [sCount] = await db.select({ count: count() }).from(examSessionsTable).where(eq(examSessionsTable.examId, exam.id));
-        const [instructor] = await db.select().from(usersTable).where(eq(usersTable.clerkId, exam.instructorClerkId));
-        return formatExam(exam, qCount.count, sCount.count, 0, instructor?.name ?? "Instructor", instructor?.institutionName ?? undefined);
+      exams.map(async ({ exam, instructorName, institutionName }) => {
+        const [qCount] = await db
+          .select({ val: count() })
+          .from(questionsTable)
+          .where(eq(questionsTable.examId, exam.id));
+        return formatExam(exam, qCount.val, 0, 0, instructorName ?? undefined, institutionName ?? undefined);
       })
     );
+
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "listPublicExams error");
@@ -138,28 +156,69 @@ router.get("/public", requireAuth, async (req: any, res) => {
 router.get("/:examId", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.examId, examId)).orderBy(questionsTable.order);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const isAdmin = user && user.email === "daltonomondi04@gmail.com";
+    const isCollab = exam.collaborators && Array.isArray(exam.collaborators) && user && exam.collaborators.includes(user.email);
 
-    res.json({
-      ...formatExam(exam, questions.length),
-      questions: questions.map((q) => ({
-        id: q.id,
-        examId: q.examId,
-        type: q.type,
-        text: q.text,
-        options: q.options ?? null,
-        correctAnswer: q.correctAnswer ?? null,
-        referenceSolution: q.referenceSolution ?? null,
-        points: q.points,
-        order: q.order,
-      })),
-    });
+    if (exam.instructorClerkId !== clerkId && !exam.isPublic && !isAdmin && !isCollab) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const [qCount] = await db.select({ val: count() }).from(questionsTable).where(eq(questionsTable.examId, examId));
+    const [sCount] = await db.select({ val: count() }).from(examSessionsTable).where(eq(examSessionsTable.examId, examId));
+    const [instructor] = await db.select().from(usersTable).where(eq(usersTable.clerkId, exam.instructorClerkId));
+
+    res.json(formatExam(exam, qCount.val, sCount.val, 0, instructor?.name ?? undefined, instructor?.institutionName ?? undefined));
   } catch (err) {
     req.log.error({ err }, "getExam error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/exams/:examId/printable — Downloadable formatted contest paper
+router.get("/:examId/printable", requireAuth, async (req: any, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const clerkId = req.clerkUserId;
+
+    const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!exam) return res.status(404).json({ error: "Contest paper not found" });
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+    const isOwner = exam.instructorClerkId === clerkId || (user && user.email === "daltonomondi04@gmail.com");
+    if (!exam.isPublic && !isOwner) {
+      return res.status(403).json({ error: "Access denied to private contest paper" });
+    }
+
+    const questions = await db
+      .select()
+      .from(questionsTable)
+      .where(eq(questionsTable.examId, examId))
+      .orderBy(questionsTable.order);
+
+    const [instructor] = await db.select().from(usersTable).where(eq(usersTable.clerkId, exam.instructorClerkId));
+
+    res.json({
+      exam: formatExam(exam, questions.length, 0, 0, instructor?.name ?? "EduReach Coach", instructor?.institutionName ?? "EduReach Academic & Olympiad Program"),
+      questions: questions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        type: q.type,
+        options: q.options,
+        points: q.points,
+        difficulty: q.difficulty,
+        hints: q.hints || [],
+        referenceSolution: (exam.contestType === "mock_test" || exam.contestType === "practice_paper" || isOwner || exam.allowInstantSolutions) ? q.referenceSolution : null,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "printable paper error");
+    res.status(500).json({ error: "Failed to generate printable contest paper" });
   }
 });
 
@@ -172,7 +231,10 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
     const isAdmin = user && user.email === "daltonomondi04@gmail.com";
 
-    const { title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, status, aiConfig, collaborators } = req.body;
+    const { 
+      title, description, subject, topic, tags, isPublic, durationMinutes, gradingMode, status, aiConfig, collaborators,
+      contestType, allowInstantSolutions, allowProctoringPractice, examType
+    } = req.body;
     const updates: any = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
@@ -185,6 +247,10 @@ router.patch("/:examId", requireAuth, async (req: any, res) => {
     if (status !== undefined) updates.status = status;
     if (aiConfig !== undefined) updates.aiConfig = aiConfig;
     if (collaborators !== undefined) updates.collaborators = collaborators;
+    if (contestType !== undefined) updates.contestType = contestType;
+    if (allowInstantSolutions !== undefined) updates.allowInstantSolutions = allowInstantSolutions;
+    if (allowProctoringPractice !== undefined) updates.allowProctoringPractice = allowProctoringPractice;
+    if (examType !== undefined) updates.examType = examType;
 
     const queryCond = isAdmin
       ? eq(examsTable.id, examId)

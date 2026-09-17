@@ -25,6 +25,8 @@ const formSchema = z.object({
   isPublic: z.boolean().default(false),
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
   examType: z.enum(["mixed", "proof_only"]),
+  contestType: z.enum(["official_contest", "practice_paper", "mock_test"]).default("official_contest"),
+  allowInstantSolutions: z.boolean().default(true),
   gradingMode: z.enum(["auto", "review_release", "manual"]),
   aiProvider: z.enum(["free", "custom_openrouter", "custom_gemini"]),
   aiModel: z.string(),
@@ -88,6 +90,8 @@ export default function NewExam() {
       isPublic: false,
       durationMinutes: 60,
       examType: "mixed",
+      contestType: "official_contest",
+      allowInstantSolutions: true,
       gradingMode: "auto",
       aiProvider: "free",
       aiModel: "deepseek/deepseek-chat",
@@ -131,6 +135,8 @@ export default function NewExam() {
       description: data.description || "",
       durationMinutes: data.durationMinutes,
       examType: data.examType,
+      contestType: data.contestType,
+      allowInstantSolutions: data.allowInstantSolutions,
       gradingMode: data.gradingMode,
       aiConfig: {
         provider: data.aiProvider,
@@ -265,6 +271,77 @@ export default function NewExam() {
                         </FormLabel>
                         <FormDescription className="text-xs text-indigo-900/70">
                           Public exams are listed on the Student Dashboard for all students to practice freely without an invite code.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Contest Type: Official Contest vs Practice Paper */}
+                <FormField
+                  control={form.control}
+                  name="contestType"
+                  render={({ field }) => (
+                    <FormItem className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-2xs space-y-3">
+                      <div>
+                        <FormLabel className="text-sm font-bold text-slate-900">Paper Category &amp; Mode</FormLabel>
+                        <FormDescription className="text-xs text-slate-500">
+                          Configure whether this is an official timed contest or an open training paper.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div
+                            onClick={() => field.onChange("official_contest")}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                              field.value === "official_contest"
+                                ? "border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500"
+                                : "border-slate-200 bg-white hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="font-bold text-xs text-slate-900 mb-1">Official Timed Contest</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">
+                              Timed sitting, proctoring enabled, single submission, manual coach proof grading.
+                            </div>
+                          </div>
+
+                          <div
+                            onClick={() => field.onChange("practice_paper")}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                              field.value === "practice_paper"
+                                ? "border-emerald-600 bg-emerald-50/50 ring-1 ring-emerald-500"
+                                : "border-slate-200 bg-white hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="font-bold text-xs text-slate-900 mb-1">Open Practice Paper</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">
+                              Self-paced training, camera optional, progressive hints and model proofs enabled.
+                            </div>
+                          </div>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Allow Instant Hints/Solutions Switch */}
+                <FormField
+                  control={form.control}
+                  name="allowInstantSolutions"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-xl border border-slate-200 bg-slate-50/40 p-4 shadow-2xs">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-semibold text-slate-900">
+                          Enable Progressive Hints &amp; Model Proofs
+                        </FormLabel>
+                        <FormDescription className="text-xs text-slate-500">
+                          Permits students to click "Need a Hint" and inspect the model proof while practicing.
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -428,7 +505,7 @@ export default function NewExam() {
                               <div className="flex items-center gap-2">
                                 <Cpu className="h-4 w-4" />
                                 <div>
-                                  <div className="font-medium">ProctorAI Hosted</div>
+                                  <div className="font-medium">EduReach Hosted</div>
                                   <div className="text-xs text-muted-foreground">Using our API credits - Recommended for Olympiad</div>
                                 </div>
                               </div>
@@ -565,7 +642,7 @@ export default function NewExam() {
                   <div className="p-4 rounded-lg bg-green-50/50 border border-green-100 flex gap-3 items-start">
                     <Cpu className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="font-semibold text-green-900 text-sm">ProctorAI Hosted</h5>
+                      <h5 className="font-semibold text-green-900 text-sm">EduReach Hosted</h5>
                       <p className="text-xs text-green-700 mt-0.5">Using DeepSeek V3 for Olympiad-level question generation. No API key required.</p>
                     </div>
                   </div>

@@ -75,6 +75,9 @@ export interface Exam {
   gradingMode: 'auto' | 'manual' | 'review_release';
   aiConfig: any;
   examType: string | null;
+  contestType?: string;
+  allowInstantSolutions?: boolean;
+  allowProctoringPractice?: boolean;
   accessCode: string | null;
   isPublic?: boolean;
   instructorName?: string | null;
@@ -94,6 +97,7 @@ export interface Question {
   options: string[] | null;
   correctAnswer: string | null;
   referenceSolution: string | null;
+  hints?: string[];
   points: number;
   difficulty: string | null;
   order: number;

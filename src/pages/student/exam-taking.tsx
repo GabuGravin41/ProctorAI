@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2, Camera, X } from "lucide-react";
+import { Loader2, Video, VideoOff, Mic, ShieldAlert, Timer, AlertTriangle, Maximize2, UploadCloud, Paperclip, Trash2, Camera, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import LatexRenderer from "@/components/latex-renderer";
@@ -143,7 +143,11 @@ export default function ExamTaking() {
   const exam = sessionWithExam?.exam;
   const session = sessionWithExam?.session;
   const questions = exam?.questions || [];
-  const isProctoringEnabled = exam?.aiConfig?.proctoringEnabled !== false;
+  const isPracticeMode = (exam as any)?.contestType === "practice_paper" || (exam as any)?.contestType === "mock_test";
+  const isProctoringEnabled = !isPracticeMode && exam?.aiConfig?.proctoringEnabled !== false;
+
+  const [revealedHints, setRevealedHints] = useState<Record<number, number>>({});
+  const [revealedSolutions, setRevealedSolutions] = useState<Record<number, boolean>>({});
 
   const questionsRef = useRef(questions);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -237,6 +241,7 @@ export default function ExamTaking() {
 
   // Helper helper to trigger flags with dual evidence (clip + screenshot)
   const triggerFlag = async (type: FlagInputType, description: string) => {
+    if (isPracticeMode) return; // Suppress flags in practice/mock training mode
     if (!sessionId || !Number.isInteger(sessionId) || sessionId <= 0) return;
 
     setLiveFlags((n) => n + 1);
@@ -874,17 +879,43 @@ export default function ExamTaking() {
       <StudentLayout>
         <div className="flex items-center justify-center min-h-[80vh]">
           <Card className="w-full max-w-2xl p-8 border-primary/20 shadow-lg">
+            <div className="flex items-center justify-center mb-3">
+              {isPracticeMode ? (
+                <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                  Open Practice / Training Paper
+                </span>
+              ) : (
+                <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 rounded-full border border-indigo-200">
+                  Official Timed Contest
+                </span>
+              )}
+            </div>
             <h1 className="text-3xl font-display font-bold text-center mb-2">{exam?.title}</h1>
             <p className="text-center text-muted-foreground mb-8">
-              {exam?.durationMinutes} Minutes · {questions.length} Questions
+              {exam?.durationMinutes} Minutes · {questions.length} {questions.length === 1 ? 'Question' : 'Questions'}
             </p>
 
             <div className="bg-slate-50 p-6 rounded-lg border mb-8">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <ShieldAlert className="text-primary" /> {isProctoringEnabled ? "Proctoring Requirements" : "Exam Rules & Instructions"}
+                <ShieldAlert className="text-primary" /> {isPracticeMode ? "Practice Paper Guidelines" : isProctoringEnabled ? "Proctoring Requirements" : "Exam Rules & Instructions"}
               </h3>
               <ul className="space-y-3 text-sm">
-                {isProctoringEnabled && (
+                {isPracticeMode ? (
+                  <>
+                    <li className="flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                      <strong>Self-Paced Training:</strong> No webcam or microphone monitoring is enforced. Take your time to write rigorous proofs.
+                    </li>
+                    <li className="flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                      <strong>Progressive Hints:</strong> If you get stuck on a difficult question, click "Need a Hint" to receive stepped clues without spoiling the full proof.
+                    </li>
+                    <li className="flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                      <strong>Model Solutions:</strong> Check your final working against the reference solution and marking rubric when you are ready.
+                    </li>
+                  </>
+                ) : isProctoringEnabled ? (
                   <>
                     <li className="flex gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
@@ -893,15 +924,19 @@ export default function ExamTaking() {
                     <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Ensure your face is clearly visible and well-lit at all times.</li>
                     <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />AI monitors for looking away, multiple faces, phones, and other violations.</li>
                   </>
+                ) : null}
+                {!isPracticeMode && (
+                  <>
+                    <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />The exam runs in fullscreen — exiting fullscreen will be flagged.</li>
+                    <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Switching browser tabs will be flagged and reported to your instructor.</li>
+                  </>
                 )}
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />The exam runs in fullscreen — exiting fullscreen will be flagged.</li>
-                <li className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />Switching browser tabs will be flagged and reported to your instructor.</li>
               </ul>
             </div>
 
             <Button size="lg" className="w-full h-14 text-lg" onClick={handleStart} disabled={startSession.isPending}>
               {startSession.isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              Agree and Begin Exam
+              {isPracticeMode ? "Begin Practice Session" : "Agree and Begin Exam"}
             </Button>
           </Card>
         </div>
@@ -910,7 +945,7 @@ export default function ExamTaking() {
   }
 
   // ── Camera error screen ─────────────────────────────────────────────────────
-  if (cameraError) {
+  if (cameraError && !isPracticeMode) {
     return (
       <StudentLayout>
         <div className="text-center p-12 bg-destructive/10 border border-destructive/20 rounded-lg max-w-2xl mx-auto mt-12">
@@ -941,49 +976,51 @@ export default function ExamTaking() {
           </div>
         )}
 
-        {/* Floating proctoring widget - responsive size */}
-        <div className="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-50 bg-black rounded-lg shadow-2xl overflow-hidden border-2 border-border/20 w-40 sm:w-48 md:w-64">
-          <div className="bg-primary/90 text-white text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 font-medium flex items-center justify-between">
-            <span className="flex items-center gap-1 sm:gap-1.5">
-              <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="hidden sm:inline">MONITORED</span>
-              <span className="sm:hidden">ON</span>
-            </span>
-            <span className="flex items-center gap-0.5 sm:gap-1 opacity-70">
-              <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> <Video className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-            </span>
-          </div>
-          <div className="aspect-video bg-zinc-900 relative flex items-center justify-center">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className={`w-full h-full object-cover transform -scale-x-100 ${!stream ? "hidden" : ""}`} 
-            />
-            {!stream && (
-              <div className="text-[10px] text-zinc-500 text-center px-4 leading-normal">
-                Initializing camera feed...
+        {/* Floating proctoring widget - only in official proctored contest mode */}
+        {!isPracticeMode && isProctoringEnabled && (
+          <div className="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-50 bg-black rounded-lg shadow-2xl overflow-hidden border-2 border-border/20 w-40 sm:w-48 md:w-64">
+            <div className="bg-primary/90 text-white text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 font-medium flex items-center justify-between">
+              <span className="flex items-center gap-1 sm:gap-1.5">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="hidden sm:inline">MONITORED</span>
+                <span className="sm:hidden">ON</span>
+              </span>
+              <span className="flex items-center gap-0.5 sm:gap-1 opacity-70">
+                <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> <Video className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              </span>
+            </div>
+            <div className="aspect-video bg-zinc-900 relative flex items-center justify-center">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className={`w-full h-full object-cover transform -scale-x-100 ${!stream ? "hidden" : ""}`} 
+              />
+              {!stream && (
+                <div className="text-[10px] text-zinc-500 text-center px-4 leading-normal">
+                  Initializing camera feed...
+                </div>
+              )}
+            </div>
+
+            {/* Live flag counter */}
+            {liveFlags > 0 && (
+              <div className="px-3 py-2 bg-red-900/90 text-red-200 text-xs flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3 text-red-400" />
+                {liveFlags} flag{liveFlags > 1 ? "s" : ""} raised — instructor will review
+              </div>
+            )}
+
+            {/* Timer inside the widget when low */}
+            {(isUrgent || isWarning) && (
+              <div className={`px-3 py-2 text-center text-sm font-mono font-bold ${isUrgent ? "bg-red-600 text-white animate-pulse" : "bg-yellow-500 text-white"}`}>
+                <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
+                {formatTime(timeLeft)} remaining
               </div>
             )}
           </div>
-
-          {/* Live flag counter */}
-          {liveFlags > 0 && (
-            <div className="px-3 py-2 bg-red-900/90 text-red-200 text-xs flex items-center gap-1.5">
-              <AlertTriangle className="h-3 w-3 text-red-400" />
-              {liveFlags} flag{liveFlags > 1 ? "s" : ""} raised — instructor will review
-            </div>
-          )}
-
-          {/* Timer inside the widget when low */}
-          {(isUrgent || isWarning) && (
-            <div className={`px-3 py-2 text-center text-sm font-mono font-bold ${isUrgent ? "bg-red-600 text-white animate-pulse" : "bg-yellow-500 text-white"}`}>
-              <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
-              {formatTime(timeLeft)} remaining
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Sticky top bar */}
         <div className={`sticky top-0 z-40 border-b shadow-sm mb-6 sm:mb-8 -mx-3 sm:-mx-4 md:-mx-8 px-3 sm:px-4 md:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 transition-colors ${isUrgent ? "bg-red-50 border-red-200" : "bg-background"}`}>
@@ -997,24 +1034,26 @@ export default function ExamTaking() {
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Timer chip */}
             <div className={`flex items-center gap-1 sm:gap-2 font-mono text-base sm:text-lg md:text-xl font-bold px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border transition-all ${
-              isUrgent
+              !isPracticeMode && isUrgent
                 ? "bg-red-600 text-white border-red-600 animate-pulse"
-                : isWarning
+                : !isPracticeMode && isWarning
                 ? "bg-yellow-50 text-yellow-700 border-yellow-300"
                 : "bg-slate-100 text-foreground border-transparent"
             }`}>
               <Timer className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-              <span className="text-sm sm:text-base md:text-lg">{formatTime(timeLeft)}</span>
+              <span className="text-sm sm:text-base md:text-lg">
+                {isPracticeMode ? `Practice Mode (${formatTime(timeLeft)})` : formatTime(timeLeft)}
+              </span>
             </div>
 
             <Button
               onClick={() => setSubmitConfirmOpen(true)}
               disabled={submitSession.isPending}
-              className={`h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-4 ${isUrgent ? "bg-red-600 hover:bg-red-700" : ""}`}
+              className={`h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-4 ${!isPracticeMode && isUrgent ? "bg-red-600 hover:bg-red-700" : ""}`}
             >
               {submitSession.isPending && <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />}
-              <span className="hidden sm:inline">Submit Exam</span>
-              <span className="sm:hidden">Submit</span>
+              <span className="hidden sm:inline">{isPracticeMode ? "Complete Practice" : "Submit Exam"}</span>
+              <span className="sm:hidden">{isPracticeMode ? "Complete" : "Submit"}</span>
             </Button>
           </div>
         </div>
@@ -1030,8 +1069,8 @@ export default function ExamTaking() {
           </div>
         </div>
 
-        {/* Urgent full-width banner */}
-        {isUrgent && (
+        {/* Urgent full-width banner - only in timed official contest mode */}
+        {!isPracticeMode && isUrgent && (
           <div className="bg-red-600 text-white text-center py-2 text-sm font-semibold -mx-4 md:-mx-8 px-4 mb-6 animate-pulse">
             ⏰ Less than 1 minute remaining — your exam will be submitted automatically!
           </div>
@@ -1089,6 +1128,74 @@ export default function ExamTaking() {
                       <div className="p-4 rounded-lg border bg-slate-50/50">
                         <div className="text-xs font-semibold text-muted-foreground mb-2">Real-time Mathematical Proof Preview:</div>
                         <LatexRenderer text={answers[q.id]} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Progressive Hints & Model Proof Section */}
+                {((q.hints && q.hints.length > 0) || ((isPracticeMode || (exam as any)?.allowInstantSolutions) && q.referenceSolution)) && (
+                  <div className="mt-5 pt-4 border-t border-slate-200/80 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {q.hints && q.hints.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setRevealedHints(prev => {
+                              const current = prev[q.id] || 0;
+                              const next = current < q.hints!.length ? current + 1 : current;
+                              return { ...prev, [q.id]: next };
+                            });
+                          }}
+                          disabled={(revealedHints[q.id] || 0) >= q.hints.length}
+                          className="text-xs h-8 border-amber-300 text-amber-900 bg-amber-50/70 hover:bg-amber-100 font-medium"
+                        >
+                          💡 {(revealedHints[q.id] || 0) === 0 ? "Need a Hint?" : (revealedHints[q.id] || 0) < q.hints.length ? "Reveal Next Hint" : "All Hints Revealed"}
+                          <span className="ml-1 text-[11px] font-mono text-amber-700 font-bold">
+                            ({revealedHints[q.id] || 0}/{q.hints.length})
+                          </span>
+                        </Button>
+                      )}
+
+                      {(isPracticeMode || (exam as any)?.allowInstantSolutions) && q.referenceSolution && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setRevealedSolutions(prev => ({ ...prev, [q.id]: !prev[q.id] }));
+                          }}
+                          className="text-xs h-8 text-indigo-700 hover:bg-indigo-50 font-medium ml-auto"
+                        >
+                          {revealedSolutions[q.id] ? "Hide Model Proof" : "👁️ Reveal Model Proof & Rubric"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Step-by-Step Revealed Hints */}
+                    {(revealedHints[q.id] || 0) > 0 && q.hints && (
+                      <div className="space-y-2 pt-1">
+                        {q.hints.slice(0, revealedHints[q.id] || 0).map((hintText: string, hIdx: number) => (
+                          <div key={hIdx} className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-lg text-xs text-amber-950 leading-relaxed shadow-2xs">
+                            <span className="font-bold text-amber-900 mr-1.5 uppercase tracking-wide text-[10px]">
+                              Hint {hIdx + 1}:
+                            </span>
+                            <LatexRenderer text={hintText} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Revealed Model Solution & Rubric */}
+                    {revealedSolutions[q.id] && q.referenceSolution && (
+                      <div className="p-4 bg-indigo-50/90 border border-indigo-200 rounded-lg text-xs text-indigo-950 leading-relaxed font-serif shadow-2xs">
+                        <div className="font-sans font-bold text-indigo-900 mb-1.5 flex items-center gap-1.5 text-xs">
+                          <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                          Model Proof &amp; Scoring Rubric:
+                        </div>
+                        <LatexRenderer text={q.referenceSolution} />
                       </div>
                     )}
                   </div>

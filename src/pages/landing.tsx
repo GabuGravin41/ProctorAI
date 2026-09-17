@@ -101,8 +101,8 @@ export default function Landing() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-50 px-6 md:px-12 h-16 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.svg" alt="ProctorAI Logo" className="h-7 w-7" />
-          <span className="font-display font-semibold text-lg tracking-tight text-slate-900">ProctorAI</span>
+          <img src="/logo.svg" alt="EduReach Logo" className="h-7 w-7" />
+          <span className="font-display font-semibold text-lg tracking-tight text-slate-900">EduReach</span>
         </div>
         
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500">
@@ -284,7 +284,7 @@ export default function Landing() {
           <div className="max-w-4xl mx-auto px-6">
             <div className="text-center mb-16">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Workflow</p>
-              <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tight">How ProctorAI Operates</h2>
+              <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tight">How EduReach Operates</h2>
             </div>
             
             <div className="grid md:grid-cols-4 gap-8 text-left">
@@ -501,7 +501,7 @@ export default function Landing() {
           <div className="max-w-xl mx-auto px-6 text-center">
             <h3 className="text-xl font-bold text-slate-950 mb-2">Request Early Deployment</h3>
             <p className="text-xs text-slate-500 mb-8 max-w-sm mx-auto">
-              Interested in deploying ProctorAI for school-wide assessments, private contests, or custom LMS integrations? Get in touch.
+              Interested in deploying EduReach for school-wide assessments, private contests, or custom LMS integrations? Get in touch.
             </p>
             <WaitlistForm />
           </div>
@@ -512,8 +512,8 @@ export default function Landing() {
       <footer className="py-10 border-t border-slate-150 bg-slate-50 text-slate-500 text-xs">
         <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="ProctorAI" className="h-5 w-5 opacity-70" />
-            <span className="font-semibold text-slate-800">ProctorAI</span>
+            <img src="/logo.svg" alt="EduReach" className="h-5 w-5 opacity-70" />
+            <span className="font-semibold text-slate-800">EduReach</span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#features" className="hover:text-slate-800 transition-colors">Features</a>
@@ -521,7 +521,7 @@ export default function Landing() {
             <Link href="/sign-in" className="hover:text-slate-800 transition-colors">Sign In</Link>
             <Link href="/sign-up" className="hover:text-slate-800 transition-colors">Get Started</Link>
           </div>
-          <p>© {new Date().getFullYear()} ProctorAI. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} EduReach. All rights reserved.</p>
         </div>
       </footer>
     </div>

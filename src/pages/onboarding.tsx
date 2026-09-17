@@ -126,7 +126,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-3 sm:p-4">
       <Card className="w-full max-w-xl shadow-lg border-2 border-slate-100 bg-white">
         <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
-          <img src="/logo.svg" alt="ProctorAI" className="h-10 sm:h-12 w-10 sm:w-12 mx-auto mb-3 sm:mb-4 text-primary" />
+          <img src="/logo.svg" alt="EduReach" className="h-10 sm:h-12 w-10 sm:w-12 mx-auto mb-3 sm:mb-4 text-primary" />
           <CardTitle className="text-2xl sm:text-3xl font-display font-bold text-primary tracking-tight">Set Up Your Profile</CardTitle>
           <CardDescription className="text-sm sm:text-base mt-1">Step {step} of 3: Provide account configurations</CardDescription>
           {/* Progress Bar */}

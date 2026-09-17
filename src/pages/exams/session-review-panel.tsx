@@ -558,7 +558,70 @@ export default function SessionReviewPanel({ sessionId, examId, open, onClose }:
 
                         {isEssay && (
                           <div className="pt-4 border-t space-y-3">
-                            <div className="font-medium text-sm">Instructor Grading</div>
+                            <div className="font-medium text-sm flex items-center justify-between">
+                              <span>Instructor / Coach Grading</span>
+                              {ans.maxPoints === 7 && (
+                                <Badge variant="outline" className="text-[10px] font-mono text-indigo-600 bg-indigo-50 border-indigo-200">
+                                  Standard 7-Pt Scale
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Standard IMO / KMO 7-Point Quick Marking Selector */}
+                            {ans.maxPoints === 7 && (
+                              <div className="space-y-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-md">
+                                <div className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+                                  <span>7-Point Proof Rubric:</span>
+                                  <span className="text-[10px] text-indigo-600 font-mono">
+                                    {[
+                                      "0: No progress / restating problem",
+                                      "1: Minor initial insight",
+                                      "2: Useful lemma / observation",
+                                      "3: Significant partial progress",
+                                      "4: Major breakthrough / fixable gap",
+                                      "5: Substantially complete, minor flaw",
+                                      "6: Complete proof, minor clerical slip",
+                                      "7: Rigorous, complete proof",
+                                    ][Number(gradingPoints[ans.questionId] !== undefined ? gradingPoints[ans.questionId] : ans.points)] || "Select mark"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {[0, 1, 2, 3, 4, 5, 6, 7].map((score) => {
+                                    const isSelected = String(gradingPoints[ans.questionId] !== undefined ? gradingPoints[ans.questionId] : ans.points) === String(score);
+                                    return (
+                                      <button
+                                        key={score}
+                                        type="button"
+                                        onClick={() => {
+                                          setGradingPoints({ ...gradingPoints, [ans.questionId]: String(score) });
+                                          const descs = [
+                                            "0/7: No progress made.",
+                                            "1/7: Minor work / initial insight.",
+                                            "2/7: Key lemma proved or non-trivial observation.",
+                                            "3/7: Significant progress towards proof.",
+                                            "4/7: Substantial breakthrough with minor missing step.",
+                                            "5/7: Substantially complete, minor flaw.",
+                                            "6/7: Complete proof with minor clerical/calculation slip.",
+                                            "7/7: Full, rigorous proof.",
+                                          ];
+                                          if (!gradingFeedback[ans.questionId]) {
+                                            setGradingFeedback({ ...gradingFeedback, [ans.questionId]: descs[score] });
+                                          }
+                                        }}
+                                        className={`flex-1 h-7 rounded font-mono text-xs font-bold transition-all ${
+                                          isSelected
+                                            ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300"
+                                            : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                                        }`}
+                                      >
+                                        {score}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
                             <div className="grid grid-cols-4 gap-3">
                               <div className="col-span-1 space-y-1">
                                 <label className="text-xs font-medium text-muted-foreground">Points</label>

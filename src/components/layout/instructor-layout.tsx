@@ -57,8 +57,8 @@ export default function InstructorLayout({ children }: InstructorLayoutProps) {
   const Sidebar = () => (
     <div className="flex h-full flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
       <div className="flex h-16 items-center px-6 border-b border-sidebar-border bg-sidebar/50">
-        <img src="/logo.svg" alt="ProctorAI" className="h-8 w-8 text-sidebar-primary" />
-        <span className="ml-3 font-display font-bold text-xl tracking-tight">ProctorAI</span>
+        <img src="/logo.svg" alt="EduReach" className="h-8 w-8 text-sidebar-primary" />
+        <span className="ml-3 font-display font-bold text-xl tracking-tight">EduReach</span>
       </div>
       
       <div className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
@@ -110,8 +110,8 @@ export default function InstructorLayout({ children }: InstructorLayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:hidden">
           <div className="flex items-center">
-            <img src="/logo.svg" alt="ProctorAI" className="h-8 w-8 text-primary" />
-            <span className="ml-2 font-display font-bold text-lg text-primary">ProctorAI</span>
+            <img src="/logo.svg" alt="EduReach" className="h-8 w-8 text-primary" />
+            <span className="ml-2 font-display font-bold text-lg text-primary">EduReach</span>
           </div>
           <Sheet>
             <SheetTrigger asChild>

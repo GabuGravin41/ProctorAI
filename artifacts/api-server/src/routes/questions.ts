@@ -22,6 +22,9 @@ function formatQuestion(q: any) {
     options: q.options ?? null,
     correctAnswer: q.correctAnswer ?? null,
     referenceSolution: q.referenceSolution ?? null,
+    hints: q.hints ?? [],
+    difficulty: q.difficulty ?? null,
+    rubric: q.rubric ?? null,
     points: q.points,
     order: q.order,
   };
@@ -50,7 +53,7 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
   try {
     const examId = parseInt(req.params.examId);
     const clerkId = req.clerkUserId;
-    const { type, text, options, correctAnswer, referenceSolution, points } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points, hints, difficulty, rubric } = req.body;
 
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
     if (!exam) return res.status(404).json({ error: "Exam not found" });
@@ -70,6 +73,9 @@ router.post("/:examId/questions", requireAuth, async (req: any, res) => {
         options: options ?? null, 
         correctAnswer: correctAnswer ?? null, 
         referenceSolution: referenceSolution ?? null, 
+        hints: Array.isArray(hints) ? hints : [],
+        difficulty: difficulty ?? null,
+        rubric: rubric ?? null,
         points: points ?? 1, 
         order 
       })
@@ -86,7 +92,7 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
   try {
     const examId = parseInt(req.params.examId);
     const questionId = parseInt(req.params.questionId);
-    const { type, text, options, correctAnswer, referenceSolution, points, order } = req.body;
+    const { type, text, options, correctAnswer, referenceSolution, points, order, hints, difficulty, rubric } = req.body;
     
     // Fetch the exam to check its status
     const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
@@ -101,6 +107,9 @@ router.patch("/:examId/questions/:questionId", requireAuth, async (req: any, res
     if (options !== undefined) updates.options = options;
     if (correctAnswer !== undefined) updates.correctAnswer = correctAnswer;
     if (referenceSolution !== undefined) updates.referenceSolution = referenceSolution;
+    if (hints !== undefined) updates.hints = Array.isArray(hints) ? hints : [];
+    if (difficulty !== undefined) updates.difficulty = difficulty;
+    if (rubric !== undefined) updates.rubric = rubric;
     if (points !== undefined) updates.points = points;
     if (order !== undefined) updates.order = order;
 

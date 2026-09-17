@@ -30,6 +30,9 @@ export const examsTable = pgTable('exams', {
     proctoringEnabled?: boolean;
   }>(),
   examType: text('exam_type'), // 'mixed' | 'proof_only'
+  contestType: text('contest_type').notNull().default('official_contest'), // 'official_contest' | 'mock_test' | 'practice_paper'
+  allowInstantSolutions: boolean('allow_instant_solutions').notNull().default(true),
+  allowProctoringPractice: boolean('allow_proctoring_practice').notNull().default(true),
   accessCode: text('access_code').unique(),
   isPublic: boolean('is_public').notNull().default(false),
   topic: text('topic'),
@@ -48,6 +51,7 @@ export const questionsTable = pgTable('questions', {
   options: jsonb('options').$type<string[]>(),
   correctAnswer: text('correct_answer'),
   referenceSolution: text('reference_solution'),
+  hints: jsonb('hints').$type<string[]>(),
   points: integer('points').notNull().default(1),
   difficulty: text('difficulty'), // 'easy' | 'medium' | 'hard'
   rubric: jsonb('rubric').$type<{ criterion: string; maxPoints: number; description: string }[]>(),

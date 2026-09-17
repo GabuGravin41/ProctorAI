@@ -5,14 +5,16 @@ import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { KeyRound, PlayCircle, Clock, CheckCircle2, Search, BookOpen, Layers, Award, Filter, Award as Trophy, Mail, Check, X, UserPlus } from "lucide-react";
+import { KeyRound, PlayCircle, Clock, CheckCircle2, Search, BookOpen, Layers, Award, Filter, Award as Trophy, Mail, Check, X, UserPlus, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
+import ContestPaperModal from "@/components/contest-paper-modal";
 
 export default function StudentHome() {
   const { data: me } = useGetMe();
   const [, setLocation] = useLocation();
+  const [selectedPaperExamId, setSelectedPaperExamId] = useState<number | null>(null);
 
   // Active Tab state
   const [activeTab, setActiveTab] = useState<'assessments' | 'practice'>('assessments');
@@ -311,89 +313,114 @@ export default function StudentHome() {
                   const completedSession = completedSessions.find(s => s.exam.id === exam.id);
 
                   return (
-                    <Card key={exam.id} className="shadow-sm hover:shadow-md transition-all border-t-4 border-t-indigo-600">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full truncate">
-                            {exam.topic || exam.subject || 'Practice Exam'}
-                          </span>
-                          {completedSession && (
-                            <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 rounded shrink-0">
-                              Completed
+                    <Card key={exam.id} className="shadow-sm hover:shadow-md transition-all border-t-4 border-t-indigo-600 flex flex-col justify-between">
+                      <div>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full truncate">
+                              {exam.topic || exam.subject || 'Academic & Olympiad'}
                             </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {(exam as any).contestType === 'official_contest' ? (
+                                <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 rounded">
+                                  Contest
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
+                                  Open Paper
+                                </span>
+                              )}
+                              {completedSession && (
+                                <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 rounded">
+                                  Completed
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <CardTitle className="mt-2 text-slate-900 font-display text-base font-bold line-clamp-2" title={exam.title}>
+                            {exam.title}
+                          </CardTitle>
+                          <CardDescription className="line-clamp-2 min-h-[2.5rem] text-xs">
+                            {exam.description || 'Open academic problem set.'}
+                          </CardDescription>
+
+                          {/* Instructor Attribution */}
+                          <div className="text-[11px] text-slate-500 font-medium pt-1">
+                            Created by <strong className="text-slate-700">{exam.instructorName || 'EduReach Coach'}</strong>
+                            {exam.institutionName ? ` • ${exam.institutionName}` : ''}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pb-3 text-xs space-y-3">
+                          <div className="flex items-center gap-4 text-slate-500">
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-1 text-indigo-500" />
+                              {exam.durationMinutes} min
+                            </div>
+                            <div className="flex items-center">
+                              <BookOpen className="h-4 w-4 mr-1 text-indigo-500" />
+                              {exam.questionCount || 0} {exam.questionCount === 1 ? 'Problem' : 'Problems'}
+                            </div>
+                          </div>
+
+                          {/* Tag Chips */}
+                          {exam.tags && exam.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {exam.tags.map((t) => (
+                                <span
+                                  key={t}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTag(selectedTag === t ? null : t);
+                                  }}
+                                  className={`text-[10px] font-mono px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                                    selectedTag === t
+                                      ? 'bg-indigo-600 text-white font-bold'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
+                                  }`}
+                                >
+                                  #{t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </div>
+                      <CardFooter className="pt-2 border-t border-slate-100">
+                        <div className="grid grid-cols-2 gap-2 w-full">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-9 border-slate-300 text-slate-700 hover:bg-slate-100 w-full"
+                            onClick={() => setSelectedPaperExamId(exam.id)}
+                          >
+                            <Printer className="h-3.5 w-3.5 mr-1 text-slate-500" />
+                            PDF Paper
+                          </Button>
+                          {completedSession ? (
+                            <Button variant="outline" size="sm" className="w-full text-xs h-9" asChild>
+                              <Link href={`/exam/${completedSession.session.id}/results`}>
+                                View Attempt
+                              </Link>
+                            </Button>
+                          ) : activeSession ? (
+                            <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs h-9" asChild>
+                              <Link href={`/exam/${activeSession.session.id}`}>
+                                <PlayCircle className="mr-1 h-3.5 w-3.5" />
+                                Resume
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button 
+                              size="sm"
+                              className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs h-9"
+                              disabled={joiningId !== null}
+                              onClick={() => handleTakePublicExam(exam.id)}
+                            >
+                              <PlayCircle className="mr-1 h-3.5 w-3.5" />
+                              {joiningId === exam.id ? 'Starting...' : 'Practice'}
+                            </Button>
                           )}
                         </div>
-                        <CardTitle className="mt-2 text-slate-900 font-display text-base font-bold line-clamp-2" title={exam.title}>
-                          {exam.title}
-                        </CardTitle>
-                        <CardDescription className="line-clamp-2 min-h-[2.5rem] text-xs">
-                          {exam.description || 'Public instructor practice assessment.'}
-                        </CardDescription>
-
-                        {/* Instructor Attribution */}
-                        <div className="text-[11px] text-slate-500 font-medium pt-1">
-                          Created by <strong className="text-slate-700">{exam.instructorName || 'Instructor'}</strong>
-                          {exam.institutionName ? ` • ${exam.institutionName}` : ''}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pb-3 text-xs space-y-3">
-                        <div className="flex items-center gap-4 text-slate-500">
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1 text-indigo-500" />
-                            {exam.durationMinutes} min
-                          </div>
-                          <div className="flex items-center">
-                            <BookOpen className="h-4 w-4 mr-1 text-indigo-500" />
-                            {exam.questionCount || 0} {exam.questionCount === 1 ? 'Question' : 'Questions'}
-                          </div>
-                        </div>
-
-                        {/* Tag Chips */}
-                        {exam.tags && exam.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {exam.tags.map((t) => (
-                              <span
-                                key={t}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTag(selectedTag === t ? null : t);
-                                }}
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
-                                  selectedTag === t
-                                    ? 'bg-indigo-600 text-white font-bold'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
-                                }`}
-                              >
-                                #{t}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                      <CardFooter>
-                        {completedSession ? (
-                          <Button variant="outline" className="w-full text-xs" asChild>
-                            <Link href={`/exam/${completedSession.session.id}/results`}>
-                              View Past Attempt
-                            </Link>
-                          </Button>
-                        ) : activeSession ? (
-                          <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs" asChild>
-                            <Link href={`/exam/${activeSession.session.id}`}>
-                              <PlayCircle className="mr-2 h-4 w-4" />
-                              Resume Attempt
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button 
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs"
-                            disabled={joiningId !== null}
-                            onClick={() => handleTakePublicExam(exam.id)}
-                          >
-                            <PlayCircle className="mr-2 h-4 w-4" />
-                            {joiningId === exam.id ? 'Starting...' : 'Take Practice Exam'}
-                          </Button>
-                        )}
                       </CardFooter>
                     </Card>
                   );
@@ -402,6 +429,13 @@ export default function StudentHome() {
             )}
           </div>
         )}
+
+        {/* Printable Contest Paper Dialog */}
+        <ContestPaperModal
+          examId={selectedPaperExamId}
+          isOpen={selectedPaperExamId !== null}
+          onClose={() => setSelectedPaperExamId(null)}
+        />
       </div>
     </StudentLayout>
   );
